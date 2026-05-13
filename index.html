@@ -1155,8 +1155,28 @@
           body: JSON.stringify(order),
         }).catch(e => console.warn('Order server sync failed:', e.message));
       },
-      getCart() { const s = localStorage.getItem('vv_cart'); return s ? JSON.parse(s) : []; },
-      saveCart(cart) { localStorage.setItem('vv_cart', JSON.stringify(cart)); CartHelpers.updateBadge(); },
+      // Cart is stored per-user: vv_cart_anon for anonymous browsers, vv_cart_<id> for logged-in users.
+      // This way user A's cart survives logout/login, and user B never sees A's items.
+      _cartKey() {
+        const u = (typeof Auth !== 'undefined' && Auth.getUser && Auth.getUser()) ? Auth.getUser().id : null;
+        return u ? 'vv_cart_' + u : 'vv_cart_anon';
+      },
+      getCart() {
+        // One-time migration from the old un-segmented `vv_cart` key
+        const legacy = localStorage.getItem('vv_cart');
+        if (legacy !== null) {
+          const target = this._cartKey();
+          if (!localStorage.getItem(target)) localStorage.setItem(target, legacy);
+          localStorage.removeItem('vv_cart');
+        }
+        const s = localStorage.getItem(this._cartKey());
+        if (!s) return [];
+        try { const v = JSON.parse(s); return Array.isArray(v) ? v : []; } catch { return []; }
+      },
+      saveCart(cart) {
+        localStorage.setItem(this._cartKey(), JSON.stringify(cart));
+        CartHelpers.updateBadge();
+      },
     };
 
     // ---- Auth ----
@@ -1182,10 +1202,19 @@
         localStorage.removeItem(this.TOKEN_KEY);
         localStorage.removeItem(this.USER_KEY);
       },
-      _resetCart() {
-        // Cart is per-user. Clear it on any auth state transition so one
-        // customer's items never appear in another customer's cart.
-        localStorage.removeItem('vv_cart');
+      // When a user logs in or signs up, claim any anonymous cart in this browser
+      // (so the "browse anonymously then sign up at checkout" flow preserves items).
+      // If the user already has a saved cart from a previous session, keep that instead.
+      _claimAnonCart(userId) {
+        const anonKey = 'vv_cart_anon';
+        const userKey = 'vv_cart_' + userId;
+        const anon = localStorage.getItem(anonKey);
+        if (anon !== null && !localStorage.getItem(userKey)) {
+          localStorage.setItem(userKey, anon);
+        }
+        localStorage.removeItem(anonKey);
+      },
+      _refreshCartBadge() {
         if (typeof CartHelpers !== 'undefined') CartHelpers.updateBadge();
       },
 
@@ -1202,8 +1231,9 @@
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || 'Signup failed');
-        this._resetCart();
+        this._claimAnonCart(json.user.id);
         this._setSession(json.token, json.user);
+        this._refreshCartBadge();
         return json.user;
       },
 
@@ -1215,8 +1245,9 @@
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || 'Login failed');
-        this._resetCart();
+        this._claimAnonCart(json.user.id);
         this._setSession(json.token, json.user);
+        this._refreshCartBadge();
         return json.user;
       },
 
@@ -1228,7 +1259,10 @@
           });
         } catch (e) { /* logout is best-effort on the client */ }
         this._clearSession();
-        this._resetCart();
+        // Keep the user's cart (vv_cart_<id>) so it's still there when they log back in.
+        // Clear vv_cart_anon so the next anonymous browser session starts fresh.
+        localStorage.removeItem('vv_cart_anon');
+        this._refreshCartBadge();
       },
 
       async fetchMe() {
