@@ -907,7 +907,7 @@
                     <div class="form-group"><label class="form-label">New Password</label><input class="form-control" type="password" placeholder="New password"></div>
                     <div class="form-group"><label class="form-label">Confirm Password</label><input class="form-control" type="password" placeholder="Confirm password"></div>
                   </div>
-                  <button class="btn btn-primary" style="margin-top:1.25rem;" onclick="showToast('Password updated!','success')">Update Password</button>
+                  <button class="btn btn-primary" style="margin-top:1.25rem;" onclick="handleChangePassword(this)">Update Password</button>
                 </div>
               </div>
               <div id="tab-wishlist" class="profile-tab" style="display:none;">
@@ -925,6 +925,82 @@
                 <h2 style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;margin-bottom:1.5rem;">⚙️ Settings</h2>
                 <div class="admin-form-card" id="settings-container"></div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- LOGIN PAGE -->
+    <div id="page-login" class="page-section">
+      <div class="page-hero"><div class="container"><h1 class="page-hero-title">🔐 Welcome Back</h1><p style="color:var(--text-muted);margin-top:0.5rem;">Sign in to your Velorex Music account</p></div></div>
+      <section class="section" style="padding-top:0;">
+        <div class="container" style="max-width:480px;">
+          <div class="admin-form-card">
+            <form id="login-form-customer" onsubmit="return false;" autocomplete="on">
+              <div class="form-group full-width" style="margin-bottom:1rem;">
+                <label class="form-label">Email Address</label>
+                <input class="form-control" type="email" id="login-email" placeholder="you@example.com" required autocomplete="email">
+              </div>
+              <div class="form-group full-width" style="margin-bottom:0.5rem;">
+                <label class="form-label">Password</label>
+                <input class="form-control" type="password" id="login-password" placeholder="Enter your password" required autocomplete="current-password">
+              </div>
+              <div style="text-align:right;margin-bottom:1.25rem;">
+                <a href="#" onclick="navigate('forgot'); return false;" style="font-size:0.85rem;color:var(--accent);text-decoration:none;">Forgot password?</a>
+              </div>
+              <button type="submit" class="btn btn-primary" style="width:100%;" onclick="handleCustomerLogin()">🚀 Sign In</button>
+              <div id="login-error" style="display:none;margin-top:1rem;padding:0.75rem;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:8px;font-size:0.875rem;"></div>
+              <div style="text-align:center;margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border);color:var(--text-muted);font-size:0.875rem;">
+                Don't have an account?
+                <a href="#" onclick="navigate('signup'); return false;" style="color:var(--accent);font-weight:600;text-decoration:none;margin-left:0.25rem;">Create one</a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- SIGNUP PAGE -->
+    <div id="page-signup" class="page-section">
+      <div class="page-hero"><div class="container"><h1 class="page-hero-title">✨ Create Account</h1><p style="color:var(--text-muted);margin-top:0.5rem;">Join Velorex Music and start collecting</p></div></div>
+      <section class="section" style="padding-top:0;">
+        <div class="container" style="max-width:520px;">
+          <div class="admin-form-card">
+            <form id="signup-form-customer" onsubmit="return false;" autocomplete="on">
+              <div class="form-grid">
+                <div class="form-group"><label class="form-label">First Name</label><input class="form-control" type="text" id="signup-first" placeholder="Rahul" required autocomplete="given-name"></div>
+                <div class="form-group"><label class="form-label">Last Name</label><input class="form-control" type="text" id="signup-last" placeholder="Sharma" autocomplete="family-name"></div>
+                <div class="form-group full-width"><label class="form-label">Email Address</label><input class="form-control" type="email" id="signup-email" placeholder="you@example.com" required autocomplete="email"></div>
+                <div class="form-group full-width"><label class="form-label">Password</label><input class="form-control" type="password" id="signup-password" placeholder="At least 8 characters" required autocomplete="new-password" minlength="8"></div>
+                <div class="form-group full-width"><label class="form-label">Confirm Password</label><input class="form-control" type="password" id="signup-password-confirm" placeholder="Repeat password" required autocomplete="new-password"></div>
+              </div>
+              <button type="submit" class="btn btn-primary" style="width:100%;margin-top:1.5rem;" onclick="handleCustomerSignup()">🎉 Create Account</button>
+              <div id="signup-error" style="display:none;margin-top:1rem;padding:0.75rem;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:8px;font-size:0.875rem;"></div>
+              <div style="text-align:center;margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border);color:var(--text-muted);font-size:0.875rem;">
+                Already have an account?
+                <a href="#" onclick="navigate('login'); return false;" style="color:var(--accent);font-weight:600;text-decoration:none;margin-left:0.25rem;">Sign in</a>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- FORGOT PASSWORD PAGE -->
+    <div id="page-forgot" class="page-section">
+      <div class="page-hero"><div class="container"><h1 class="page-hero-title">🔑 Forgot Password?</h1></div></div>
+      <section class="section" style="padding-top:0;">
+        <div class="container" style="max-width:520px;">
+          <div class="admin-form-card" style="text-align:center;">
+            <div style="font-size:3rem;margin-bottom:1rem;">📧</div>
+            <h3 style="font-family:var(--font-display);font-size:1.25rem;margin-bottom:1rem;">Contact our support team</h3>
+            <p style="color:var(--text-muted);line-height:1.6;margin-bottom:1.5rem;">
+              We're working on automated password reset. For now, please email us with the email address on your account and we'll help you reset your password within 24 hours.
+            </p>
+            <a href="mailto:support@velorexmusic.com?subject=Password%20Reset%20Request" class="btn btn-primary">✉️ Email Support</a>
+            <div style="margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border);">
+              <a href="#" onclick="navigate('login'); return false;" style="color:var(--accent);font-size:0.875rem;text-decoration:none;">← Back to sign in</a>
             </div>
           </div>
         </div>
@@ -1070,14 +1146,130 @@
         const o = this.getOrders();
         o.unshift(order);
         localStorage.setItem('vv_orders', JSON.stringify(o));
+        const headers = { 'Content-Type': 'application/json' };
+        const token = (typeof Auth !== 'undefined' && Auth.getToken()) || '';
+        if (token) headers['Authorization'] = 'Bearer ' + token;
         fetch(API_BASE + '/orders.php', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify(order),
         }).catch(e => console.warn('Order server sync failed:', e.message));
       },
       getCart() { const s = localStorage.getItem('vv_cart'); return s ? JSON.parse(s) : []; },
       saveCart(cart) { localStorage.setItem('vv_cart', JSON.stringify(cart)); CartHelpers.updateBadge(); },
+    };
+
+    // ---- Auth ----
+    // Manages the customer session: token + cached user object in localStorage.
+    // Token is sent as `Authorization: Bearer <token>` on protected calls.
+    const Auth = {
+      TOKEN_KEY: 'vv_auth_token',
+      USER_KEY: 'vv_auth_user',
+
+      getToken() { return localStorage.getItem(this.TOKEN_KEY) || ''; },
+      getUser() {
+        const raw = localStorage.getItem(this.USER_KEY);
+        if (!raw) return null;
+        try { return JSON.parse(raw); } catch { return null; }
+      },
+      isLoggedIn() { return !!this.getToken(); },
+
+      _setSession(token, user) {
+        localStorage.setItem(this.TOKEN_KEY, token);
+        localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+      },
+      _clearSession() {
+        localStorage.removeItem(this.TOKEN_KEY);
+        localStorage.removeItem(this.USER_KEY);
+      },
+
+      headers() {
+        const t = this.getToken();
+        return t ? { 'Authorization': 'Bearer ' + t } : {};
+      },
+
+      async signup(data) {
+        const res = await fetch(API_BASE + '/auth/signup.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Signup failed');
+        this._setSession(json.token, json.user);
+        return json.user;
+      },
+
+      async login(email, password) {
+        const res = await fetch(API_BASE + '/auth/login.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Login failed');
+        this._setSession(json.token, json.user);
+        return json.user;
+      },
+
+      async logout() {
+        try {
+          await fetch(API_BASE + '/auth/logout.php', {
+            method: 'POST',
+            headers: this.headers(),
+          });
+        } catch (e) { /* logout is best-effort on the client */ }
+        this._clearSession();
+      },
+
+      async fetchMe() {
+        if (!this.isLoggedIn()) return null;
+        try {
+          const res = await fetch(API_BASE + '/auth/me.php', { headers: this.headers(), cache: 'no-store' });
+          if (res.status === 401) {
+            this._clearSession();
+            return null;
+          }
+          const json = await res.json();
+          if (!res.ok) throw new Error(json.error || 'Failed to load profile');
+          localStorage.setItem(this.USER_KEY, JSON.stringify(json.user));
+          return json.user;
+        } catch (e) {
+          console.warn('Auth.fetchMe failed:', e.message);
+          return this.getUser();
+        }
+      },
+
+      async updateProfile(data) {
+        const res = await fetch(API_BASE + '/auth/update-profile.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...this.headers() },
+          body: JSON.stringify(data),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Update failed');
+        localStorage.setItem(this.USER_KEY, JSON.stringify(json.user));
+        return json.user;
+      },
+
+      async changePassword(currentPassword, newPassword) {
+        const res = await fetch(API_BASE + '/auth/change-password.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...this.headers() },
+          body: JSON.stringify({ currentPassword, newPassword }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Password change failed');
+        return true;
+      },
+
+      async fetchOrders() {
+        if (!this.isLoggedIn()) return [];
+        const res = await fetch(API_BASE + '/orders.php', { headers: this.headers(), cache: 'no-store' });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
+      },
     };
 
     const CartHelpers = {
@@ -1218,7 +1410,10 @@
         <div class="navbar-actions">
           ${isAdmin ? '' : `<a href="#" onclick="navigate('cart'); return false;" class="nav-action-btn"><i class="fas fa-shopping-cart"></i><span class="cart-badge" id="cartBadge"></span></a>`}
           <button class="nav-action-btn" id="themeToggle" onclick="toggleTheme()" title="Toggle Theme"><i class="fas fa-moon"></i></button>
-          <a href="#" onclick="navigate('profile'); return false;" class="nav-action-btn"><i class="fas fa-user"></i></a>
+          ${Auth.isLoggedIn()
+            ? `<a href="#" onclick="navigate('profile'); return false;" class="nav-action-btn" title="My Profile"><i class="fas fa-user"></i></a>
+               <a href="#" onclick="handleCustomerLogout(); return false;" class="nav-action-btn" title="Sign out"><i class="fas fa-right-from-bracket"></i></a>`
+            : `<a href="#" onclick="navigate('login'); return false;" class="nav-action-btn" title="Sign in"><i class="fas fa-right-to-bracket"></i></a>`}
           <div class="hamburger" id="hamburger" onclick="toggleMobileNav()"><span></span><span></span><span></span></div>
         </div>
       </nav>`;
@@ -1311,12 +1506,8 @@
     // =============================================
     var currentPage = 'index', _detailQty = 1, _detailMax = 1, currentParams = {};
 
-    var DUMMY_ORDERS_SPA = [
-      { id: 'VD-2024-001', date: 'April 20, 2025', status: 'delivered', items: [{ name: 'Dark Side of the Moon', qty: 1, price: 3499 }, { name: 'Thriller', qty: 1, price: 2999 }], total: 6498 },
-      { id: 'VD-2024-002', date: 'April 15, 2025', status: 'processing', items: [{ name: 'Aashiqui 2 - Deluxe', qty: 2, price: 3598 }], total: 3697 },
-      { id: 'VD-2024-003', date: 'April 10, 2025', status: 'shipped', items: [{ name: 'Rockstar OST', qty: 1, price: 399 }, { name: 'DDLJ', qty: 1, price: 1499 }], total: 1997 },
-      { id: 'VD-2024-004', date: 'March 28, 2025', status: 'delivered', items: [{ name: 'Abbey Road', qty: 1, price: 3199 }], total: 3298 },
-    ];
+    // Orders are loaded from the server (see initPageProfile / filterOrders).
+    var CURRENT_USER_ORDERS = [];
 
     function buildPageUrl(page, params) {
       params = params || {};
@@ -1388,6 +1579,82 @@
       else if (page === 'product') initPageProduct(params);
       else if (page === 'cart') initPageCart();
       else if (page === 'profile') initPageProfile();
+      else if (page === 'login') initPageLogin();
+      else if (page === 'signup') initPageSignup();
+      else if (page === 'forgot') { /* static page, nothing to init */ }
+    }
+
+    function initPageLogin() {
+      const err = document.getElementById('login-error');
+      if (err) err.style.display = 'none';
+      const emailEl = document.getElementById('login-email');
+      if (emailEl && !emailEl.value) setTimeout(() => emailEl.focus(), 100);
+      // If already logged in, send them to their profile
+      if (Auth.isLoggedIn()) navigate('profile', {}, { replace: true });
+    }
+
+    function initPageSignup() {
+      const err = document.getElementById('signup-error');
+      if (err) err.style.display = 'none';
+      const firstEl = document.getElementById('signup-first');
+      if (firstEl && !firstEl.value) setTimeout(() => firstEl.focus(), 100);
+      if (Auth.isLoggedIn()) navigate('profile', {}, { replace: true });
+    }
+
+    function showAuthError(elId, msg) {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+
+    async function handleCustomerLogin() {
+      const email = (document.getElementById('login-email').value || '').trim();
+      const password = document.getElementById('login-password').value || '';
+      const btn = document.querySelector('#login-form-customer button[type="submit"]');
+      if (!email || !password) { showAuthError('login-error', 'Please enter your email and password'); return; }
+      if (btn) { btn.disabled = true; btn.textContent = 'Signing in...'; }
+      try {
+        await Auth.login(email, password);
+        showToast('Welcome back!', 'success');
+        const params = parsePageFromUrl().params;
+        navigate(params.redirect || 'profile');
+      } catch (e) {
+        showAuthError('login-error', e.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🚀 Sign In'; }
+      }
+    }
+
+    async function handleCustomerSignup() {
+      const firstName = (document.getElementById('signup-first').value || '').trim();
+      const lastName = (document.getElementById('signup-last').value || '').trim();
+      const email = (document.getElementById('signup-email').value || '').trim();
+      const password = document.getElementById('signup-password').value || '';
+      const confirm = document.getElementById('signup-password-confirm').value || '';
+      const btn = document.querySelector('#signup-form-customer button[type="submit"]');
+
+      if (!firstName || !email || !password) { showAuthError('signup-error', 'Please fill all required fields'); return; }
+      if (password.length < 8) { showAuthError('signup-error', 'Password must be at least 8 characters'); return; }
+      if (password !== confirm) { showAuthError('signup-error', 'Passwords do not match'); return; }
+
+      if (btn) { btn.disabled = true; btn.textContent = 'Creating account...'; }
+      try {
+        await Auth.signup({ firstName, lastName, email, password });
+        showToast('Account created — welcome to Velorex Music!', 'success');
+        const params = parsePageFromUrl().params;
+        navigate(params.redirect || 'profile');
+      } catch (e) {
+        showAuthError('signup-error', e.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🎉 Create Account'; }
+      }
+    }
+
+    async function handleCustomerLogout() {
+      await Auth.logout();
+      showToast('Signed out', 'success');
+      navigate('index');
     }
 
     function initPageIndex() {
@@ -1747,6 +2014,11 @@
       if (valid[code]) showToast(`Coupon "${code}" applied! ${valid[code]}% off`, 'success'); else showToast('Invalid coupon code', 'error');
     }
     function checkoutSPA() {
+      if (!Auth.isLoggedIn()) {
+        showToast('Please sign in to complete your order', 'info');
+        navigate('login', { redirect: 'cart' });
+        return;
+      }
       const total = CartHelpers.getCartTotal() + (CartHelpers.getCartTotal() >= 999 ? 0 : 99);
       document.getElementById('payment-amount-display').textContent = '₹' + total.toLocaleString();
       document.getElementById('payment-modal').classList.add('active');
@@ -1799,22 +2071,65 @@
       rzp1.open();
     }
 
-    function initPageProfile() { renderOrdersSPA(Storage.getOrders()); renderWishlistSPA(); renderAddressesSPA(); renderSettingsSPA(); }
+    async function initPageProfile() {
+      if (!Auth.isLoggedIn()) {
+        navigate('login', { redirect: 'profile' }, { replace: true });
+        return;
+      }
+      const user = await Auth.fetchMe();
+      if (!user) {
+        navigate('login', { redirect: 'profile' }, { replace: true });
+        return;
+      }
+      populateProfileFromUser(user);
+      try {
+        CURRENT_USER_ORDERS = await Auth.fetchOrders();
+      } catch (e) { CURRENT_USER_ORDERS = []; }
+      renderOrdersSPA(CURRENT_USER_ORDERS);
+      renderWishlistSPA();
+      renderAddressesSPA(user);
+      renderSettingsSPA();
+    }
 
-    function renderAddressesSPA() {
+    function populateProfileFromUser(user) {
+      const full = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || 'Velorex Member';
+      const nameEl = document.getElementById('profile-name');
+      const emailEl = document.getElementById('profile-email');
+      if (nameEl) nameEl.textContent = full;
+      if (emailEl) emailEl.textContent = user.email || '';
+
+      // Stats
+      const stats = user.stats || { orderCount: 0, totalSpent: 0 };
+      const statItems = document.querySelectorAll('#page-profile .p-stat .p-stat-value');
+      if (statItems[0]) statItems[0].textContent = stats.orderCount;
+      if (statItems[1]) statItems[1].textContent = '₹' + Math.round(stats.totalSpent).toLocaleString();
+
+      // Account form
+      const firstEl = document.getElementById('firstName');
+      const lastEl = document.getElementById('lastName');
+      const userEmailEl = document.getElementById('userEmail');
+      if (firstEl) firstEl.value = user.firstName || '';
+      if (lastEl) lastEl.value = user.lastName || '';
+      if (userEmailEl) userEmailEl.value = user.email || '';
+
+      // Phone + DOB + preferences if those inputs exist
+      const accountInputs = document.querySelectorAll('#tab-account .form-control');
+      accountInputs.forEach(input => {
+        if (input.type === 'tel' && !input.id) input.value = user.phone || '';
+        if (input.type === 'date' && !input.id) input.value = user.dateOfBirth || '';
+        if (input.placeholder && input.placeholder.toLowerCase().includes('rock') && !input.id) input.value = user.musicPreferences || '';
+      });
+    }
+
+    function renderAddressesSPA(user) {
       var container = document.getElementById('addresses-list'); if (!container) return;
-      container.innerHTML = ['Home', 'Office'].map((type, i) => `
-      <div class="order-card">
-        <div style="display:flex;justify-content:space-between;margin-bottom:0.75rem;">
-          <span style="font-weight:700;font-size:0.9rem;">🏠 ${type}</span>
-          ${i === 0 ? '<span style="background:rgba(0,212,170,0.1);color:var(--success);padding:0.2rem 0.5rem;border-radius:4px;font-size:0.7rem;">Default</span>' : ''}
-        </div>
-        <p style="font-size:0.875rem;color:var(--text-muted);line-height:1.6;">Rahul Sharma<br>${i === 0 ? '42, Shanti Nagar, Sector 3<br>Meerut, UP - 250001' : 'B-12, Technopark<br>Noida, UP - 201301'}<br>+91 98765 43210</p>
-        <div style="display:flex;gap:0.5rem;margin-top:1rem;">
-          <button class="btn btn-sm btn-secondary" onclick="showToast('Edit coming soon!','info')">✏️ Edit</button>
-          <button class="btn btn-sm btn-danger" onclick="showToast('Address removed','info')">🗑</button>
-        </div>
-      </div>`).join('');
+      // Addresses aren't persisted server-side yet. Show an empty state.
+      container.innerHTML = `
+        <div class="order-card" style="grid-column:1/-1;text-align:center;">
+          <div style="font-size:2.5rem;margin-bottom:0.75rem;">📭</div>
+          <p style="color:var(--text-muted);margin-bottom:1rem;">No saved addresses yet.</p>
+          <button class="btn btn-sm btn-secondary" onclick="showToast('Address book is coming soon. For now, enter your address at checkout.','info')">+ Add Address</button>
+        </div>`;
     }
 
     function renderSettingsSPA() {
@@ -1834,16 +2149,22 @@
 
     function renderOrdersSPA(orders) {
       var container = document.getElementById('orders-list'); if (!container) return;
-      if (!orders.length) { container.innerHTML = '<div class="no-products"><div class="no-products-icon"><i class="fas fa-box"></i></div><p>No orders found</p></div>'; return; }
+      if (!orders.length) { container.innerHTML = '<div class="no-products"><div class="no-products-icon"><i class="fas fa-box"></i></div><p>No orders yet — find something you love in the store and your orders will appear here.</p></div>'; return; }
       container.innerHTML = orders.map(order => {
-        var statusLabel = order.status === 'delivered' ? '<i class="fas fa-circle-check"></i> Delivered' : order.status === 'processing' ? '<i class="fas fa-hourglass-half"></i> Processing' : '<i class="fas fa-truck"></i> Shipped';
-        var itemsHtml = order.items.map(item => `<div class="order-item-row"><span><i class="fas fa-music"></i> ${Utils.escape(item.name)} × ${item.qty}</span><span>₹${item.price.toLocaleString()}</span></div>`).join('');
-        var extraBtns = order.status === 'delivered' ? '<button class="btn btn-sm btn-outline-primary" onclick="showToast(\'Invoice downloaded!\',\'success\')"><i class="fas fa-file-invoice"></i> Invoice</button><button class="btn btn-sm btn-secondary" onclick="showToast(\'Reordered!\',\'success\')"><i class="fas fa-rotate-right"></i> Reorder</button>' : '';
-        return `<div class="order-card"><div class="order-header"><div><p class="order-id"><i class="fas fa-box"></i> Order #${order.id}</p><p class="order-date"><i class="fas fa-calendar-days"></i> ${order.date}</p></div><span class="order-status status-${order.status}">${statusLabel}</span></div><div class="order-items">${itemsHtml}<div class="order-total-row"><span>Order Total</span><span class="total-amt">₹${order.total.toLocaleString()}</span></div></div><div style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap;"><button class="btn btn-sm btn-secondary" onclick="showToast('Tracking coming soon!','info')"><i class="fas fa-location-dot"></i> Track Order</button>${extraBtns}</div></div>`;
+        var status = order.status || 'processing';
+        var statusLabel = status === 'delivered' ? '<i class="fas fa-circle-check"></i> Delivered' : status === 'processing' ? '<i class="fas fa-hourglass-half"></i> Processing' : '<i class="fas fa-truck"></i> Shipped';
+        var items = Array.isArray(order.items) ? order.items : [];
+        var itemsHtml = items.map(item => `<div class="order-item-row"><span><i class="fas fa-music"></i> ${Utils.escape(item.name || '')} × ${item.qty || 1}</span><span>₹${Number(item.price || 0).toLocaleString()}</span></div>`).join('');
+        var extraBtns = status === 'delivered' ? '<button class="btn btn-sm btn-outline-primary" onclick="showToast(\'Invoice download coming soon\',\'info\')"><i class="fas fa-file-invoice"></i> Invoice</button>' : '';
+        var dateStr = order.date || (order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
+        return `<div class="order-card"><div class="order-header"><div><p class="order-id"><i class="fas fa-box"></i> Order #${Utils.escape(String(order.id))}</p><p class="order-date"><i class="fas fa-calendar-days"></i> ${Utils.escape(dateStr)}</p></div><span class="order-status status-${status}">${statusLabel}</span></div><div class="order-items">${itemsHtml}<div class="order-total-row"><span>Order Total</span><span class="total-amt">₹${Number(order.total || 0).toLocaleString()}</span></div></div><div style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap;"><button class="btn btn-sm btn-secondary" onclick="showToast('Tracking coming soon!','info')"><i class="fas fa-location-dot"></i> Track Order</button>${extraBtns}</div></div>`;
       }).join('');
     }
 
-    function filterOrders(status) { var filtered = status === 'all' ? DUMMY_ORDERS_SPA : DUMMY_ORDERS_SPA.filter(o => o.status === status); renderOrdersSPA(filtered); }
+    function filterOrders(status) {
+      var filtered = status === 'all' ? CURRENT_USER_ORDERS : CURRENT_USER_ORDERS.filter(o => (o.status || 'processing') === status);
+      renderOrdersSPA(filtered);
+    }
 
     function renderWishlistSPA() {
       var grid = document.getElementById('wishlist-grid'); if (!grid) return;
@@ -1858,11 +2179,57 @@
       if (el) el.classList.add('active');
     }
 
-    function saveProfile() {
-      var first = document.getElementById('firstName'), last = document.getElementById('lastName'), email = document.getElementById('userEmail');
-      if (first && last) { var pn = document.getElementById('profile-name'); if (pn) pn.textContent = first.value + ' ' + last.value; }
-      if (email) { var pe = document.getElementById('profile-email'); if (pe) pe.textContent = email.value; }
-      showToast('Profile updated successfully! ✅', 'success');
+    async function saveProfile() {
+      if (!Auth.isLoggedIn()) { navigate('login'); return; }
+      var first = document.getElementById('firstName')?.value.trim() || '';
+      var last = document.getElementById('lastName')?.value.trim() || '';
+      var email = document.getElementById('userEmail')?.value.trim() || '';
+
+      // Phone, DOB, prefs — pull from form by position since they don't have ids
+      var phoneEl = document.querySelector('#tab-account input[type="tel"]');
+      var dobEl = document.querySelector('#tab-account input[type="date"]');
+      var prefsEl = document.querySelector('#tab-account input[placeholder*="Rock"]') || document.querySelector('#tab-account input[placeholder*="Bollywood"]');
+
+      try {
+        const updated = await Auth.updateProfile({
+          firstName: first,
+          lastName: last,
+          email: email,
+          phone: phoneEl ? phoneEl.value.trim() : '',
+          dateOfBirth: dobEl ? dobEl.value : '',
+          musicPreferences: prefsEl ? prefsEl.value.trim() : '',
+        });
+        populateProfileFromUser({ ...updated, stats: Auth.getUser()?.stats });
+        showToast('Profile updated', 'success');
+      } catch (e) {
+        showToast('Update failed: ' + e.message, 'error');
+      }
+    }
+
+    async function handleChangePassword(btn) {
+      if (!Auth.isLoggedIn()) { navigate('login'); return; }
+      const card = btn.closest('.admin-form-card');
+      const inputs = card ? card.querySelectorAll('input[type="password"]') : [];
+      if (inputs.length < 3) { showToast('Form not found', 'error'); return; }
+      const current = inputs[0].value;
+      const next = inputs[1].value;
+      const confirm = inputs[2].value;
+      if (!current || !next) { showToast('Fill all password fields', 'error'); return; }
+      if (next.length < 8) { showToast('New password must be at least 8 characters', 'error'); return; }
+      if (next !== confirm) { showToast('New passwords do not match', 'error'); return; }
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = 'Updating...';
+      try {
+        await Auth.changePassword(current, next);
+        inputs.forEach(i => i.value = '');
+        showToast('Password updated', 'success');
+      } catch (e) {
+        showToast(e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+      }
     }
 
     function fixProductLinks(pageId) {

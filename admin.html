@@ -1440,7 +1440,12 @@
         </li>
         <li class="nav-item">
           <a href="#" class="nav-link" onclick="switchPanel('categories', this)">
-            <i class="fas fa-chart-pie"></i> Analytics
+            <i class="fas fa-chart-pie"></i> Categories
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#" class="nav-link" onclick="switchPanel('users', this)">
+            <i class="fas fa-users"></i> Customers
           </a>
         </li>
         <li class="nav-item">
@@ -1601,6 +1606,33 @@
             </div>
             <div id="admin-category-list" class="category-list"></div>
           </div>
+      </div>
+
+      <div id="panel-users" class="panel">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;flex-wrap:wrap;gap:0.75rem;">
+            <h3 style="margin: 0; font-family: var(--font-display);">Customer Accounts</h3>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="loadUsersTable()"><i class="fas fa-rotate"></i> Refresh</button>
+          </div>
+          <p style="color:var(--text-muted);font-size:0.875rem;margin-bottom:1rem;">When a customer emails you to reset their password, find them here and click "Reset Password" to set a new one for them.</p>
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Orders</th>
+                  <th>Spent</th>
+                  <th>Joined</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-users-table">
+                <tr><td colspan="6" style="padding:1.25rem;color:var(--text-muted);text-align:center;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <div id="panel-settings" class="panel">
@@ -2145,7 +2177,8 @@
       const titles = {
         dashboard: { t: 'Inventory Management', s: 'Overview of your music empire' },
         orders: { t: 'Customer Orders', s: 'Track customer purchases and fulfillment' },
-        categories: { t: 'Market Analytics', s: 'Performance trends and sales distribution' },
+        categories: { t: 'Categories', s: 'Manage product categories' },
+        users: { t: 'Customer Accounts', s: 'Manage customer accounts and reset passwords' },
         settings: { t: 'Store Configuration', s: 'Configure store-wide preferences' }
       };
 
@@ -2156,6 +2189,79 @@
 
       if (panelId === 'dashboard') renderProductsTable();
       if (panelId === 'orders') renderOrdersTable();
+      if (panelId === 'users') loadUsersTable();
+    }
+
+    async function loadUsersTable() {
+      const tbody = document.getElementById('admin-users-table');
+      if (!tbody) return;
+      tbody.innerHTML = '<tr><td colspan="6" style="padding:1.25rem;color:var(--text-muted);text-align:center;">Loading...</td></tr>';
+      try {
+        const res = await fetch(API_BASE + '/admin/users.php', {
+          cache: 'no-store',
+          headers: { 'X-Admin-Pass': sessionStorage.getItem('admin_pass') || '' },
+        });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j.error || 'HTTP ' + res.status);
+        }
+        const users = await res.json();
+        if (!Array.isArray(users) || users.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="padding:1.25rem;color:var(--text-muted);text-align:center;">No customers yet.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = users.map(u => {
+          const fullName = [u.firstName, u.lastName].filter(Boolean).join(' ') || '—';
+          const joined = u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+          const orderCount = u.orderCount || 0;
+          const spent = Math.round(u.totalSpent || 0);
+          return `
+            <tr>
+              <td><div style="font-weight:600;">${escapeHTML(fullName)}</div></td>
+              <td style="color:var(--text-muted);font-size:0.875rem;">${escapeHTML(u.email)}</td>
+              <td>${orderCount}</td>
+              <td>₹${spent.toLocaleString()}</td>
+              <td style="font-size:0.85rem;color:var(--text-muted);">${joined}</td>
+              <td>
+                <button class="btn btn-sm btn-secondary" onclick="resetUserPassword(${u.id}, '${escapeAttr(u.email)}')"><i class="fas fa-key"></i> Reset Password</button>
+              </td>
+            </tr>`;
+        }).join('');
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="6" style="padding:1.25rem;color:var(--danger);text-align:center;">Failed to load: ${escapeHTML(e.message)}</td></tr>`;
+      }
+    }
+
+    async function resetUserPassword(userId, email) {
+      const newPass = prompt('Enter a new temporary password for ' + email + ' (minimum 8 characters). They will be logged out everywhere and must use this password to sign in.');
+      if (newPass === null) return;
+      if (newPass.length < 8) { showToast('Password must be at least 8 characters', 'danger'); return; }
+      try {
+        const res = await fetch(API_BASE + '/admin/users.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Pass': sessionStorage.getItem('admin_pass') || '',
+          },
+          body: JSON.stringify({ action: 'reset-password', userId, newPassword: newPass }),
+        });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j.error || 'HTTP ' + res.status);
+        }
+        showToast('Password reset for ' + email + '. Send them the new password securely.', 'success');
+      } catch (e) {
+        showToast('Reset failed: ' + e.message, 'danger');
+      }
+    }
+
+    function escapeHTML(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+    function escapeAttr(s) {
+      return escapeHTML(s).replace(/'/g, '&#039;');
     }
 
     // =============================================
