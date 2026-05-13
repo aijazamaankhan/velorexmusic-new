@@ -1829,42 +1829,29 @@
 
     const Storage = {
       async syncFromServer() {
+        // Server is the source of truth. We unconditionally overwrite the local cache
+        // with whatever the server returned (including empty arrays — that means the
+        // admin has deleted everything, and the customer site should reflect that).
         try {
           const [pRes, cRes] = await Promise.all([
             fetch(API_BASE + '/products.php', { cache: 'no-store' }),
             fetch(API_BASE + '/categories.php', { cache: 'no-store' }),
           ]);
 
-          let serverProducts = null;
           if (pRes.ok) {
-            const parsed = await pRes.json();
-            if (Array.isArray(parsed)) serverProducts = parsed;
-          }
-
-          if (serverProducts !== null) {
-            const localRaw = localStorage.getItem('vv_products');
-            const local = localRaw ? JSON.parse(localRaw) : [];
-            // First-time migration: server empty + local has data → push local up
-            if (serverProducts.length === 0 && Array.isArray(local) && local.length > 0) {
-              try {
-                await Storage._postProducts(local);
-                console.log('[Storage] Migrated', local.length, 'products from localStorage to server');
-              } catch (e) {
-                console.error('[Storage] Migration failed:', e);
-              }
-            } else {
-              localStorage.setItem('vv_products', JSON.stringify(serverProducts));
+            const products = await pRes.json();
+            if (Array.isArray(products)) {
+              localStorage.setItem('vv_products', JSON.stringify(products));
             }
           }
 
           if (cRes.ok) {
             const cats = await cRes.json();
-            if (Array.isArray(cats) && cats.length > 0) {
+            if (Array.isArray(cats)) {
               localStorage.setItem('vv_categories', JSON.stringify(cats));
             }
           }
 
-          // Orders (admin only)
           if (sessionStorage.getItem('admin_pass')) {
             const oRes = await fetch(API_BASE + '/orders.php', {
               cache: 'no-store',

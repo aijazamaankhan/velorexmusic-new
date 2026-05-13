@@ -1003,203 +1003,7 @@
   </div>
 
   <script>
-    // =============================================
-    // PRODUCT DATA — each product has a `people` array
-    // mapping to slugs in the People filter above
-    // =============================================
-    const DEFAULT_PRODUCTS = [
-      {
-        id: 1, title: "Sholay - Original Soundtrack", artist: "R.D. Burman",
-        category: "vinyl", language: "hindi", price: 1299, originalPrice: 1599,
-        description: "The iconic Sholay original soundtrack featuring legendary compositions by R.D. Burman. A timeless masterpiece of Bollywood music that defined an era.",
-        image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop",
-        rating: 4.8, reviews: 242, badge: "hot", stock: 15,
-        musicDirector: "R.D. Burman",
-        trackListing: "Mehbooba Mehbooba\nYeh Dosti Hum Nahin Todenge\nHoli Ke Din\nKoi Hamein Junglee Kahtaa Hai",
-        specs: { format: "12\" LP", speed: "33⅓ RPM", label: "HMV Records", year: "1975", tracks: 10, genre: "Bollywood", theme: "Vintage Bollywood" },
-        people: ["rd-burman", "amitabh-bachchan"]
-      },
-      {
-        id: 2, title: "Kabhi Kabhie", artist: "Lata Mangeshkar, Mukesh",
-        category: "vinyl", language: "hindi", price: 999, originalPrice: 1299,
-        description: "Lata Mangeshkar and Mukesh's sublime performance on this legendary Yash Chopra film soundtrack. Pure nostalgia pressed on vinyl.",
-        image: "https://images.unsplash.com/photo-1471478331149-c72f17e33c73?w=400&h=400&fit=crop",
-        rating: 4.7, reviews: 188, badge: "new", stock: 8,
-        specs: { format: "12\" LP", speed: "33⅓ RPM", label: "Polydor", year: "1976", tracks: 8, genre: "Bollywood" },
-        people: ["lata-mangeshkar", "mukesh", "yash-chopra", "amitabh-bachchan"]
-      },
-      {
-        id: 3, title: "Aashiqui 2 - Deluxe Edition", artist: "Arijit Singh",
-        category: "vinyl", language: "hindi", price: 1799, originalPrice: 2199,
-        description: "The record-breaking romantic album that launched Arijit Singh into superstardom. Pressed on premium 180g vinyl with gatefold sleeve.",
-        image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop",
-        rating: 4.9, reviews: 512, badge: "hot", stock: 5,
-        specs: { format: "12\" LP 180g", speed: "33⅓ RPM", label: "T-Series", year: "2013", tracks: 12, genre: "Romantic" },
-        people: ["arijit-singh"]
-      },
-      {
-        id: 4, title: "Dil Wale Dulhania Le Jayenge", artist: "Lata Mangeshkar, Udit Narayan",
-        category: "vinyl", language: "hindi", price: 1499, originalPrice: 1999,
-        description: "25th Anniversary edition of the most beloved Bollywood soundtrack. Features the iconic 'Tujhe Dekha Toh' and 'Mehndi Laga Ke Rakhna'.",
-        image: "https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=400&h=400&fit=crop",
-        rating: 4.9, reviews: 387, badge: "new", stock: 10,
-        specs: { format: "12\" LP", speed: "33⅓ RPM", label: "Venus Records", year: "1995", tracks: 11, genre: "Bollywood" },
-        people: ["lata-mangeshkar", "udit-narayan", "jatin-lalit", "shahrukh-khan", "kajol"]
-      },
-      {
-        id: 5, title: "Dark Side of the Moon", artist: "Pink Floyd",
-        category: "vinyl", language: "english", price: 3499, originalPrice: 4199,
-        description: "One of the best-selling albums of all time, now available as a premium remastered 180g audiophile vinyl. Experience 'Money' and 'Time' like never before.",
-        image: "https://images.unsplash.com/photo-1598387993441-a364f854cffd?w=400&h=400&fit=crop",
-        rating: 5.0, reviews: 1024, badge: "hot", stock: 12,
-        specs: { format: "12\" LP 180g", speed: "33⅓ RPM", label: "Harvest/EMI", year: "1973 (2023 Remaster)", tracks: 10, genre: "Progressive Rock" },
-        people: ["pink-floyd"]
-      },
-      {
-        id: 6, title: "Thriller - 40th Anniversary", artist: "Michael Jackson",
-        category: "vinyl", language: "english", price: 2999, originalPrice: 3599,
-        description: "Celebrate 40 years of the world's best-selling album. This special edition includes the iconic artwork and all original tracks on premium vinyl.",
-        image: "https://images.unsplash.com/photo-1619983081563-430f63602796?w=400&h=400&fit=crop",
-        rating: 4.9, reviews: 892, badge: "new", stock: 20,
-        specs: { format: "12\" LP 180g", speed: "33⅓ RPM", label: "Epic/MJJ", year: "1982 (2022 Reissue)", tracks: 9, genre: "Pop/R&B" },
-        people: ["michael-jackson"]
-      },
-      {
-        id: 7, title: "Abbey Road", artist: "The Beatles",
-        category: "vinyl", language: "english", price: 3199, originalPrice: null,
-        description: "The Beatles' penultimate studio album and one of their most iconic. The Abbey Road remaster captures every nuance of this musical journey.",
-        image: "https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400&h=400&fit=crop",
-        rating: 5.0, reviews: 756, badge: "hot", stock: 7,
-        specs: { format: "12\" LP 180g", speed: "33⅓ RPM", label: "Apple Records", year: "1969 (2019 Remaster)", tracks: 17, genre: "Rock" },
-        people: ["beatles"]
-      },
-      {
-        id: 8, title: "Rumours - Super Deluxe", artist: "Fleetwood Mac",
-        category: "vinyl", language: "english", price: 2799, originalPrice: 3299,
-        description: "One of rock's greatest albums in a stunning super deluxe edition with expanded artwork and liner notes. Features the timeless 'Go Your Own Way'.",
-        image: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400&h=400&fit=crop",
-        rating: 4.8, reviews: 445, badge: null, stock: 18,
-        specs: { format: "12\" LP 180g", speed: "33⅓ RPM", label: "Reprise", year: "1977 (2023 Reissue)", tracks: 11, genre: "Soft Rock" },
-        people: ["fleetwood-mac"]
-      },
-      {
-        id: 9, title: "Rockstar - Original Soundtrack", artist: "A.R. Rahman",
-        category: "cd", language: "hindi", price: 399, originalPrice: 499,
-        description: "A.R. Rahman's soulful masterpiece for the film Rockstar. Features the chart-topping 'Sadda Haq' and emotionally charged ballads.",
-        image: "https://images.unsplash.com/photo-1552831388-6a0b3575b32a?w=400&h=400&fit=crop",
-        rating: 4.9, reviews: 678, badge: "hot", stock: 50,
-        specs: { format: "Audio CD", tracks: 14, label: "T-Series", year: "2011", genre: "Bollywood/Sufi", runtime: "58 min" },
-        people: ["ar-rahman", "ranveer-singh"]
-      },
-      {
-        id: 10, title: "Piku & Tamasha - Double Feature", artist: "Anupam Roy, A.R. Rahman",
-        category: "cd", language: "hindi", price: 299, originalPrice: null,
-        description: "A special double feature CD with Anupam Roy's gentle Piku score and Rahman's vibrant Tamasha soundtrack. Perfect for road trips.",
-        image: "https://images.unsplash.com/photo-1461360370896-22624d12aa1?w=400&h=400&fit=crop",
-        rating: 4.5, reviews: 189, badge: null, stock: 35,
-        specs: { format: "2-CD Set", tracks: 22, label: "Sony Music", year: "2015", genre: "Bollywood", runtime: "82 min" },
-        people: ["anupam-roy", "ar-rahman", "deepika-padukone"]
-      },
-      {
-        id: 11, title: "25 - Adele", artist: "Adele",
-        category: "cd", language: "english", price: 549, originalPrice: 699,
-        description: "Adele's third studio album featuring the Grammy-winning 'Hello'. A stunning showcase of her powerhouse vocals and emotional songwriting.",
-        image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop",
-        rating: 4.8, reviews: 534, badge: null, stock: 40,
-        specs: { format: "Audio CD", tracks: 11, label: "XL Recordings", year: "2015", genre: "Pop/Soul", runtime: "48 min" },
-        people: ["adele"]
-      },
-      {
-        id: 12, title: "÷ (Divide) - Ed Sheeran", artist: "Ed Sheeran",
-        category: "cd", language: "english", price: 449, originalPrice: 599,
-        description: "Ed Sheeran's record-breaking third album featuring 'Shape of You', 'Castle on the Hill', and 'Perfect'. A modern pop masterpiece.",
-        image: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop",
-        rating: 4.7, reviews: 423, badge: "sale", stock: 60,
-        specs: { format: "Audio CD", tracks: 16, label: "Asylum/Atlantic", year: "2017", genre: "Pop/Folk", runtime: "59 min" },
-        people: ["ed-sheeran"]
-      },
-      {
-        id: 13, title: "Zindagi Na Milegi Dobara", artist: "Shankar-Ehsaan-Loy",
-        category: "cd", language: "hindi", price: 349, originalPrice: null,
-        description: "The uplifting, travel-themed soundtrack from Zoya Akhtar's cult classic. Features 'Senorita', 'Ik Junoon', and the soul-stirring 'Khaabon Ke Parinday'.",
-        image: "https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?w=400&h=400&fit=crop",
-        rating: 4.8, reviews: 298, badge: "new", stock: 45,
-        specs: { format: "Audio CD", tracks: 9, label: "T-Series", year: "2011", genre: "Bollywood/Pop", runtime: "42 min" },
-        people: ["shankar-ehsaan-loy", "deepika-padukone"]
-      },
-      {
-        id: 14, title: "Dilwale Dulhania - Cassette", artist: "Jatin-Lalit",
-        category: "cassette", language: "hindi", price: 249, originalPrice: null,
-        description: "Relive the 90s with this authentic cassette edition of the DDLJ soundtrack. A true collector's item for Bollywood fans.",
-        image: "https://images.unsplash.com/photo-1550399105-c4db5fb85c18?w=400&h=400&fit=crop",
-        rating: 4.6, reviews: 145, badge: "new", stock: 25,
-        specs: { format: "Audio Cassette", tracks: 11, label: "Venus Records", year: "1995 (2024 Reissue)", genre: "Bollywood", runtime: "50 min" },
-        people: ["jatin-lalit", "shahrukh-khan", "kajol", "lata-mangeshkar", "udit-narayan"]
-      },
-      {
-        id: 15, title: "Born to Run - Cassette", artist: "Bruce Springsteen",
-        category: "cassette", language: "english", price: 349, originalPrice: null,
-        description: "The Boss on cassette! A limited reissue of Born to Run, perfectly suited for playing on your vintage Walkman. Analog warmth at its finest.",
-        image: "https://images.unsplash.com/photo-1458560871784-56d23406c091?w=400&h=400&fit=crop",
-        rating: 4.7, reviews: 98, badge: "new", stock: 15,
-        specs: { format: "Audio Cassette (Chrome)", tracks: 8, label: "Columbia", year: "1975 (2024 Reissue)", genre: "Rock", runtime: "39 min" },
-        people: ["bruce-springsteen"]
-      },
-      {
-        id: 16, title: "Baazigar - Cassette", artist: "Anu Malik",
-        category: "cassette", language: "hindi", price: 199, originalPrice: 249,
-        description: "The smash-hit Baazigar soundtrack on vintage cassette. Featuring the iconic 'Baazigar O Baazigar' and 'Ye Kaali Kaali Ankhen'.",
-        image: "https://images.unsplash.com/photo-1484755560615-a4c64e778a6c?w=400&h=400&fit=crop",
-        rating: 4.5, reviews: 112, badge: null, stock: 20,
-        specs: { format: "Audio Cassette", tracks: 8, label: "HMV", year: "1993 (2023 Reissue)", genre: "Bollywood", runtime: "36 min" },
-        people: ["anu-malik", "shahrukh-khan", "kajol"]
-      },
-      {
-        id: 17, title: "Nevermind - Cassette Reissue", artist: "Nirvana",
-        category: "cassette", language: "english", price: 399, originalPrice: 499,
-        description: "Nirvana's landmark Nevermind album reissued on cassette for the 32nd anniversary. 'Smells Like Teen Spirit' sounds incredible on tape.",
-        image: "https://images.unsplash.com/photo-1599659863658-5beada90a1ab?w=400&h=400&fit=crop",
-        rating: 4.8, reviews: 201, badge: "upcoming", stock: 0,
-        specs: { format: "Audio Cassette (Chrome)", tracks: 13, label: "DGC Records", year: "1991 (2023 Reissue)", genre: "Grunge/Alternative", runtime: "49 min" },
-        people: ["nirvana"]
-      },
-      {
-        id: 18, title: "Interstellar - Collector's Edition", artist: "Christopher Nolan",
-        category: "bluray", language: "english", price: 1499, originalPrice: 1999,
-        description: "Experience Christopher Nolan's space epic in stunning 4K Blu-ray. Features behind-the-scenes footage and a limited edition artbook.",
-        image: "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=400&h=400&fit=crop",
-        rating: 5.0, reviews: 1240, badge: "hot", stock: 15,
-        specs: { format: "4K UHD Blu-ray", resolution: "2160p", label: "Warner Bros.", year: "2014", runtime: "169 min", genre: "Sci-Fi" },
-        people: ["christopher-nolan"]
-      },
-      {
-        id: 19, title: "RRR - Deluxe Blu-ray", artist: "S.S. Rajamouli",
-        category: "bluray", language: "hindi", price: 1299, originalPrice: null,
-        description: "The global phenomenon RRR now on Blu-ray. Featuring the Oscar-winning 'Naatu Naatu' and high-octane action in crystal clear quality.",
-        image: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400&h=400&fit=crop",
-        rating: 4.9, reviews: 856, badge: "new", stock: 20,
-        specs: { format: "Blu-ray Disc", resolution: "1080p", label: "DVV Entertainment", year: "2022", runtime: "187 min", genre: "Action/Drama" },
-        people: ["ss-rajamouli", "ar-rahman"]
-      },
-      {
-        id: 20, title: "The Godfather Trilogy", artist: "Francis Ford Coppola",
-        category: "dvd", language: "english", price: 999, originalPrice: 1499,
-        description: "The complete Godfather trilogy on DVD. A cinematic masterpiece that every movie lover must own.",
-        image: "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=400&h=400&fit=crop",
-        rating: 5.0, reviews: 2100, badge: "sale", stock: 30,
-        specs: { format: "DVD Set (3 Discs)", resolution: "480p", label: "Paramount", year: "1972-1990", runtime: "549 min", genre: "Crime/Drama" },
-        people: ["francis-ford-coppola"]
-      },
-      {
-        id: 21, title: "Lagaan - Special Edition", artist: "Ashutosh Gowariker",
-        category: "dvd", language: "hindi", price: 499, originalPrice: null,
-        description: "The Oscar-nominated Lagaan on a special 2-disc DVD set. Includes making-of documentary and deleted scenes.",
-        image: "https://images.unsplash.com/photo-1512070670218-0a446d3419bb?w=400&h=400&fit=crop",
-        rating: 4.8, reviews: 432, badge: null, stock: 25,
-        specs: { format: "DVD (2 Discs)", resolution: "480p", label: "Aamir Khan Productions", year: "2001", runtime: "224 min", genre: "Sports/Drama" },
-        people: ["ashutosh-gowariker", "aamir-khan", "ar-rahman"]
-      }
-    ];
+    // Products are loaded dynamically from /api/products.php — see Storage.syncFromServer below.
 
     // ---- PEOPLE FILTER SLUG → DISPLAY LABEL ----
     const PEOPLE_LABELS = {
@@ -1236,6 +1040,9 @@
     };
 
     // ---- Storage Helpers ----
+    // Products are the server's responsibility. localStorage is only a render cache:
+    // we write whatever the server returned so the next page navigation can paint instantly,
+    // but the server is always the source of truth.
     const API_BASE = '/api';
     const Storage = {
       async syncFromServer() {
@@ -1243,23 +1050,19 @@
           const res = await fetch(API_BASE + '/products.php', { cache: 'no-store' });
           if (!res.ok) throw new Error('HTTP ' + res.status);
           const products = await res.json();
-          if (Array.isArray(products) && products.length > 0) {
-            localStorage.setItem('vv_products', JSON.stringify(products));
-          }
+          if (!Array.isArray(products)) throw new Error('Invalid response shape');
+          localStorage.setItem('vv_products', JSON.stringify(products));
         } catch (e) {
-          console.warn('Storage.syncFromServer failed; using cached/default products:', e.message);
+          console.warn('Storage.syncFromServer failed; using cached products:', e.message);
         }
       },
       getProducts() {
         const stored = localStorage.getItem('vv_products');
-        if (!stored) { localStorage.setItem('vv_products', JSON.stringify(DEFAULT_PRODUCTS)); return DEFAULT_PRODUCTS; }
-        const parsed = JSON.parse(stored);
-        // Merge people data for existing stored products that may lack it
-        return parsed.map(p => {
-          const def = DEFAULT_PRODUCTS.find(d => d.id === p.id);
-          if (def && !p.people) p.people = def.people || [];
-          return p;
-        });
+        if (!stored) return [];
+        try {
+          const parsed = JSON.parse(stored);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch { return []; }
       },
       saveProducts(products) { localStorage.setItem('vv_products', JSON.stringify(products)); },
       getOrders() { const s = localStorage.getItem('vv_orders'); return s ? JSON.parse(s) : []; },
@@ -1275,7 +1078,6 @@
       },
       getCart() { const s = localStorage.getItem('vv_cart'); return s ? JSON.parse(s) : []; },
       saveCart(cart) { localStorage.setItem('vv_cart', JSON.stringify(cart)); CartHelpers.updateBadge(); },
-      resetProducts() { localStorage.setItem('vv_products', JSON.stringify(DEFAULT_PRODUCTS)); return DEFAULT_PRODUCTS; }
     };
 
     const CartHelpers = {
@@ -1597,9 +1399,10 @@
         if (el) el.textContent = counts[cat] + ' titles available';
       });
       var bsg = document.getElementById('best-selling-grid'), nrg = document.getElementById('new-releases-grid'), ug = document.getElementById('upcoming-grid');
-      if (bsg) bsg.innerHTML = products.filter(p => p.badge === 'hot').slice(0, 4).map(createProductCard).join('');
-      if (nrg) nrg.innerHTML = products.filter(p => p.badge === 'new').slice(0, 4).map(createProductCard).join('');
-      if (ug) { var up = products.filter(p => p.badge === 'upcoming' || p.stock === 0).slice(0, 4); ug.innerHTML = up.length ? up.map(createProductCard).join('') : '<p class="text-muted text-center">No upcoming releases</p>'; }
+      var emptyMsg = function (msg) { return '<p class="text-muted text-center" style="grid-column:1/-1;padding:1rem 0;">' + msg + '</p>'; };
+      if (bsg) { var hot = products.filter(p => p.badge === 'hot').slice(0, 4); bsg.innerHTML = hot.length ? hot.map(createProductCard).join('') : emptyMsg('No bestsellers yet'); }
+      if (nrg) { var nw = products.filter(p => p.badge === 'new').slice(0, 4); nrg.innerHTML = nw.length ? nw.map(createProductCard).join('') : emptyMsg('No new releases yet'); }
+      if (ug) { var up = products.filter(p => p.badge === 'upcoming' || p.stock === 0).slice(0, 4); ug.innerHTML = up.length ? up.map(createProductCard).join('') : emptyMsg('No upcoming releases'); }
       fixProductLinks('page-index');
     }
 
