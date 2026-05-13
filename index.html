@@ -1871,11 +1871,35 @@
         if (!raw) return [];
         return String(raw).split(/\r?\n/).map(t => t.trim()).map(t => t.replace(/^\s*\d+[\.)]?\s*/, '')).filter(t => t && !/^(tracks|track listing)$/i.test(t));
       }
-      if (product.trackListingSides && typeof product.trackListingSides === 'object') {
+      // Parse [Side X] markers embedded in trackListing text; admin saves filled sides only.
+      function parseSidesFromMarkers(raw) {
+        if (!raw) return null;
+        var lines = String(raw).split(/\r?\n/);
+        var sides = {};
+        var current = null;
+        var found = false;
+        for (var i = 0; i < lines.length; i++) {
+          var t = lines[i].trim();
+          if (!t) continue;
+          var m = t.match(/^\[Side\s+([A-D])\]$/i);
+          if (m) {
+            current = m[1].toUpperCase();
+            found = true;
+            if (!sides[current]) sides[current] = '';
+          } else if (current) {
+            sides[current] += (sides[current] ? '\n' : '') + t;
+          }
+        }
+        return found ? sides : null;
+      }
+      var sidesData = (product.trackListingSides && typeof product.trackListingSides === 'object')
+        ? product.trackListingSides
+        : parseSidesFromMarkers(product.trackListing);
+      if (sidesData) {
         var sidesOrder = [{ key: 'A', label: 'Side A' }, { key: 'B', label: 'Side B' }, { key: 'C', label: 'Side C' }, { key: 'D', label: 'Side D' }];
         var sideHtml2 = '';
         sidesOrder.forEach(s => {
-          var raw = product.trackListingSides[s.key] || product.trackListingSides[s.key.toLowerCase()] || product.trackListingSides['side' + s.key] || '';
+          var raw = sidesData[s.key] || sidesData[s.key.toLowerCase()] || sidesData['side' + s.key] || '';
           var sideTracks2 = parseTrackLines(raw);
           if (!sideTracks2.length) return;
           sideHtml2 += `<div class="track-side"><h3>${s.label}</h3><ul>${sideTracks2.map(t => `<li>${Utils.escape(t)}</li>`).join('')}</ul></div>`;
