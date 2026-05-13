@@ -1182,6 +1182,12 @@
         localStorage.removeItem(this.TOKEN_KEY);
         localStorage.removeItem(this.USER_KEY);
       },
+      _resetCart() {
+        // Cart is per-user. Clear it on any auth state transition so one
+        // customer's items never appear in another customer's cart.
+        localStorage.removeItem('vv_cart');
+        if (typeof CartHelpers !== 'undefined') CartHelpers.updateBadge();
+      },
 
       headers() {
         const t = this.getToken();
@@ -1196,6 +1202,7 @@
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || 'Signup failed');
+        this._resetCart();
         this._setSession(json.token, json.user);
         return json.user;
       },
@@ -1208,6 +1215,7 @@
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || 'Login failed');
+        this._resetCart();
         this._setSession(json.token, json.user);
         return json.user;
       },
@@ -1220,6 +1228,7 @@
           });
         } catch (e) { /* logout is best-effort on the client */ }
         this._clearSession();
+        this._resetCart();
       },
 
       async fetchMe() {
