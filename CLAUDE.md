@@ -119,7 +119,8 @@ CREATE TABLE products (
   price INT NOT NULL,
   original_price INT,
   description TEXT,
-  image TEXT,
+  image LONGTEXT,                   -- primary/cover. LONGTEXT because uploads are stored as base64 data: URLs (too large for TEXT).
+  images LONGTEXT,                  -- full gallery as JSON array (uploads + URL entries). LONGTEXT for the same reason.
   rating DECIMAL(2,1) DEFAULT 0,
   reviews INT DEFAULT 0,
   badge VARCHAR(50),                -- 'hot' | 'new' | 'upcoming' | null
@@ -514,6 +515,13 @@ Whenever `api/config.example.php` changes (new helper functions, new headers, ne
 phpMyAdmin → `u286479481_velorex` → **SQL** tab → paste the migration → **Go**.
 
 There's no migration framework. Treat the schema in [§5](#5-database-schema) as the authoritative version. If you change it locally, update [§5](#5-database-schema) in this doc and run the same SQL in Hostinger phpMyAdmin.
+
+**Pending migration** (run once on Hostinger to enable the multi-image gallery — without it, uploaded photos get silently truncated by the `TEXT` column and render as broken thumbnails):
+
+```sql
+ALTER TABLE products MODIFY image LONGTEXT;
+ALTER TABLE products ADD COLUMN images LONGTEXT NULL AFTER image;
+```
 
 ### Verifying a deploy
 

@@ -66,11 +66,20 @@ try {
 }
 
 function upsert_product(PDO $pdo, array $p): void {
+    // Normalise the gallery: accept either `images` (array of URLs / data: URLs)
+    // or just `image` (single primary). Always persist the full list as JSON in
+    // `images` so the customer page can render the gallery.
+    $imagesArr = isset($p['images']) && is_array($p['images']) ? array_values(array_filter($p['images'], 'is_string')) : [];
+    $primary = $p['image'] ?? ($imagesArr[0] ?? null);
+    if ($primary && !in_array($primary, $imagesArr, true)) {
+        array_unshift($imagesArr, $primary);
+    }
+
     $sql = "REPLACE INTO products
-        (id, title, artist, category, language, price, original_price, description, image,
+        (id, title, artist, category, language, price, original_price, description, image, images,
          rating, reviews, badge, stock, music_director, track_listing, specs, people)
         VALUES
-        (:id, :title, :artist, :category, :language, :price, :original_price, :description, :image,
+        (:id, :title, :artist, :category, :language, :price, :original_price, :description, :image, :images,
          :rating, :reviews, :badge, :stock, :music_director, :track_listing, :specs, :people)";
     $stmt = $pdo->prepare($sql);
     $stmt->execute([
@@ -84,7 +93,8 @@ function upsert_product(PDO $pdo, array $p): void {
             ? (int)$p['originalPrice']
             : (isset($p['original_price']) && $p['original_price'] !== null ? (int)$p['original_price'] : null),
         ':description' => $p['description'] ?? null,
-        ':image' => $p['image'] ?? null,
+        ':image' => $primary,
+        ':images' => $imagesArr ? json_encode($imagesArr) : null,
         ':rating' => isset($p['rating']) ? (float)$p['rating'] : 0,
         ':reviews' => isset($p['reviews']) ? (int)$p['reviews'] : 0,
         ':badge' => $p['badge'] ?? null,
@@ -97,6 +107,14 @@ function upsert_product(PDO $pdo, array $p): void {
 }
 
 function row_to_product(array $r): array {
+    $images = [];
+    if (!empty($r['images'])) {
+        $decoded = json_decode($r['images'], true);
+        if (is_array($decoded)) $images = array_values(array_filter($decoded, 'is_string'));
+    }
+    if (!$images && !empty($r['image'])) {
+        $images = [$r['image']];
+    }
     return [
         'id' => (int)$r['id'],
         'title' => $r['title'],
@@ -107,6 +125,7 @@ function row_to_product(array $r): array {
         'originalPrice' => $r['original_price'] !== null ? (int)$r['original_price'] : null,
         'description' => $r['description'],
         'image' => $r['image'],
+        'images' => $images,
         'rating' => $r['rating'] !== null ? (float)$r['rating'] : 0,
         'reviews' => (int)$r['reviews'],
         'badge' => $r['badge'],

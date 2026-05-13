@@ -1963,15 +1963,21 @@
       }
 
       var container = document.getElementById('product-detail-container'); if (!container) return;
+      // Gallery: prefer the full `images` array (uploads + URL entries) saved by
+      // the admin; fall back to the single `image` for legacy rows.
+      var gallery = Array.isArray(product.images) && product.images.length
+        ? product.images
+        : (product.image ? [product.image] : []);
+      var primary = gallery[0] || 'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=800&h=800&fit=crop';
+      var thumbsHtml = gallery.map(function (src, i) {
+        var safe = String(src).replace(/'/g, "\\'");
+        return '<button type="button" class="product-detail-thumb' + (i === 0 ? ' active' : '') + '" onclick="selectGalleryThumb(this, \'' + safe + '\')"><img src="' + src + '" alt="thumbnail ' + (i + 1) + '" onerror="this.style.opacity=0.3"></button>';
+      }).join('');
       container.innerHTML = `
       <div class="product-detail">
         <div class="product-detail-gallery">
-          <div class="product-detail-main-image"><img src="${product.image}" alt="${product.title}" id="mainImage" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=800&h=800&fit=crop'"></div>
-          <div class="product-detail-thumbs">
-            <button type="button" class="product-detail-thumb active" onclick="document.getElementById('mainImage').src='${product.image}'"><img src="${product.image}" alt="thumbnail"></button>
-            <button type="button" class="product-detail-thumb" onclick="document.getElementById('mainImage').src='${product.image}'"><img src="${product.image}" alt="thumbnail"></button>
-            <button type="button" class="product-detail-thumb" onclick="document.getElementById('mainImage').src='${product.image}'"><img src="${product.image}" alt="thumbnail"></button>
-          </div>
+          <div class="product-detail-main-image"><img src="${primary}" alt="${product.title}" id="mainImage" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=800&h=800&fit=crop'"></div>
+          <div class="product-detail-thumbs">${thumbsHtml}</div>
         </div>
         <div class="product-detail-info">
           <div class="product-detail-header">
@@ -2035,6 +2041,14 @@
       if (btn) { btn.textContent = '✅ Added!'; btn.disabled = true; setTimeout(() => { btn.textContent = '🛒 Add to Cart'; btn.disabled = false; }, 2000); }
     }
     function handleBuyNowDetail(id) { if (CartHelpers.addToCart(id, _detailQty)) navigate('cart'); }
+
+    function selectGalleryThumb(btn, src) {
+      var main = document.getElementById('mainImage');
+      if (main) main.src = src;
+      var thumbs = document.querySelectorAll('.product-detail-thumb');
+      thumbs.forEach(function (t) { t.classList.remove('active'); });
+      if (btn) btn.classList.add('active');
+    }
 
     function initPageCart() {
       var cartItems = CartHelpers.getCartWithDetails(), container = document.getElementById('cart-main'); if (!container) return;
