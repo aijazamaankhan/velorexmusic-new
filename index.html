@@ -2123,8 +2123,11 @@
           document.getElementById('payment-processing-view').classList.add('active');
           setTimeout(() => {
             const orderId = 'VD-' + Date.now().toString().slice(-6);
-            Storage.saveOrder({ id: orderId, date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }), status: 'processing', paymentId: response.razorpay_payment_id, items: cartItems.map(i => ({ name: i.title, qty: i.qty, price: i.price })), total: totalAmount });
+            Storage.saveOrder({ id: orderId, date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }), status: 'processing', paymentId: response.razorpay_payment_id, items: cartItems.map(i => ({ id: i.id, name: i.title, qty: i.qty, price: i.price })), total: totalAmount });
             Storage.saveCart([]);
+            // Server decremented stock during the order POST; refresh local cache
+            // so subsequent product views reflect the new quantities.
+            Storage.syncFromServer().catch(() => {});
             showToast('🎉 Payment Successful! Order ID: ' + orderId, 'success');
             closePaymentModal();
             navigate('profile');

@@ -51,12 +51,47 @@ try {
             echo json_encode(['error' => 'Missing order id']);
             exit;
         }
-        $stmt = $pdo->prepare('INSERT INTO orders (id, user_id, order_data) VALUES (:id, :u, :data)');
-        $stmt->execute([
-            ':id' => $body['id'],
-            ':u' => $userId,
-            ':data' => json_encode($body),
-        ]);
+
+        // Decrement product stock atomically with the order insert, so concurrent
+        // orders for the same SKU can't oversell. SELECT ... FOR UPDATE locks each
+        // affected product row inside the transaction.
+        $items = isset($body['items']) && is_array($body['items']) ? $body['items'] : [];
+        $deductions = [];
+        foreach ($items as $item) {
+            if (!is_array($item)) continue;
+            $pid = isset($item['id']) ? (int)$item['id'] : 0;
+            $qty = isset($item['qty']) ? (int)$item['qty'] : 0;
+            if ($pid <= 0 || $qty <= 0) continue;
+            // Combine duplicate line items defensively.
+            $deductions[$pid] = ($deductions[$pid] ?? 0) + $qty;
+        }
+
+        $pdo->beginTransaction();
+        try {
+            if ($deductions) {
+                $sel = $pdo->prepare('SELECT stock FROM products WHERE id = :id FOR UPDATE');
+                $upd = $pdo->prepare('UPDATE products SET stock = :s WHERE id = :id');
+                foreach ($deductions as $pid => $qty) {
+                    $sel->execute([':id' => $pid]);
+                    $row = $sel->fetch();
+                    if (!$row) continue; // Product was deleted; skip but don't fail the order.
+                    $current = (int)$row['stock'];
+                    $newStock = $current - $qty;
+                    if ($newStock < 0) $newStock = 0; // Clamp; never go negative.
+                    $upd->execute([':s' => $newStock, ':id' => $pid]);
+                }
+            }
+            $stmt = $pdo->prepare('INSERT INTO orders (id, user_id, order_data) VALUES (:id, :u, :data)');
+            $stmt->execute([
+                ':id' => $body['id'],
+                ':u' => $userId,
+                ':data' => json_encode($body),
+            ]);
+            $pdo->commit();
+        } catch (Exception $txe) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $txe;
+        }
         echo json_encode(['ok' => true]);
         exit;
     }

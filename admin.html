@@ -446,6 +446,23 @@
       background-size: 0.75rem 0.75rem;
     }
 
+    .qty-display {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.75rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-weight: 700;
+      min-width: 70px;
+      justify-content: center;
+    }
+
+    .qty-display-value {
+      font-variant-numeric: tabular-nums;
+    }
+
     .inventory-actions select {
       background: rgba(255, 255, 255, 0.08);
       color: var(--text);
@@ -1812,6 +1829,161 @@
     </div>
   </div>
 
+  <!-- Edit Release Modal (separate from Add New Release; pre-fills with existing product) -->
+  <div class="modal-overlay" id="product-edit-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title">Edit Release</h2>
+        <div class="modal-close" onclick="closeProductEditModal()">✕</div>
+      </div>
+      <form id="product-edit-form" onsubmit="handleProductEditSubmit(event)">
+        <input type="hidden" id="e-id">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label class="form-label">Album Title *</label>
+            <input type="text" class="form-control" id="e-title" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Artist / Band *</label>
+            <input type="text" class="form-control" id="e-artist" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Format *</label>
+            <select class="form-control" id="e-category" required>
+              <!-- categories are populated dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Language</label>
+            <select class="form-control" id="e-language">
+              <option value="hindi">Hindi</option>
+              <option value="english">English</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Original Price (₹)</label>
+            <input type="number" class="form-control" id="e-original-price" placeholder="MRP">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Selling Price (₹) *</label>
+            <input type="number" class="form-control" id="e-price" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Discount</label>
+            <div class="discount-display" id="discount-display-edit">
+              <span class="discount-text">No discount</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Rating (0-5)</label>
+            <input type="number" step="0.1" class="form-control" id="e-rating" value="4.5">
+          </div>
+          <div class="form-group full-width">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+              <label class="form-label" style="margin:0;">Image URLs</label>
+              <button type="button" class="btn btn-sm" style="background: var(--surface); border: 1px solid var(--border);"
+                onclick="addEditImageUrlRow()">+ Add URL</button>
+            </div>
+            <div id="image-url-list-edit" class="image-url-list" style="margin-top:0.75rem;">
+              <div class="image-url-row">
+                <input type="url" class="form-control" placeholder="https://...">
+                <button type="button" class="btn btn-sm btn-danger" title="Remove URL" onclick="removeImageUrlRow(this)" style="height:42px;">✕</button>
+              </div>
+            </div>
+          </div>
+          <div class="form-group full-width">
+            <label class="form-label">Upload Images</label>
+            <div class="image-upload-section">
+              <input type="file" id="e-image-upload" accept="image/*" multiple style="display: none;">
+              <div class="upload-area" onclick="document.getElementById('e-image-upload').click()">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Click to upload images or drag & drop</div>
+                <div class="upload-hint">PNG, JPG, GIF up to 5MB each</div>
+              </div>
+              <div class="image-grid-preview" id="image-preview-grid-edit" style="display:none;"></div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Stock Quantity</label>
+            <input type="number" class="form-control" id="e-stock" value="0" min="0">
+            <small style="color:var(--text-muted);font-size:0.75rem;">
+              Reflects the last edited value. Customer purchases reduce this automatically.
+            </small>
+          </div>
+
+          <div class="form-group full-width">
+            <div class="specifications-section">
+              <h3 class="specifications-title">📋 Product Specifications</h3>
+              <div class="specs-grid">
+                <div class="spec-field">
+                  <label for="e-tracks">Tracks</label>
+                  <input type="number" id="e-tracks" placeholder="Number of tracks">
+                </div>
+                <div class="spec-field">
+                  <label for="e-label">Label</label>
+                  <input type="text" id="e-label" placeholder="Record label">
+                </div>
+                <div class="spec-field">
+                  <label for="e-year">Year</label>
+                  <input type="text" id="e-year" placeholder="Release year">
+                </div>
+                <div class="spec-field">
+                  <label for="e-genre">Genre</label>
+                  <input type="text" id="e-genre" placeholder="Music genre">
+                </div>
+                <div class="spec-field">
+                  <label for="e-runtime">Runtime</label>
+                  <input type="text" id="e-runtime" placeholder="Duration (e.g., 45 min)">
+                </div>
+                <div class="spec-field">
+                  <label for="e-music-director">Music Director</label>
+                  <input type="text" id="e-music-director" placeholder="Music director name">
+                </div>
+                <div class="spec-field">
+                  <label for="e-theme">Theme</label>
+                  <input type="text" id="e-theme" placeholder="Album theme">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label class="form-label">Track Listing</label>
+            <div class="track-sides-grid">
+              <div class="track-side-box">
+                <div class="track-side-title"><span class="pill">A</span> Side A</div>
+                <textarea class="form-control" id="e-track-side-a" rows="6" placeholder="One track per line"></textarea>
+              </div>
+              <div class="track-side-box">
+                <div class="track-side-title"><span class="pill">B</span> Side B</div>
+                <textarea class="form-control" id="e-track-side-b" rows="6" placeholder="One track per line"></textarea>
+              </div>
+              <div class="track-side-box">
+                <div class="track-side-title"><span class="pill">C</span> Side C</div>
+                <textarea class="form-control" id="e-track-side-c" rows="6" placeholder="One track per line (optional)"></textarea>
+              </div>
+              <div class="track-side-box">
+                <div class="track-side-title"><span class="pill">D</span> Side D</div>
+                <textarea class="form-control" id="e-track-side-d" rows="6" placeholder="One track per line (optional)"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" id="e-description" rows="3"></textarea>
+          </div>
+        </div>
+        <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+          <button type="submit" class="btn btn-primary">💾 Update Product</button>
+          <button type="button" class="btn" style="background: var(--surface);"
+            onclick="closeProductEditModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Order Details Modal -->
   <div class="modal-overlay" id="order-modal" onclick="if(event.target===this)closeOrderModal()">
     <div class="modal-content">
@@ -1998,6 +2170,13 @@
         `).join('');
       }
 
+      const editFormSelect = document.getElementById('e-category');
+      if (editFormSelect) {
+        editFormSelect.innerHTML = categories.map(cat => `
+          <option value="${cat}">${getCategoryLabel(cat)}</option>
+        `).join('');
+      }
+
       const categoryList = document.getElementById('admin-category-list');
       if (categoryList) {
         categoryList.innerHTML = categories.map(cat => `
@@ -2163,7 +2342,7 @@
     // =============================================
     // UI NAVIGATION
     // =============================================
-    function switchPanel(panelId, el) {
+    async function switchPanel(panelId, el) {
       // Update links
       document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
       if (el) el.classList.add('active');
@@ -2185,6 +2364,12 @@
       const titleEl = document.getElementById('panel-title');
       if (titleEl && titles[panelId]) {
         titleEl.textContent = titles[panelId].t;
+      }
+
+      // Pull latest stock/orders from the server so quantities reflect customer
+      // purchases made by other users since the admin opened the panel.
+      if (panelId === 'dashboard' || panelId === 'orders') {
+        await Storage.syncFromServer();
       }
 
       if (panelId === 'dashboard') renderProductsTable();
@@ -2602,6 +2787,9 @@
       if (!tbody) return;
 
       tbody.innerHTML = filtered.map(p => {
+        const stock = Number.isFinite(p.stock) ? p.stock : 0;
+        const stockClass = stock === 0 ? 'status-oos' : (stock < 5 ? 'status-low' : 'status-instock');
+        const stockLabel = stock === 0 ? 'Out of stock' : (stock < 5 ? 'Low stock' : 'In stock');
         return `
           <tr>
             <td>
@@ -2616,7 +2804,10 @@
             <td><span class="badge badge-${p.category}">${p.category}</span></td>
             <td style="font-weight: 700;">₹${p.price.toLocaleString()}</td>
             <td>
-              <input type="number" class="qty-input" value="${p.stock}" onchange="updateStock(${p.id}, this.value)">
+              <div class="qty-display" title="${stockLabel} — edit in the product modal">
+                <span class="status-pill ${stockClass}"></span>
+                <span class="qty-display-value">${stock}</span>
+              </div>
             </td>
             <td>
               <div style="display: flex; gap: 0.5rem;">
@@ -2635,16 +2826,6 @@
       // Update total products stat
       const totalStat = document.getElementById('stat-total-products');
       if (totalStat) totalStat.textContent = allProducts.length;
-    }
-
-    function updateStock(id, newStock) {
-      const products = Storage.getProducts();
-      const product = products.find(p => p.id === id);
-      if (product) {
-        product.stock = parseInt(newStock) || 0;
-        Storage.saveProducts(products);
-        showToast('✅ Stock updated successfully');
-      }
     }
 
     function openProductModal(isEdit = false) {
@@ -2826,41 +3007,40 @@
 
     // Initialize image upload listeners
     document.addEventListener('DOMContentLoaded', function() {
-      const imageUpload = document.getElementById('f-image-upload');
-      const uploadArea = document.querySelector('.upload-area');
-
-      if (imageUpload) {
-        imageUpload.addEventListener('change', function (e) {
-          addFilesToGallery(e.target.files);
-        });
-      }
-
-      if (uploadArea) {
-        // Drag and drop functionality
-        uploadArea.addEventListener('dragover', function(e) {
-          e.preventDefault();
-          uploadArea.style.borderColor = 'var(--secondary)';
-          uploadArea.style.background = 'rgba(255, 107, 53, 0.1)';
-        });
-
-        uploadArea.addEventListener('dragleave', function(e) {
-          e.preventDefault();
-          uploadArea.style.borderColor = 'var(--border)';
-          uploadArea.style.background = 'rgba(255, 255, 255, 0.02)';
-        });
-
-        uploadArea.addEventListener('drop', function(e) {
-          e.preventDefault();
-          uploadArea.style.borderColor = 'var(--border)';
-          uploadArea.style.background = 'rgba(255, 255, 255, 0.02)';
-
-          const files = e.dataTransfer.files;
-          if (files.length > 0) {
-            addFilesToGallery(files);
-          }
-        });
-      }
+      // Wire each modal's upload area to its own gallery handler so the Add and
+      // Edit modals don't share state.
+      wireUploadArea('f-image-upload', addFilesToGallery);
+      wireUploadArea('e-image-upload', addEditFilesToGallery);
     });
+
+    function wireUploadArea(inputId, addHandler) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      input.addEventListener('change', function (e) {
+        addHandler(e.target.files);
+      });
+      // The upload-area sits next to the file input; find it by walking up to
+      // the nearest .image-upload-section.
+      const section = input.closest('.image-upload-section');
+      const uploadArea = section ? section.querySelector('.upload-area') : null;
+      if (!uploadArea) return;
+      uploadArea.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        uploadArea.style.borderColor = 'var(--secondary)';
+        uploadArea.style.background = 'rgba(255, 107, 53, 0.1)';
+      });
+      uploadArea.addEventListener('dragleave', function (e) {
+        e.preventDefault();
+        uploadArea.style.borderColor = 'var(--border)';
+        uploadArea.style.background = 'rgba(255, 255, 255, 0.02)';
+      });
+      uploadArea.addEventListener('drop', function (e) {
+        e.preventDefault();
+        uploadArea.style.borderColor = 'var(--border)';
+        uploadArea.style.background = 'rgba(255, 255, 255, 0.02)';
+        if (e.dataTransfer.files.length > 0) addHandler(e.dataTransfer.files);
+      });
+    }
 
     // =============================================
     // DISCOUNT CALCULATION FUNCTIONS
@@ -3049,56 +3229,331 @@
       renderProductsTable();
     }
 
+    // editProduct now opens a dedicated Edit Release modal (not the Add modal).
+    // The modal pre-fills with the product's current saved values; submitting
+    // sends the merged changes through the same Storage.saveProducts pipeline.
     function editProduct(id) {
+      openProductEditModal(id);
+    }
+
+    // ---- Edit Release modal: own state, own helpers ----
+    function ensureEditImageState() {
+      if (!Array.isArray(window.editUploadedImagesData)) window.editUploadedImagesData = [];
+    }
+
+    function openProductEditModal(id) {
       const product = Storage.getProducts().find(p => p.id === id);
-      if (!product) return;
-
-      openProductModal(true);
-      document.getElementById('modal-title').textContent = 'Edit Release';
-      document.getElementById('modal-submit-btn').textContent = '💾 Update Product';
-      window.currentEditId = id;
-      document.getElementById('edit-id').value = id;
-      document.getElementById('f-title').value = product.title;
-      document.getElementById('f-artist').value = product.artist;
-      document.getElementById('f-category').value = product.category;
-      document.getElementById('f-language').value = product.language;
-      document.getElementById('f-price').value = product.price;
-      document.getElementById('f-original-price').value = product.originalPrice || '';
-      document.getElementById('f-stock').value = product.stock;
-      document.getElementById('f-rating').value = product.rating;
-      document.getElementById('f-description').value = product.description;
-      document.getElementById('f-music-director').value = product.musicDirector || '';
-      setTrackListingSidesData(product);
-
-      // Images: reset then populate URLs + uploads preview
-      resetImageGallery();
-      ensureImageState();
-      var imgs = [];
-      if (Array.isArray(product.images) && product.images.length) imgs = product.images.slice();
-      else if (product.image) imgs = [product.image];
-
-      // Put data: images in preview list, and http(s) in URL list
-      var dataImgs = imgs.filter(function (u) { return String(u || '').startsWith('data:'); });
-      var urlImgs = imgs.filter(function (u) { return !String(u || '').startsWith('data:'); });
-
-      window.uploadedImagesData = dataImgs.slice();
-      renderImagePreviewGrid();
-
-      // Replace URL list with urlImgs rows (at least one row)
-      var list = document.getElementById('image-url-list');
-      if (list) {
-        list.innerHTML = '';
-        if (!urlImgs.length) addImageUrlRow('');
-        else urlImgs.forEach(function (u) { addImageUrlRow(u); });
+      if (!product) {
+        showToast('⚠️ Product not found. Refresh and try again.', 'danger');
+        return;
       }
 
-      // Set specifications data
-      setSpecificationsData(product.specs || {});
+      // Make sure category options exist before we try to set a value.
+      renderCategorySelectors();
 
-      // Calculate discount
-      calculateDiscount();
+      const modal = document.getElementById('product-edit-modal');
+      if (!modal) return;
+      modal.style.display = 'flex';
 
-      // (image preview handled by multi-image gallery)
+      // Reset any stale state from a previous edit session.
+      const form = document.getElementById('product-edit-form');
+      if (form) form.reset();
+      resetEditImageGallery();
+
+      document.getElementById('e-id').value = product.id;
+      document.getElementById('e-title').value = product.title || '';
+      document.getElementById('e-artist').value = product.artist || '';
+      const catEl = document.getElementById('e-category');
+      if (catEl) catEl.value = product.category || '';
+      const langEl = document.getElementById('e-language');
+      if (langEl) langEl.value = product.language || 'hindi';
+      document.getElementById('e-price').value = product.price != null ? product.price : '';
+      document.getElementById('e-original-price').value = product.originalPrice || '';
+      document.getElementById('e-stock').value = Number.isFinite(product.stock) ? product.stock : 0;
+      document.getElementById('e-rating').value = product.rating != null ? product.rating : 4.5;
+      document.getElementById('e-description').value = product.description || '';
+      document.getElementById('e-music-director').value = product.musicDirector || '';
+
+      setEditTrackListingSidesData(product);
+      setEditSpecificationsData(product.specs || {});
+
+      // Images: split data: vs URL into their respective UI lists.
+      ensureEditImageState();
+      let imgs = [];
+      if (Array.isArray(product.images) && product.images.length) imgs = product.images.slice();
+      else if (product.image) imgs = [product.image];
+      const dataImgs = imgs.filter(u => String(u || '').startsWith('data:'));
+      const urlImgs = imgs.filter(u => !String(u || '').startsWith('data:'));
+      window.editUploadedImagesData = dataImgs.slice();
+      renderEditImagePreviewGrid();
+
+      const list = document.getElementById('image-url-list-edit');
+      if (list) {
+        list.innerHTML = '';
+        if (!urlImgs.length) addEditImageUrlRow('');
+        else urlImgs.forEach(u => addEditImageUrlRow(u));
+      }
+
+      setupEditDiscountListeners();
+      calculateEditDiscount();
+    }
+
+    function closeProductEditModal() {
+      const modal = document.getElementById('product-edit-modal');
+      if (modal) modal.style.display = 'none';
+      resetEditImageGallery();
+    }
+
+    function addEditImageUrlRow(value) {
+      const list = document.getElementById('image-url-list-edit');
+      if (!list) return;
+      const row = document.createElement('div');
+      row.className = 'image-url-row';
+
+      const input = document.createElement('input');
+      input.type = 'url';
+      input.className = 'form-control';
+      input.placeholder = 'https://...';
+      input.value = value ? String(value) : '';
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-sm btn-danger';
+      btn.title = 'Remove URL';
+      btn.style.height = '42px';
+      btn.textContent = '✕';
+      btn.onclick = function () { removeImageUrlRow(btn); };
+
+      row.appendChild(input);
+      row.appendChild(btn);
+      list.appendChild(row);
+    }
+
+    function getEditImageUrlsFromForm() {
+      const list = document.getElementById('image-url-list-edit');
+      if (!list) return [];
+      const urls = Array.from(list.querySelectorAll('input[type="url"]'))
+        .map(i => (i.value || '').trim())
+        .filter(Boolean);
+      return urls.filter((u, idx) => urls.indexOf(u) === idx);
+    }
+
+    function renderEditImagePreviewGrid() {
+      ensureEditImageState();
+      const grid = document.getElementById('image-preview-grid-edit');
+      if (!grid) return;
+      if (!window.editUploadedImagesData.length) {
+        grid.style.display = 'none';
+        grid.innerHTML = '';
+        return;
+      }
+      grid.style.display = 'grid';
+      grid.innerHTML = window.editUploadedImagesData.map((src, idx) => {
+        const isCover = idx === 0;
+        const coverBtn = isCover
+          ? '<button type="button" class="img-action-btn" disabled style="opacity:0.7;cursor:default;">Cover</button>'
+          : '<button type="button" class="img-action-btn" onclick="setEditCoverImageByIndex(' + idx + ')">Set cover</button>';
+        return (
+          '<div class="img-tile">' +
+          '<img src="' + src + '" alt="Image ' + (idx + 1) + '">' +
+          '<div class="img-actions">' +
+          coverBtn +
+          '<button type="button" class="img-action-btn" onclick="removeEditUploadedImageByIndex(' + idx + ')" style="border-color: rgba(239,68,68,0.35);">Remove</button>' +
+          '</div>' +
+          '</div>'
+        );
+      }).join('');
+    }
+
+    function setEditCoverImageByIndex(idx) {
+      ensureEditImageState();
+      if (idx <= 0 || idx >= window.editUploadedImagesData.length) return;
+      const item = window.editUploadedImagesData.splice(idx, 1)[0];
+      window.editUploadedImagesData.unshift(item);
+      renderEditImagePreviewGrid();
+    }
+
+    function removeEditUploadedImageByIndex(idx) {
+      ensureEditImageState();
+      if (idx < 0 || idx >= window.editUploadedImagesData.length) return;
+      window.editUploadedImagesData.splice(idx, 1);
+      renderEditImagePreviewGrid();
+    }
+
+    async function addEditFilesToGallery(fileList) {
+      ensureEditImageState();
+      const files = Array.from(fileList || []);
+      if (!files.length) return;
+      for (let i = 0; i < files.length; i++) {
+        try {
+          const dataUrl = await processImageFile(files[i]);
+          if (window.editUploadedImagesData.indexOf(dataUrl) === -1) {
+            window.editUploadedImagesData.push(dataUrl);
+          }
+        } catch (err) {
+          if (String(err && err.message) === 'too_large') showToast('❌ One image exceeded 5MB (skipped)', 'danger');
+          else showToast('❌ Failed to add an image (skipped)', 'danger');
+        }
+      }
+      renderEditImagePreviewGrid();
+    }
+
+    function resetEditImageGallery() {
+      const upload = document.getElementById('e-image-upload');
+      if (upload) upload.value = '';
+      window.editUploadedImagesData = [];
+      renderEditImagePreviewGrid();
+      const list = document.getElementById('image-url-list-edit');
+      if (list) {
+        list.innerHTML = '';
+        addEditImageUrlRow('');
+      }
+    }
+
+    function getEditSpecificationsData() {
+      const specs = {};
+      const tracks = document.getElementById('e-tracks').value.trim();
+      const label = document.getElementById('e-label').value.trim();
+      const year = document.getElementById('e-year').value.trim();
+      const genre = document.getElementById('e-genre').value.trim();
+      const runtime = document.getElementById('e-runtime').value.trim();
+      const theme = document.getElementById('e-theme').value.trim();
+      if (tracks) specs.tracks = parseInt(tracks);
+      if (label) specs.label = Utils.escape(label);
+      if (year) specs.year = Utils.escape(year);
+      if (genre) specs.genre = Utils.escape(genre);
+      if (runtime) specs.runtime = Utils.escape(runtime);
+      if (theme) specs.theme = Utils.escape(theme);
+      return specs;
+    }
+
+    function setEditSpecificationsData(specs) {
+      document.getElementById('e-tracks').value = specs.tracks || '';
+      document.getElementById('e-label').value = specs.label || '';
+      document.getElementById('e-year').value = specs.year || '';
+      document.getElementById('e-genre').value = specs.genre || '';
+      document.getElementById('e-runtime').value = specs.runtime || '';
+      document.getElementById('e-theme').value = specs.theme || '';
+    }
+
+    function getEditTrackListingSidesData() {
+      return {
+        A: normalizeTrackLines((document.getElementById('e-track-side-a') || {}).value || ''),
+        B: normalizeTrackLines((document.getElementById('e-track-side-b') || {}).value || ''),
+        C: normalizeTrackLines((document.getElementById('e-track-side-c') || {}).value || ''),
+        D: normalizeTrackLines((document.getElementById('e-track-side-d') || {}).value || ''),
+      };
+    }
+
+    function setEditTrackListingSidesData(product) {
+      let sides = (product && product.trackListingSides && typeof product.trackListingSides === 'object')
+        ? product.trackListingSides
+        : null;
+      if (!sides && product && product.trackListing) {
+        sides = parseSidesFromMarkers(product.trackListing);
+      }
+      if (!sides && product && product.trackListing) {
+        const tracks = normalizeTrackLines(product.trackListing).split(/\r?\n/).map(t => t.trim()).filter(Boolean);
+        if (tracks.length) {
+          const sideCount = Math.min(4, tracks.length);
+          const perSide = Math.ceil(tracks.length / sideCount);
+          sides = { A: '', B: '', C: '', D: '' };
+          for (let i = 0; i < sideCount; i++) {
+            const slice = tracks.slice(i * perSide, (i + 1) * perSide);
+            if (!slice.length) continue;
+            sides[['A', 'B', 'C', 'D'][i]] = slice.join('\n');
+          }
+        }
+      }
+      document.getElementById('e-track-side-a').value = (sides && (sides.A || sides.a || sides.sideA)) || '';
+      document.getElementById('e-track-side-b').value = (sides && (sides.B || sides.b || sides.sideB)) || '';
+      document.getElementById('e-track-side-c').value = (sides && (sides.C || sides.c || sides.sideC)) || '';
+      document.getElementById('e-track-side-d').value = (sides && (sides.D || sides.d || sides.sideD)) || '';
+    }
+
+    function calculateEditDiscount() {
+      const orig = parseFloat(document.getElementById('e-original-price').value);
+      const sell = parseFloat(document.getElementById('e-price').value);
+      const display = document.getElementById('discount-display-edit');
+      if (!display) return;
+      const text = display.querySelector('.discount-text');
+      if (!text) return;
+      if (Number.isFinite(orig) && Number.isFinite(sell) && orig > sell && orig > 0) {
+        const pct = Math.round(((orig - sell) / orig) * 100);
+        text.textContent = pct + '% off (₹' + (orig - sell).toLocaleString() + ' saved)';
+        text.classList.add('discount');
+      } else {
+        text.textContent = 'No discount';
+        text.classList.remove('discount');
+      }
+    }
+
+    function setupEditDiscountListeners() {
+      const orig = document.getElementById('e-original-price');
+      const sell = document.getElementById('e-price');
+      if (!orig || !sell) return;
+      orig.removeEventListener('input', calculateEditDiscount);
+      sell.removeEventListener('input', calculateEditDiscount);
+      orig.addEventListener('input', calculateEditDiscount);
+      sell.addEventListener('input', calculateEditDiscount);
+    }
+
+    function handleProductEditSubmit(e) {
+      e.preventDefault();
+      const products = Storage.getProducts();
+      const editId = parseInt(document.getElementById('e-id').value);
+      if (!Number.isFinite(editId)) {
+        showToast('⚠️ Edit session lost. Re-open the edit modal.', 'danger');
+        return;
+      }
+      const existingIdx = products.findIndex(p => p.id === editId);
+      if (existingIdx < 0) {
+        showToast('⚠️ Product no longer exists. It may have been deleted.', 'danger');
+        closeProductEditModal();
+        renderProductsTable();
+        return;
+      }
+
+      const trackSides = getEditTrackListingSidesData();
+      const flattenedTrackListing = ['A', 'B', 'C', 'D']
+        .map(k => ({ key: k, val: (trackSides[k] || '').trim() }))
+        .filter(s => s.val)
+        .map(s => '[Side ' + s.key + ']\n' + s.val)
+        .join('\n');
+
+      ensureEditImageState();
+      const urlImages = getEditImageUrlsFromForm();
+      const uploadedImages = (window.editUploadedImagesData || []).slice();
+      const images = uploadedImages.concat(urlImages).filter(Boolean)
+        .filter((u, idx, arr) => arr.indexOf(u) === idx);
+      const fallbackImg = 'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=400&h=400&fit=crop';
+      const primaryImage = images[0] || urlImages[0] || products[existingIdx].image || fallbackImg;
+
+      const stockVal = parseInt(document.getElementById('e-stock').value);
+      const updates = {
+        id: editId,
+        title: Utils.escape(document.getElementById('e-title').value),
+        artist: Utils.escape(document.getElementById('e-artist').value),
+        category: document.getElementById('e-category').value,
+        language: document.getElementById('e-language').value,
+        price: parseInt(document.getElementById('e-price').value),
+        originalPrice: parseInt(document.getElementById('e-original-price').value) || null,
+        stock: Number.isFinite(stockVal) && stockVal >= 0 ? stockVal : 0,
+        rating: parseFloat(document.getElementById('e-rating').value),
+        image: primaryImage,
+        images: images,
+        description: Utils.escape(document.getElementById('e-description').value),
+        musicDirector: Utils.escape(document.getElementById('e-music-director').value.trim()),
+        trackListing: flattenedTrackListing,
+        trackListingSides: trackSides,
+        specs: getEditSpecificationsData(),
+      };
+
+      products[existingIdx] = { ...products[existingIdx], ...updates };
+      Storage.saveProducts(products);
+      closeProductEditModal();
+      renderProductsTable();
+      showToast('<i class="fas fa-circle-check"></i> Product Updated Successfully');
     }
 
     function deleteProduct(id) {
