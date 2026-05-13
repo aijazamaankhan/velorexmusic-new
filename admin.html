@@ -3058,6 +3058,23 @@
       sellingPriceInput.addEventListener('input', calculateDiscount);
     }
 
+    function calculateDiscount() {
+      const orig = parseFloat(document.getElementById('f-original-price').value);
+      const sell = parseFloat(document.getElementById('f-price').value);
+      const display = document.getElementById('discount-display');
+      if (!display) return;
+      const text = display.querySelector('.discount-text');
+      if (!text) return;
+      if (Number.isFinite(orig) && Number.isFinite(sell) && orig > sell && orig > 0) {
+        const pct = Math.round(((orig - sell) / orig) * 100);
+        text.textContent = pct + '% off (₹' + (orig - sell).toLocaleString() + ' saved)';
+        text.classList.add('discount');
+      } else {
+        text.textContent = 'No discount';
+        text.classList.remove('discount');
+      }
+    }
+
     function getSpecificationsData() {
       const specs = {};
 
@@ -3194,7 +3211,7 @@
       const primaryImage = images[0] || urlImages[0] || 'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=400&h=400&fit=crop';
 
       const productData = {
-        id: isEditing ? editIdNum : Date.now(),
+        id: isEditing ? editIdNum : Math.floor(Date.now() / 1000),
         title: Utils.escape(document.getElementById('f-title').value),
         artist: Utils.escape(document.getElementById('f-artist').value),
         category: document.getElementById('f-category').value,

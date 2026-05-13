@@ -12,3 +12,6 @@ api/config.php
 
 # Playwright
 playwright-report/
+.mcp.json
+.test-images/
+.playwright-mcp/
