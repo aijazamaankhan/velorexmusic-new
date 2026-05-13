@@ -65,6 +65,21 @@ try {
     echo json_encode(['error' => 'Server error: ' . $e->getMessage()]);
 }
 
+// Cached column-existence check so we only pay the metadata query once per request.
+// Lets the endpoint keep working before the `images` migration has been run on a
+// given server (e.g. immediately after a code deploy to Hostinger).
+function products_has_images_column(PDO $pdo): bool {
+    static $has = null;
+    if ($has !== null) return $has;
+    try {
+        $stmt = $pdo->query("SHOW COLUMNS FROM products LIKE 'images'");
+        $has = (bool)$stmt->fetch();
+    } catch (Exception $e) {
+        $has = false;
+    }
+    return $has;
+}
+
 function upsert_product(PDO $pdo, array $p): void {
     // Normalise the gallery: accept either `images` (array of URLs / data: URLs)
     // or just `image` (single primary). Always persist the full list as JSON in
@@ -75,14 +90,16 @@ function upsert_product(PDO $pdo, array $p): void {
         array_unshift($imagesArr, $primary);
     }
 
-    $sql = "REPLACE INTO products
-        (id, title, artist, category, language, price, original_price, description, image, images,
-         rating, reviews, badge, stock, music_director, track_listing, specs, people)
-        VALUES
-        (:id, :title, :artist, :category, :language, :price, :original_price, :description, :image, :images,
-         :rating, :reviews, :badge, :stock, :music_director, :track_listing, :specs, :people)";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([
+    $hasImages = products_has_images_column($pdo);
+    $cols  = 'id, title, artist, category, language, price, original_price, description, image, '
+           . ($hasImages ? 'images, ' : '')
+           . 'rating, reviews, badge, stock, music_director, track_listing, specs, people';
+    $vals  = ':id, :title, :artist, :category, :language, :price, :original_price, :description, :image, '
+           . ($hasImages ? ':images, ' : '')
+           . ':rating, :reviews, :badge, :stock, :music_director, :track_listing, :specs, :people';
+    $sql = "REPLACE INTO products ($cols) VALUES ($vals)";
+
+    $params = [
         ':id' => (int)$p['id'],
         ':title' => $p['title'] ?? '',
         ':artist' => $p['artist'] ?? '',
@@ -94,7 +111,6 @@ function upsert_product(PDO $pdo, array $p): void {
             : (isset($p['original_price']) && $p['original_price'] !== null ? (int)$p['original_price'] : null),
         ':description' => $p['description'] ?? null,
         ':image' => $primary,
-        ':images' => $imagesArr ? json_encode($imagesArr) : null,
         ':rating' => isset($p['rating']) ? (float)$p['rating'] : 0,
         ':reviews' => isset($p['reviews']) ? (int)$p['reviews'] : 0,
         ':badge' => $p['badge'] ?? null,
@@ -103,7 +119,12 @@ function upsert_product(PDO $pdo, array $p): void {
         ':track_listing' => $p['trackListing'] ?? $p['track_listing'] ?? null,
         ':specs' => isset($p['specs']) ? json_encode($p['specs']) : null,
         ':people' => isset($p['people']) ? json_encode($p['people']) : json_encode([]),
-    ]);
+    ];
+    if ($hasImages) {
+        $params[':images'] = $imagesArr ? json_encode($imagesArr) : null;
+    }
+
+    $pdo->prepare($sql)->execute($params);
 }
 
 function row_to_product(array $r): array {
