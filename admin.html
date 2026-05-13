@@ -2651,6 +2651,7 @@
       document.getElementById('product-modal').style.display = 'flex';
       if (!isEdit) {
         document.getElementById('product-form').reset();
+        window.currentEditId = null;
         document.getElementById('edit-id').value = '';
         document.getElementById('modal-title').textContent = 'Add New Release';
         document.getElementById('modal-submit-btn').textContent = '💾 Save Product';
@@ -2930,12 +2931,38 @@
       };
     }
 
+    function parseSidesFromMarkers(raw) {
+      if (!raw) return null;
+      var lines = String(raw).split(/\r?\n/);
+      var sides = {};
+      var current = null;
+      var foundMarker = false;
+      for (var i = 0; i < lines.length; i++) {
+        var t = lines[i].replace(/\s+$/, '');
+        if (!t.trim()) continue;
+        var m = t.trim().match(/^\[Side\s+([A-D])\]$/i);
+        if (m) {
+          current = m[1].toUpperCase();
+          foundMarker = true;
+          if (!sides[current]) sides[current] = '';
+        } else if (current) {
+          sides[current] += (sides[current] ? '\n' : '') + t;
+        }
+      }
+      return foundMarker ? sides : null;
+    }
+
     function setTrackListingSidesData(product) {
       var sides = (product && product.trackListingSides && typeof product.trackListingSides === 'object')
         ? product.trackListingSides
         : null;
 
-      // Back-compat: if only a flat trackListing exists, distribute it across sides
+      // Prefer markers embedded in track_listing text (what we now persist).
+      if (!sides && product && product.trackListing) {
+        sides = parseSidesFromMarkers(product.trackListing);
+      }
+
+      // Back-compat: if only a flat trackListing exists (no markers), distribute across sides
       if (!sides && product && product.trackListing) {
         var tracks = normalizeTrackLines(product.trackListing)
           .split(/\r?\n/)
@@ -2967,11 +2994,18 @@
     function handleProductSubmit(e) {
       e.preventDefault();
       const products = Storage.getProducts();
-      const editId = document.getElementById('edit-id').value;
+      const rawEditId = (window.currentEditId != null && window.currentEditId !== '')
+        ? window.currentEditId
+        : document.getElementById('edit-id').value;
+      const editIdNum = rawEditId !== '' && rawEditId != null ? parseInt(rawEditId) : NaN;
+      const isEditing = Number.isFinite(editIdNum);
       const trackListingSides = getTrackListingSidesData();
-      const flattenedTrackListing = [trackListingSides.A, trackListingSides.B, trackListingSides.C, trackListingSides.D]
-        .map(function (s) { return (s || '').trim(); })
-        .filter(Boolean)
+      // Persist side info inside track_listing text using [Side X] markers so the
+      // customer page can show only the sides that were filled in.
+      const flattenedTrackListing = ['A', 'B', 'C', 'D']
+        .map(function (k) { return { key: k, val: (trackListingSides[k] || '').trim() }; })
+        .filter(function (s) { return s.val; })
+        .map(function (s) { return '[Side ' + s.key + ']\n' + s.val; })
         .join('\n');
       ensureImageState();
       const urlImages = getImageUrlsFromForm();
@@ -2980,7 +3014,7 @@
       const primaryImage = images[0] || urlImages[0] || 'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=400&h=400&fit=crop';
 
       const productData = {
-        id: editId ? parseInt(editId) : Date.now(),
+        id: isEditing ? editIdNum : Date.now(),
         title: Utils.escape(document.getElementById('f-title').value),
         artist: Utils.escape(document.getElementById('f-artist').value),
         category: document.getElementById('f-category').value,
@@ -2999,15 +3033,17 @@
         specs: getSpecificationsData()
       };
 
-      if (editId) {
-        const index = products.findIndex(p => p.id === parseInt(editId));
-        products[index] = { ...products[index], ...productData };
+      // Match by id so an edit always updates the same row, never duplicates.
+      const existingIdx = products.findIndex(p => p.id === productData.id);
+      if (existingIdx >= 0) {
+        products[existingIdx] = { ...products[existingIdx], ...productData };
         showToast('<i class="fas fa-circle-check"></i> Product Updated Successfully');
       } else {
         products.push(productData);
         showToast('<i class="fas fa-rocket"></i> New Release Added to Catalog');
       }
 
+      window.currentEditId = null;
       Storage.saveProducts(products);
       closeProductModal();
       renderProductsTable();
@@ -3020,6 +3056,7 @@
       openProductModal(true);
       document.getElementById('modal-title').textContent = 'Edit Release';
       document.getElementById('modal-submit-btn').textContent = '💾 Update Product';
+      window.currentEditId = id;
       document.getElementById('edit-id').value = id;
       document.getElementById('f-title').value = product.title;
       document.getElementById('f-artist').value = product.artist;
