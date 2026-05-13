@@ -2455,10 +2455,13 @@
     function initDashboard() {
       renderCategorySelectors();
       const products = Storage.getProducts();
-      document.getElementById('stat-total-products').textContent = products.length;
+      const totalEl = document.getElementById('stat-total-products');
+      if (totalEl) totalEl.textContent = products.length;
       renderOrdersTable();
+      renderProductsTable();
 
       const recentList = document.getElementById('recent-products-list');
+      if (!recentList) return;
       const recent = products.slice(-5).reverse();
 
       recentList.innerHTML = recent.map(p => {

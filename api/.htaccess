@@ -11,3 +11,15 @@
 
 # Disable directory listing
 Options -Indexes
+
+# Disable LiteSpeed page cache for the API — responses are per-request dynamic
+<IfModule LiteSpeed>
+    CacheDisable public /
+</IfModule>
+
+# Generic no-cache headers as a fallback
+<IfModule mod_headers.c>
+    Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+</IfModule>
