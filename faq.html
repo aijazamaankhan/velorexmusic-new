@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data:; font-src 'self' https: data:;">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>FAQ | Velorex Music</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1a0a2e; --secondary: #ff6b35; --accent: #ffd700; --bg: #0d0d0d; --surface: #1a1a2e; --text: #f0eaf8; --text-muted: #9890b0; --border: #2e2e5e;
+      --font-display: 'Playfair Display', serif; --font-body: 'DM Sans', sans-serif; --radius: 12px;
+      --orange-gradient: linear-gradient(135deg, #ff6b35, #ff3a00); --gold-gradient: linear-gradient(135deg, #ffd700, #ff8c00);
+    }
+    :root[data-theme="light"] {
+      --primary: #ffffff; --bg: #f8fafc; --surface: #ffffff; --text: #0f172a; --text-muted: #64748b; --border: #e2e8f0;
+    }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-body); line-height: 1.6; margin: 0; }
+    .container { max-width: 900px; margin: 0 auto; padding: 4rem 2rem; }
+    .glass-card { background: rgba(26, 26, 46, 0.6); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: var(--radius); padding: 3rem; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+    [data-theme="light"] .glass-card { background: rgba(255, 255, 255, 0.8); }
+    h1 { font-family: var(--font-display); font-size: 3rem; margin-bottom: 2rem; background: var(--gold-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .faq-item { margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }
+    .faq-question { font-family: var(--font-display); font-size: 1.25rem; color: var(--secondary); margin-bottom: 0.75rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    .faq-answer { color: var(--text-muted); font-size: 0.95rem; }
+    .navbar { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: rgba(13, 13, 13, 0.95); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+    body { padding-top: 80px; }
+    [data-theme="light"] .navbar { background: rgba(255, 255, 255, 0.95); }
+    .brand { display: flex; align-items: center; gap: 1rem; text-decoration: none; }
+    .logo-icon { width: 32px; height: 32px; background: var(--orange-gradient); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+    .brand-name { font-family: var(--font-display); font-weight: 900; font-size: 1.25rem; color: var(--text); }
+  </style>
+  <script>
+    document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+  </script>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="brand">
+      <div class="logo-icon"><i class="fas fa-music"></i></div>
+      <span class="brand-name">Velorex Music</span>
+    </a>
+    <a href="index.html" style="color:var(--text-muted); text-decoration:none; font-size:0.9rem;">Back to Shop</a>
+  </nav>
+
+  <div class="container">
+    <div class="glass-card">
+      <h1>Frequently Asked Questions</h1>
+      
+      <div class="faq-item">
+        <div class="faq-question">Are all vinyl records new?</div>
+        <div class="faq-answer">Unless specified otherwise as "Pre-owned" or "Vintage", all our vinyl records are brand new, factory-sealed, and sourced directly from reputable labels and distributors.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">How do you ensure records don't break during shipping?</div>
+        <div class="faq-answer">We use specialized, double-walled cardboard mailers designed specifically for vinyl. We also include stiffeners to prevent bending and ensure the corners remain sharp.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">What is a 180g Vinyl?</div>
+        <div class="faq-answer">180g refers to the weight of the vinyl disc. Heavier vinyl is generally more durable and less prone to warping over time, often providing a higher quality playback experience.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">Do you offer Cash on Delivery (COD)?</div>
+        <div class="faq-answer">Yes, we offer COD for most pin codes across India for orders up to ₹5,000. For higher amounts, we recommend using secure prepaid methods.</div>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">Can I cancel my order?</div>
+        <div class="faq-answer">You can cancel your order within 12 hours of placing it, as long as it hasn't been dispatched. Once dispatched, you will need to follow our return policy.</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

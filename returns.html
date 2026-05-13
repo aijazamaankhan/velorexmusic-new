@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data:; font-src 'self' https: data:;">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Returns & Refunds | Velorex Music</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1a0a2e; --secondary: #ff6b35; --accent: #ffd700; --bg: #0d0d0d; --surface: #1a1a2e; --text: #f0eaf8; --text-muted: #9890b0; --border: #2e2e5e;
+      --font-display: 'Playfair Display', serif; --font-body: 'DM Sans', sans-serif; --radius: 12px;
+      --orange-gradient: linear-gradient(135deg, #ff6b35, #ff3a00); --gold-gradient: linear-gradient(135deg, #ffd700, #ff8c00);
+    }
+    :root[data-theme="light"] {
+      --primary: #ffffff; --bg: #f8fafc; --surface: #ffffff; --text: #0f172a; --text-muted: #64748b; --border: #e2e8f0;
+    }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-body); line-height: 1.6; margin: 0; }
+    .container { max-width: 900px; margin: 0 auto; padding: 4rem 2rem; }
+    .glass-card { background: rgba(26, 26, 46, 0.6); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: var(--radius); padding: 3rem; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+    [data-theme="light"] .glass-card { background: rgba(255, 255, 255, 0.8); }
+    h1 { font-family: var(--font-display); font-size: 3rem; margin-bottom: 2rem; background: var(--gold-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    h2 { color: var(--secondary); margin-top: 2rem; font-size: 1.5rem; }
+    p { margin-bottom: 1rem; color: var(--text-muted); }
+    .navbar { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: rgba(13, 13, 13, 0.95); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+    body { padding-top: 80px; }
+    [data-theme="light"] .navbar { background: rgba(255, 255, 255, 0.95); }
+    .brand { display: flex; align-items: center; gap: 1rem; text-decoration: none; }
+    .logo-icon { width: 32px; height: 32px; background: var(--orange-gradient); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+    .brand-name { font-family: var(--font-display); font-weight: 900; font-size: 1.25rem; color: var(--text); }
+    .btn { display: inline-block; padding: 0.75rem 1.5rem; background: var(--secondary); color: white; border-radius: 8px; text-decoration: none; transition: 0.3s; }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255,107,53,0.4); }
+  </style>
+  <script>
+    document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+  </script>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="brand">
+      <div class="logo-icon"><i class="fas fa-music"></i></div>
+      <span class="brand-name">Velorex Music</span>
+    </a>
+    <a href="index.html" class="btn">Back to Shop</a>
+  </nav>
+
+  <div class="container">
+    <div class="glass-card">
+      <h1>Returns & Refunds</h1>
+      <p>We want you to be completely satisfied with your purchase. If there's an issue with your order, we're here to help.</p>
+      
+      <h2>30-Day Return Policy</h2>
+      <p>We offer a 30-day return policy for all items that are defective or damaged upon arrival. Since many of our products are collectible media, we can only accept returns for items that are in their original, unopened packaging unless the disc itself is defective.</p>
+
+      <h2>Process for Returns</h2>
+      <p>1. Contact our support team at <a href="mailto:support@velorexmusic.com" style="color:var(--secondary);">support@velorexmusic.com</a> with your order number and photos of the damage.
+        <br>2. Once approved, we will provide you with a return shipping label.
+        <br>3. Pack the item securely in its original packaging and drop it off at the designated courier point.
+      </p>
+
+      <h2>Refunds</h2>
+      <p>Once we receive and inspect your return, we will process your refund within 5-7 business days. The refund will be credited back to your original payment method.</p>
+
+      <h2>Exchanges</h2>
+      <p>If you received a defective record or CD, we will gladly exchange it for a new copy of the same title, subject to availability. If the title is out of stock, a full refund will be issued.</p>
+    </div>
+  </div>
+</body>
+</html>

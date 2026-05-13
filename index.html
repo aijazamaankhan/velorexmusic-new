@@ -1,0 +1,2101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self' https: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data:; font-src 'self' https: data:;">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Velorex Music — Premium Music Store</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+    :root {
+      --primary: #1a0a2e;
+      --secondary: #ff6b35;
+      --accent: #ffd700;
+      --bg: #0d0d0d;
+      --surface: #1a1a2e;
+      --surface2: #16213e;
+      --card-bg: #1e1e3a;
+      --text: #f0eaf8;
+      --text-muted: #9890b0;
+      --border: #2e2e5e;
+      --success: #00d4aa;
+      --danger: #ff4757;
+      --vinyl-gradient: linear-gradient(135deg, #1a0a2e, #0f3460, #533483);
+      --gold-gradient: linear-gradient(135deg, #ffd700, #ff8c00);
+      --orange-gradient: linear-gradient(135deg, #ff6b35, #ff3a00);
+      --font-display: 'Playfair Display', serif;
+      --font-body: 'DM Sans', sans-serif;
+      --radius: 12px;
+      --radius-lg: 20px;
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.6);
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    :root[data-theme="light"] {
+      --primary: #ffffff;
+      --secondary: #ff4d00;
+      --accent: #f59e0b;
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface2: #f1f5f9;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --glass: rgba(255, 255, 255, 0.85);
+      --glass-border: rgba(255, 255, 255, 0.5);
+      --vinyl-gradient: linear-gradient(135deg, #f8fafc, #f1f5f9, #e2e8f0);
+      --shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+      --shadow-lg: 0 10px 40px rgba(15, 23, 42, 0.1);
+    }
+
+    [data-theme="light"] .navbar { background: rgba(255, 255, 255, 0.9); border-bottom-color: #f1f5f9; }
+    [data-theme="light"] .hero { background: #fdfbff; }
+    [data-theme="light"] .hero-bg { background: radial-gradient(ellipse at 70% 50%, rgba(255, 77, 0, 0.05) 0%, transparent 60%), radial-gradient(ellipse at 20% 80%, rgba(15, 23, 42, 0.03) 0%, transparent 50%); }
+    [data-theme="light"] .section-alt { background: #f8fafc; }
+    [data-theme="light"] .product-card:hover { box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08); border-color: var(--secondary); }
+    [data-theme="light"] .quick-action-btn { background: #ffffff; color: var(--text); border: 1px solid var(--border); }
+    [data-theme="light"] .dropdown-menu { background: #ffffff; border-color: #f1f5f9; }
+    [data-theme="light"] .cart-item { background: #ffffff; border-color: #f1f5f9; }
+    [data-theme="light"] .admin-sidebar { background: #ffffff; border-right-color: #f1f5f9; }
+    [data-theme="light"] .admin-nav-item:hover, [data-theme="light"] .admin-nav-item.active { background: #f1f5f9; color: var(--secondary); }
+    [data-theme="light"] .admin-panel { background: #f8fafc; }
+    [data-theme="light"] .admin-card { background: #ffffff; border-color: #f1f5f9; box-shadow: var(--shadow); }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 16px; line-height: 1.6; min-height: 100vh; }
+    a { color: inherit; text-decoration: none; }
+    ul { list-style: none; }
+    img { max-width: 100%; display: block; }
+    button { cursor: pointer; border: none; background: none; font-family: inherit; }
+    input, select, textarea { font-family: inherit; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--secondary); border-radius: 3px; }
+
+    .navbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+      background: var(--glass); backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem; height: 70px;
+      display: flex; align-items: center; justify-content: space-between; gap: 1.5rem;
+    }
+    body { padding-top: 70px; }
+    .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; z-index: 1001; }
+    .hamburger span { display: block; width: 24px; height: 2px; background: var(--text); border-radius: 2px; transition: var(--transition); }
+    .navbar-brand { display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0; }
+    .navbar-brand .logo-icon { width: 40px; height: 40px; background: var(--orange-gradient); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; box-shadow: 0 0 15px rgba(255, 107, 53, 0.4); }
+    .navbar-brand .brand-name { font-family: var(--font-display); font-size: 1.5rem; font-weight: 900; background: var(--gold-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .navbar-nav { display: flex; align-items: center; gap: 0.25rem; }
+    .nav-item { position: relative; }
+    .nav-link { display: flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.85rem; border-radius: 8px; font-size: 0.9rem; font-weight: 500; color: var(--text-muted); transition: var(--transition); white-space: nowrap; }
+    .nav-link:hover, .nav-link.active { color: var(--text); background: rgba(255, 107, 53, 0.1); }
+    .nav-link .arrow { font-size: 0.6rem; transition: transform 0.2s; }
+    .nav-item:hover .arrow { transform: rotate(180deg); }
+
+    .dropdown-menu { position: absolute; top: calc(100% + 8px); left: 0; min-width: 200px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-lg); opacity: 0; visibility: hidden; transform: translateY(-10px); transition: var(--transition); overflow: hidden; }
+    .nav-item:hover .dropdown-menu { opacity: 1; visibility: visible; transform: translateY(0); }
+    .dropdown-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; font-size: 0.875rem; color: var(--text-muted); transition: var(--transition); }
+    .dropdown-item:hover { background: rgba(255, 107, 53, 0.1); color: var(--secondary); padding-left: 1.5rem; }
+    .dropdown-divider { height: 1px; background: var(--border); margin: 0.25rem 0; }
+
+    .navbar-search { flex: 1; max-width: 400px; position: relative; }
+    .navbar-search input { width: 100%; padding: 0.55rem 1rem 0.55rem 2.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.875rem; transition: var(--transition); }
+    .navbar-search input::placeholder { color: var(--text-muted); }
+    .navbar-search input:focus { outline: none; border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15); }
+    .navbar-search .search-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.875rem; }
+
+    .navbar-actions { display: flex; align-items: center; gap: 0.5rem; }
+    .nav-action-btn { position: relative; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; color: var(--text-muted); font-size: 1.1rem; transition: var(--transition); }
+    .nav-action-btn:hover { background: rgba(255, 107, 53, 0.1); color: var(--secondary); }
+    .cart-badge { position: absolute; top: -4px; right: -4px; background: var(--secondary); color: white; font-size: 0.65rem; font-weight: 700; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; display: none; }
+    .cart-badge.visible { display: flex; }
+    .hamburger { display: none; flex-direction: column; gap: 5px; padding: 8px; cursor: pointer; }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--text); border-radius: 2px; transition: var(--transition); }
+
+    .back-to-top { position: fixed; bottom: 30px; right: 30px; width: 50px; height: 50px; background: var(--orange-gradient); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; z-index: 2000; opacity: 0; visibility: hidden; transition: var(--transition); box-shadow: 0 5px 15px rgba(255, 107, 53, 0.4); }
+    .back-to-top.visible { opacity: 1; visibility: visible; }
+    .back-to-top:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(255, 107, 53, 0.6); }
+
+    .breadcrumbs-container { max-width: 1400px; margin: 0 auto; padding: 1rem 2rem; font-size: 0.85rem; color: var(--text-muted); }
+    .breadcrumbs { display: flex; gap: 0.5rem; align-items: center; list-style: none; }
+    .breadcrumb-item:not(:last-child)::after { content: '\f105'; font-family: "Font Awesome 6 Free"; font-weight: 900; margin-left: 0.5rem; font-size: 0.7rem; opacity: 0.5; }
+    .breadcrumb-item a { transition: var(--transition); }
+    .breadcrumb-item a:hover { color: var(--secondary); }
+    .breadcrumb-item.active { color: var(--text); font-weight: 600; }
+
+    .hero { min-height: 85vh; display: flex; align-items: center; position: relative; overflow: hidden; background: var(--primary); }
+    .hero-bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 70% 50%, rgba(83, 52, 131, 0.4) 0%, transparent 60%), radial-gradient(ellipse at 20% 80%, rgba(255, 107, 53, 0.15) 0%, transparent 50%); }
+    .hero-vinyl-decor { position: absolute; right: 5%; top: 50%; transform: translateY(-50%); width: 450px; height: 450px; opacity: 0.15; }
+    .hero-vinyl-decor svg { width: 100%; height: 100%; animation: spin 20s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .hero-container { position: relative; z-index: 1; max-width: 1280px; margin: 0 auto; padding: 4rem 2rem; display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 4rem; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(255, 215, 0, 0.1); border: 1px solid rgba(255, 215, 0, 0.3); color: var(--accent); padding: 0.4rem 1rem; border-radius: 50px; font-size: 0.8rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 1.5rem; }
+    .hero-title { font-family: var(--font-display); font-size: clamp(2.5rem, 5vw, 4.5rem); font-weight: 900; line-height: 1.1; margin-bottom: 1.5rem; }
+    .hero-title .highlight { background: var(--orange-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero-desc { color: var(--text-muted); font-size: 1.1rem; max-width: 480px; margin-bottom: 2.5rem; line-height: 1.8; }
+    .hero-cta { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .hero-stats { display: flex; gap: 2rem; margin-top: 3rem; flex-wrap: wrap; }
+    .stat-item { text-align: left; }
+    .stat-value { font-family: var(--font-display); font-size: 2rem; font-weight: 700; color: var(--accent); }
+    .stat-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .hero-visual { position: relative; display: flex; align-items: center; justify-content: center; }
+    .vinyl-showcase { position: relative; width: 380px; height: 380px; }
+    .vinyl-record { width: 100%; height: 100%; border-radius: 50%; background: conic-gradient(from 0deg, #1a1a1a 0deg, #2a2a2a 10deg, #1a1a1a 20deg, #333 30deg, #1a1a1a 40deg, #2a2a2a 50deg, #1a1a1a 60deg, #333 70deg, #1a1a1a 80deg, #2a2a2a 90deg, #1a1a1a 100deg, #333 110deg, #1a1a1a 120deg, #2a2a2a 130deg, #1a1a1a 140deg, #333 150deg, #1a1a1a 160deg, #2a2a2a 170deg, #1a1a1a 180deg, #333 190deg, #1a1a1a 200deg, #2a2a2a 210deg, #1a1a1a 220deg, #333 230deg, #1a1a1a 240deg, #2a2a2a 250deg, #1a1a1a 260deg, #333 270deg, #1a1a1a 280deg, #2a2a2a 290deg, #1a1a1a 300deg, #333 310deg, #1a1a1a 320deg, #2a2a2a 330deg, #1a1a1a 340deg, #333 350deg, #1a1a1a 360deg); animation: spin 8s linear infinite; box-shadow: 0 0 60px rgba(255, 107, 53, 0.3), 0 0 120px rgba(83, 52, 131, 0.2); display: flex; align-items: center; justify-content: center; }
+    .vinyl-label { width: 35%; height: 35%; border-radius: 50%; background: var(--orange-gradient); display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: var(--font-display); color: white; font-size: 0.6rem; text-align: center; font-weight: 700; }
+    .vinyl-label .label-title { font-size: 0.75rem; }
+    .vinyl-label .label-sub { font-size: 0.55rem; opacity: 0.8; }
+
+    .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.75rem; border-radius: var(--radius); font-size: 0.9rem; font-weight: 600; transition: var(--transition); white-space: nowrap; position: relative; overflow: hidden; }
+    .btn::after { content: ''; position: absolute; inset: 0; background: rgba(255, 255, 255, 0.1); opacity: 0; transition: opacity 0.2s; }
+    .btn:hover::after { opacity: 1; }
+    .btn-primary { background: var(--orange-gradient); color: white; box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4); }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255, 107, 53, 0.5); }
+    .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-secondary:hover { border-color: var(--secondary); color: var(--secondary); background: rgba(255, 107, 53, 0.05); }
+    .btn-outline-primary { background: transparent; border: 2px solid var(--secondary); color: var(--secondary); }
+    .btn-outline-primary:hover { background: var(--secondary); color: white; }
+    .btn-danger { background: linear-gradient(135deg, var(--danger), #cc0000); color: white; }
+    .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); }
+    .btn-success { background: linear-gradient(135deg, var(--success), #00a884); color: white; }
+    .btn-gold { background: var(--gold-gradient); color: var(--primary); font-weight: 700; }
+    .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255, 215, 0, 0.4); }
+    .btn-sm { padding: 0.4rem 1rem; font-size: 0.8rem; }
+    .btn-lg { padding: 1rem 2.5rem; font-size: 1rem; }
+    .btn-block { width: 100%; justify-content: center; }
+
+    .section { padding: 5rem 0; }
+    .section-alt { background: var(--surface); }
+    .container { max-width: 1280px; margin: 0 auto; padding: 0 2rem; }
+    .section-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 2.5rem; flex-wrap: wrap; gap: 1rem; }
+    .section-title { font-family: var(--font-display); font-size: clamp(1.75rem, 3vw, 2.5rem); font-weight: 700; }
+    .section-title span { background: var(--orange-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .section-subtitle { color: var(--text-muted); margin-top: 0.5rem; font-size: 0.95rem; }
+
+    .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.5rem; }
+    .product-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; transition: var(--transition); position: relative; }
+    .product-card:hover { transform: translateY(-6px); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); border-color: rgba(255, 107, 53, 0.3); }
+    .product-card-image { position: relative; aspect-ratio: 1; overflow: hidden; background: var(--surface2); }
+    .product-card-image img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+    .product-card:hover .product-card-image img { transform: scale(1.08); }
+    .product-badge { position: absolute; top: 0.75rem; left: 0.75rem; padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+    .badge-new { background: var(--success); color: #001a15; }
+    .badge-hot { background: var(--secondary); color: white; }
+    .badge-upcoming { background: var(--accent); color: var(--primary); }
+    .badge-sale { background: var(--danger); color: white; }
+    .product-card-actions { position: absolute; top: 0.75rem; right: 0.75rem; display: flex; flex-direction: column; gap: 0.4rem; opacity: 0; transform: translateX(10px); transition: var(--transition); }
+    .product-card:hover .product-card-actions { opacity: 1; transform: translateX(0); }
+    .quick-action-btn { width: 34px; height: 34px; border-radius: 8px; background: rgba(13, 13, 13, 0.9); color: var(--text); font-size: 0.85rem; display: flex; align-items: center; justify-content: center; transition: var(--transition); }
+    .quick-action-btn:hover { background: var(--secondary); color: white; }
+    .product-card-body { padding: 1.25rem; }
+    .product-category-tag { font-size: 0.72rem; color: var(--secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.5rem; }
+    .product-title { font-family: var(--font-display); font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; line-height: 1.3; display: -webkit-box; line-clamp: 2; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .product-artist { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+    .product-rating { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.75rem; }
+    .stars { color: var(--accent); font-size: 0.75rem; }
+    .rating-count { font-size: 0.75rem; color: var(--text-muted); }
+    .product-price-row { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+    .product-price { font-size: 1.25rem; font-weight: 700; color: var(--accent); }
+    .product-price-original { font-size: 0.8rem; color: var(--text-muted); text-decoration: line-through; margin-left: 0.4rem; }
+    .product-card-footer { padding: 0 1.25rem 1.25rem; }
+
+    .categories-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+    .category-card { position: relative; border-radius: var(--radius-lg); overflow: hidden; aspect-ratio: 16/9; cursor: pointer; transition: var(--transition); }
+    .category-card:hover { transform: scale(1.02); box-shadow: var(--shadow-lg); }
+    .category-card-bg { position: absolute; inset: 0; background-size: cover; background-position: center; transition: transform 0.5s ease; }
+    .category-card:hover .category-card-bg { transform: scale(1.05); }
+    .category-card-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(13, 13, 13, 0.9) 0%, rgba(13, 13, 13, 0.3) 60%, transparent 100%); }
+    .category-card-content { position: absolute; bottom: 0; left: 0; right: 0; padding: 1.5rem; color: #ffffff; z-index: 2; }
+    .category-card-icon { font-size: 2rem; margin-bottom: 0.5rem; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)); }
+    .category-card-title { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: #ffffff; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); }
+    .category-card-count { font-size: 0.8rem; color: rgba(255, 255, 255, 0.9); margin-top: 0.25rem; font-weight: 500; }
+
+    .filters-sidebar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; position: sticky; top: 90px; height: fit-content; }
+    .filter-section { margin-bottom: 2rem; }
+    .filter-section:last-child { margin-bottom: 0; }
+    .filter-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .filter-options { display: flex; flex-direction: column; gap: 0.5rem; }
+    .filter-option { display: flex; align-items: center; gap: 0.6rem; cursor: pointer; padding: 0.4rem 0.6rem; border-radius: 8px; transition: var(--transition); font-size: 0.875rem; }
+    .filter-option:hover { background: rgba(255, 107, 53, 0.1); color: var(--secondary); }
+    .filter-option input[type="checkbox"], .filter-option input[type="radio"] { accent-color: var(--secondary); width: 16px; height: 16px; }
+    .filter-count { margin-left: auto; font-size: 0.75rem; color: var(--text-muted); background: var(--card-bg); padding: 0.1rem 0.5rem; border-radius: 50px; }
+
+    /* People filter collapsible */
+    .filter-section-collapsible .filter-options { max-height: 220px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--secondary) transparent; }
+    .filter-section-collapsible .filter-options::-webkit-scrollbar { width: 4px; }
+    .filter-section-collapsible .filter-options::-webkit-scrollbar-thumb { background: var(--secondary); border-radius: 2px; }
+    .people-search-input { width: 100%; padding: 0.4rem 0.75rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.8rem; margin-bottom: 0.75rem; transition: var(--transition); }
+    .people-search-input:focus { outline: none; border-color: var(--secondary); }
+    .people-search-input::placeholder { color: var(--text-muted); }
+
+    .products-layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; align-items: start; }
+    .products-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+    .products-count { color: var(--text-muted); font-size: 0.875rem; }
+    .sort-select { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 0.5rem 1rem; font-size: 0.875rem; cursor: pointer; }
+    .sort-select:focus { outline: none; border-color: var(--secondary); }
+    .sort-select option { background: var(--surface); }
+    .active-filters { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+    .filter-tag { display: flex; align-items: center; gap: 0.4rem; background: rgba(255, 107, 53, 0.1); border: 1px solid rgba(255, 107, 53, 0.3); color: var(--secondary); padding: 0.25rem 0.75rem; border-radius: 50px; font-size: 0.78rem; }
+    .filter-tag-remove { cursor: pointer; opacity: 0.6; }
+    .filter-tag-remove:hover { opacity: 1; }
+
+    .product-detail { display: grid; grid-template-columns: 1.1fr 0.95fr; gap: 3rem; align-items: start; padding-top: 0.5rem; }
+    .product-detail-gallery { position: sticky; top: 90px; align-self: start; }
+    .product-detail-main-image { border-radius: var(--radius-xl); overflow: hidden; background: var(--surface); aspect-ratio: 1; box-shadow: 0 28px 60px rgba(0, 0, 0, 0.08); }
+    .product-detail-main-image img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.35s ease; }
+    .product-detail-main-image:hover img { transform: scale(1.03); }
+    .product-detail-thumbs { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; }
+    .product-detail-thumb { width: 72px; height: 72px; border-radius: 18px; overflow: hidden; border: 1px solid var(--border); background: var(--surface); cursor: pointer; transition: border-color 0.2s ease, transform 0.2s ease; flex-shrink: 0; }
+    .product-detail-thumb:hover { transform: translateY(-1px); border-color: var(--accent); }
+    .product-detail-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .product-detail-thumb.active { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.12); }
+    .product-detail-info { display: flex; flex-direction: column; gap: 1rem; }
+    .product-detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+    .product-detail-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .product-detail-pill { background: rgba(255, 255, 255, 0.08); border: 1px solid var(--border); color: var(--text-muted); padding: 0.35rem 0.75rem; border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
+    .product-detail-subtitle { color: var(--text-muted); margin-bottom: 0.5rem; }
+    .product-detail-price-block { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .product-detail-price-block > div { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .product-detail-price-meta { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+    .product-detail-price { font-size: clamp(2.25rem, 3vw, 3rem); font-weight: 900; letter-spacing: -0.04em; color: var(--text); }
+    .product-detail-price-original { color: var(--text-muted); font-size: 0.95rem; text-decoration: line-through; margin-left: 0.5rem; }
+    .product-detail-discount { display: inline-flex; align-items: center; justify-content: center; padding: 0.45rem 0.85rem; background: #10b981; color: white; border-radius: 999px; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.03em; }
+    .product-detail-availability { color: var(--text-muted); font-size: 0.95rem; }
+    .product-detail-actions { display: grid; gap: 1rem; }
+    .product-detail-actions .product-actions-group { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .product-detail-actions .btn { min-width: 160px; }
+    .quantity-control { display: flex; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; width: fit-content; }
+    .qty-btn { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; color: var(--text); cursor: pointer; transition: var(--transition); }
+    .qty-btn:hover { background: rgba(255, 107, 53, 0.12); color: var(--secondary); }
+    .qty-display { width: 52px; text-align: center; font-weight: 700; border-left: 1px solid var(--border); border-right: 1px solid var(--border); padding: 0 0.5rem; line-height: 44px; color: var(--text); }
+    .product-detail-footnote { padding: 1rem 1.25rem; border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text-muted); font-size: 0.95rem; display: grid; gap: 0.5rem; }
+    .product-detail-footnote div { display: flex; gap: 0.5rem; align-items: center; }
+    .product-detail-desc { color: var(--text-muted); line-height: 1.85; margin-bottom: 1rem; }
+    .product-specs { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-top: 1rem; }
+    .specs-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-muted); margin-bottom: 1rem; }
+    .spec-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 0.65rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+    .spec-row:last-child { border-bottom: none; }
+    .spec-label { font-weight: 700; color: var(--text); }
+    .spec-value { color: var(--text-muted); text-align: right; }
+    .track-list { margin-top: 1.5rem; padding: 1.25rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+    .track-side { margin-top: 1rem; }
+    .track-side h3 { margin: 0.75rem 0 0.5rem; font-size: 0.95rem; letter-spacing: 0.05em; color: var(--text); }
+    .track-side ul { margin: 0.5rem 0 0 1.25rem; color: var(--text-muted); list-style-type: disc; }
+    .track-side li { margin-bottom: 0.5rem; }
+
+    .price-comparison { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-top: 1rem; }
+    .price-comparison-title { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-muted); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .price-platforms { display: grid; gap: 0.75rem; }
+    .price-platform { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 8px; transition: var(--transition); }
+    .price-platform:hover { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 107, 53, 0.2); }
+    .platform-info { display: flex; align-items: center; gap: 0.75rem; }
+    .platform-logo { width: 32px; height: 32px; border-radius: 6px; background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+    .platform-details h4 { font-size: 0.9rem; font-weight: 600; color: var(--text); margin: 0; }
+    .platform-details span { font-size: 0.8rem; color: var(--text-muted); }
+    .platform-price { text-align: right; }
+    .platform-price .price { font-size: 1.1rem; font-weight: 700; color: var(--text); }
+    .platform-price .savings { font-size: 0.8rem; color: var(--success); font-weight: 600; }
+    .platform-price .best-price { background: var(--success); color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.25rem; display: inline-block; }
+
+    @media (max-width: 980px) { .product-detail { grid-template-columns: 1fr; } .product-detail-gallery { position: static; } }
+
+    .cart-layout { display: grid; grid-template-columns: 1fr 360px; gap: 2rem; align-items: start; }
+    .cart-item { display: grid; grid-template-columns: 100px 1fr auto; gap: 1.5rem; align-items: center; background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; transition: var(--transition); }
+    .cart-item:hover { border-color: rgba(255, 107, 53, 0.3); }
+    .cart-item-image { width: 100px; height: 100px; border-radius: var(--radius); overflow: hidden; flex-shrink: 0; }
+    .cart-item-image img { width: 100%; height: 100%; object-fit: cover; }
+    .cart-item-title { font-family: var(--font-display); font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .cart-item-meta { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+    .cart-item-qty { display: flex; align-items: center; gap: 0.5rem; }
+    .cart-qty-btn { width: 28px; height: 28px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-size: 1rem; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: var(--transition); }
+    .cart-qty-btn:hover { background: rgba(255, 107, 53, 0.1); border-color: var(--secondary); color: var(--secondary); }
+    .cart-qty-num { font-weight: 600; min-width: 24px; text-align: center; }
+    .cart-item-price { text-align: right; min-width: 100px; }
+    .cart-item-price .price { font-size: 1.25rem; font-weight: 700; color: var(--accent); }
+    .cart-item-price .unit-price { font-size: 0.75rem; color: var(--text-muted); }
+    .cart-item-remove { color: var(--text-muted); font-size: 1rem; margin-top: 0.5rem; cursor: pointer; transition: var(--transition); }
+    .cart-item-remove:hover { color: var(--danger); }
+    .cart-items-list { display: flex; flex-direction: column; gap: 1rem; }
+    .cart-summary { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; position: sticky; top: 90px; }
+    .summary-title { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+    .summary-row { display: flex; justify-content: space-between; padding: 0.6rem 0; font-size: 0.9rem; color: var(--text-muted); }
+    .summary-row.total { font-size: 1.1rem; font-weight: 700; color: var(--text); border-top: 1px solid var(--border); margin-top: 0.5rem; padding-top: 1rem; }
+    .summary-row.total .amount { color: var(--accent); font-size: 1.25rem; }
+    .coupon-input { display: flex; gap: 0.5rem; margin: 1.5rem 0; }
+    .coupon-input input { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 0.6rem 1rem; font-size: 0.875rem; }
+    .coupon-input input:focus { outline: none; border-color: var(--secondary); }
+    .coupon-input input::placeholder { color: var(--text-muted); }
+    .empty-cart { text-align: center; padding: 5rem 2rem; grid-column: 1 / -1; }
+    .empty-cart-icon { font-size: 4rem; margin-bottom: 1rem; opacity: 0.4; }
+    .empty-cart h3 { font-family: var(--font-display); font-size: 1.5rem; margin-bottom: 0.5rem; }
+    .empty-cart p { color: var(--text-muted); margin-bottom: 2rem; }
+
+    .profile-layout { display: grid; grid-template-columns: 300px 1fr; gap: 2rem; align-items: start; }
+    .profile-sidebar-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2rem; text-align: center; position: sticky; top: 90px; }
+    .profile-avatar { width: 100px; height: 100px; border-radius: 50%; background: var(--orange-gradient); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; margin: 0 auto 1rem; box-shadow: 0 0 30px rgba(255, 107, 53, 0.3); }
+    .profile-name { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .profile-email { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+    .profile-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; border-top: 1px solid var(--border); padding-top: 1.5rem; }
+    .p-stat { text-align: center; }
+    .p-stat-value { font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+    .p-stat-label { font-size: 0.75rem; color: var(--text-muted); }
+    .profile-nav { display: flex; flex-direction: column; gap: 0.25rem; }
+    .profile-nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border-radius: 8px; font-size: 0.875rem; cursor: pointer; transition: var(--transition); color: var(--text-muted); }
+    .profile-nav-item:hover, .profile-nav-item.active { background: rgba(255, 107, 53, 0.1); color: var(--secondary); }
+    .profile-nav-item.active { font-weight: 600; }
+    .order-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1rem; transition: var(--transition); }
+    .order-card:hover { border-color: rgba(255, 107, 53, 0.3); }
+    .order-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+    .order-id { font-weight: 700; font-size: 0.875rem; }
+    .order-date { font-size: 0.8rem; color: var(--text-muted); }
+    .order-status { padding: 0.25rem 0.75rem; border-radius: 50px; font-size: 0.75rem; font-weight: 600; }
+    .status-delivered { background: rgba(0, 212, 170, 0.15); color: var(--success); }
+    .status-processing { background: rgba(255, 215, 0, 0.15); color: var(--accent); }
+    .status-shipped { background: rgba(83, 52, 131, 0.3); color: #a78bfa; }
+    .order-items { display: flex; flex-direction: column; gap: 0.5rem; }
+    .order-item-row { display: flex; justify-content: space-between; font-size: 0.875rem; color: var(--text-muted); }
+    .order-total-row { border-top: 1px solid var(--border); padding-top: 0.75rem; margin-top: 0.5rem; display: flex; justify-content: space-between; font-weight: 600; }
+    .order-total-row .total-amt { color: var(--accent); }
+
+    .admin-layout { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 70px); }
+    .admin-sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 1.5rem 0; }
+    .admin-sidebar-header { padding: 0 1.5rem 1.5rem; border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
+    .admin-sidebar-title { font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; }
+    .admin-sidebar-sub { font-size: 0.75rem; color: var(--text-muted); }
+    .admin-nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1.5rem; font-size: 0.875rem; color: var(--text-muted); cursor: pointer; transition: var(--transition); }
+    .admin-nav-item:hover { background: rgba(255, 107, 53, 0.1); color: var(--text); }
+    .admin-nav-item.active { background: rgba(255, 107, 53, 0.15); color: var(--secondary); border-right: 3px solid var(--secondary); }
+    .admin-nav-item .nav-icon { font-size: 1rem; width: 20px; }
+    .admin-content { padding: 2rem; overflow: auto; }
+    .admin-panel { display: none; }
+    .admin-panel.active { display: block; }
+    .admin-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 80px; z-index: 100; margin: -2rem -2rem 2rem -2rem; }
+    .admin-panel { padding-top: 0; }
+    .admin-title { font-family: var(--font-display); font-size: 1.75rem; font-weight: 700; }
+    .admin-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; margin-bottom: 2rem; }
+    .admin-stat-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; transition: var(--transition); }
+    .admin-stat-card:hover { border-color: rgba(255, 107, 53, 0.3); transform: translateY(-2px); }
+    .admin-stat-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; margin-bottom: 1rem; }
+    .icon-orange { background: rgba(255, 107, 53, 0.15); color: var(--secondary); }
+    .icon-gold { background: rgba(255, 215, 0, 0.15); color: var(--accent); }
+    .icon-green { background: rgba(0, 212, 170, 0.15); color: var(--success); }
+    .icon-purple { background: rgba(83, 52, 131, 0.3); color: #a78bfa; }
+    .admin-stat-value { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .admin-stat-label { font-size: 0.8rem; color: var(--text-muted); }
+    .admin-table-wrapper { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+    .admin-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .admin-table thead th { background: var(--surface); padding: 0.875rem 1rem; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); white-space: nowrap; }
+    .admin-table tbody tr { border-bottom: 1px solid var(--border); transition: var(--transition); }
+    .admin-table tbody tr:last-child { border-bottom: none; }
+    .admin-table tbody tr:hover { background: rgba(255, 107, 53, 0.05); }
+    .admin-table td { padding: 1rem; vertical-align: middle; }
+    .table-product-thumb { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; background: var(--surface2); }
+    .table-badge { padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
+    .table-actions { display: flex; gap: 0.4rem; }
+    .admin-form-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2rem; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+    .form-grid .full-width { grid-column: 1 / -1; }
+    .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+    .form-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .form-control { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 0.75rem 1rem; font-size: 0.9rem; width: 100%; transition: var(--transition); }
+    .form-control:focus { outline: none; border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15); }
+    .form-control::placeholder { color: var(--text-muted); }
+    .form-control option { background: var(--surface); }
+    textarea.form-control { resize: vertical; min-height: 100px; }
+    .image-upload-area { border: 2px dashed var(--border); border-radius: var(--radius); padding: 2rem; text-align: center; cursor: pointer; transition: var(--transition); }
+    .image-upload-area:hover { border-color: var(--secondary); background: rgba(255, 107, 53, 0.05); }
+    .image-upload-icon { font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5; }
+    .image-upload-text { font-size: 0.875rem; color: var(--text-muted); }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 1rem; opacity: 0; visibility: hidden; transition: var(--transition); }
+    .modal-overlay.open { opacity: 1; visibility: visible; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; transform: scale(0.95); transition: var(--transition); }
+    .modal-overlay.open .modal { transform: scale(1); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid var(--border); }
+    .modal-title { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; }
+    .modal-close { font-size: 1.25rem; cursor: pointer; color: var(--text-muted); transition: var(--transition); }
+    .modal-close:hover { color: var(--danger); }
+    .modal-body { padding: 1.5rem; }
+    .modal-footer { display: flex; gap: 0.75rem; justify-content: flex-end; padding: 1.5rem; border-top: 1px solid var(--border); }
+
+    .toast-container { position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.75rem; pointer-events: none; }
+    .toast { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.5rem; display: flex; align-items: center; gap: 0.75rem; font-size: 0.875rem; min-width: 280px; box-shadow: var(--shadow-lg); pointer-events: auto; animation: slideInToast 0.3s ease; }
+    .toast.toast-success { border-left: 3px solid var(--success); }
+    .toast.toast-error { border-left: 3px solid var(--danger); }
+    .toast.toast-info { border-left: 3px solid var(--secondary); }
+    @keyframes slideInToast { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes fadeOutToast { from { opacity: 1; } to { opacity: 0; transform: translateX(50px); } }
+    .toast.removing { animation: fadeOutToast 0.3s ease forwards; }
+
+    .page-hero { padding: 3rem 0; background: var(--surface); border-bottom: 1px solid var(--border); margin-bottom: 3rem; }
+    .page-hero-title { font-family: var(--font-display); font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .breadcrumb { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--text-muted); }
+    .breadcrumb a { color: var(--secondary); }
+    .breadcrumb a:hover { text-decoration: underline; }
+
+    .footer { background: var(--surface); border-top: 1px solid var(--border); padding: 4rem 0 2rem; margin-top: auto; }
+    .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 3rem; margin-bottom: 3rem; }
+    .footer-brand .brand-name { font-family: var(--font-display); font-size: 1.5rem; font-weight: 900; background: var(--gold-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; display: block; margin-bottom: 1rem; }
+    .footer-desc { font-size: 0.875rem; color: var(--text-muted); line-height: 1.8; margin-bottom: 1.5rem; }
+    .social-links { display: flex; gap: 0.75rem; }
+    .social-link { width: 36px; height: 36px; border-radius: 8px; background: var(--card-bg); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 0.875rem; transition: var(--transition); }
+    .social-link:hover { background: var(--secondary); border-color: var(--secondary); color: white; }
+    .footer-col-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 1.25rem; }
+    .footer-links { display: flex; flex-direction: column; gap: 0.6rem; }
+    .footer-link { font-size: 0.875rem; color: var(--text-muted); transition: var(--transition); }
+    .footer-link:hover { color: var(--secondary); }
+    .footer-bottom { border-top: 1px solid var(--border); padding-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; font-size: 0.8rem; color: var(--text-muted); }
+
+    .text-center { text-align: center; }
+    .text-muted { color: var(--text-muted); }
+    .mb-1 { margin-bottom: 0.5rem; }
+    .mb-2 { margin-bottom: 1rem; }
+    .mb-3 { margin-bottom: 1.5rem; }
+    .mb-4 { margin-bottom: 2rem; }
+    .mt-2 { margin-top: 1rem; }
+    .mt-3 { margin-top: 1.5rem; }
+    .d-flex { display: flex; }
+    .align-center { align-items: center; }
+    .gap-1 { gap: 0.5rem; }
+    .gap-2 { gap: 1rem; }
+    .divider { height: 1px; background: var(--border); margin: 1.5rem 0; }
+    .loading-spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--secondary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 2rem auto; }
+    .no-products { text-align: center; padding: 4rem 2rem; color: var(--text-muted); }
+    .no-products-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; }
+
+    .payment-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 2rem; }
+    .payment-modal.active { display: flex; }
+    .payment-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); width: 100%; max-width: 480px; overflow: hidden; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5); }
+    .payment-header { padding: 2rem; border-bottom: 1px solid var(--border); text-align: center; }
+    .payment-header h2 { font-family: var(--font-display); font-size: 1.5rem; }
+    .payment-body { padding: 2rem; }
+    .payment-amount { font-size: 2rem; font-weight: 700; color: var(--accent); text-align: center; margin-bottom: 2rem; }
+    .payment-methods { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }
+    .method-btn { padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius); background: rgba(255, 255, 255, 0.02); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; transition: var(--transition); }
+    .method-btn:hover, .method-btn.active { border-color: var(--secondary); background: rgba(255, 107, 53, 0.1); }
+    .method-btn i { font-size: 1.5rem; }
+    .payment-form { display: none; flex-direction: column; gap: 1rem; }
+    .payment-form.active { display: flex; }
+    .payment-footer { padding: 1.5rem 2rem; background: rgba(255, 255, 255, 0.02); display: flex; gap: 1rem; }
+    .payment-processing { display: none; flex-direction: column; align-items: center; gap: 1.5rem; padding: 4rem 2rem; }
+    .payment-processing.active { display: flex; }
+    .payment-spinner { width: 50px; height: 50px; border: 4px solid rgba(255, 107, 53, 0.1); border-top-color: var(--secondary); border-radius: 50%; animation: spin 1s linear infinite; }
+
+    @media (max-width: 1024px) {
+      .hero-container { grid-template-columns: 1fr; text-align: center; }
+      .hero-visual { display: none; }
+      .hero-cta { justify-content: center; }
+      .hero-stats { justify-content: center; }
+      .categories-grid { grid-template-columns: 1fr 1fr; }
+      .footer-grid { grid-template-columns: 1fr 1fr; gap: 2rem; }
+      .admin-stats { grid-template-columns: 1fr 1fr; }
+      .product-detail { grid-template-columns: 1fr; gap: 2rem; }
+      .product-detail-gallery { position: static; }
+    }
+    @media (max-width: 768px) {
+      .navbar-nav { display: none; }
+      .navbar-search { display: none; }
+      .hamburger { display: flex; }
+      .navbar-nav.mobile-open { display: flex; flex-direction: column; position: fixed; top: 70px; left: 0; right: 0; bottom: 0; background: var(--bg); padding: 1.5rem; z-index: 999; overflow-y: auto; gap: 0.5rem; }
+      .nav-item { width: 100%; }
+      .nav-link { width: 100%; font-size: 1rem; padding: 0.75rem 1rem; }
+      .dropdown-menu { position: static; opacity: 1; visibility: visible; transform: none; box-shadow: none; background: var(--surface2); margin-top: 0.25rem; }
+      .products-layout { grid-template-columns: 1fr; }
+      .filters-sidebar { position: static; }
+      .cart-layout { grid-template-columns: 1fr; }
+      .cart-item { grid-template-columns: 80px 1fr; }
+      .cart-item-price { grid-column: 2; }
+      .profile-layout { grid-template-columns: 1fr; }
+      .profile-sidebar-card { position: static; }
+      .admin-layout { grid-template-columns: 1fr; }
+      .admin-sidebar { display: none; }
+      .footer-grid { grid-template-columns: 1fr; gap: 2rem; }
+      .categories-grid { grid-template-columns: 1fr; }
+      .products-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
+      .product-actions-group { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .container { padding: 0 1rem; }
+      .hero-title { font-size: 2rem; }
+      .section { padding: 3rem 0; }
+      .admin-stats { grid-template-columns: 1fr 1fr; }
+    }
+
+    .page-section { display: none; }
+    .page-section.active { display: block; }
+  </style>
+</head>
+
+<body>
+  <div id="navbar-placeholder"></div>
+  <div class="breadcrumbs-container">
+    <ul class="breadcrumbs" id="breadcrumb-list"></ul>
+  </div>
+  <div id="app">
+    <div id="page-index" class="page-section">
+      <section class="hero">
+        <div class="hero-bg"></div>
+        <div class="hero-vinyl-decor">
+          <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="100" cy="100" r="95" fill="none" stroke="rgba(255,107,53,0.6)" stroke-width="2" />
+            <circle cx="100" cy="100" r="75" fill="none" stroke="rgba(255,107,53,0.4)" stroke-width="1" />
+            <circle cx="100" cy="100" r="55" fill="none" stroke="rgba(255,107,53,0.3)" stroke-width="1" />
+            <circle cx="100" cy="100" r="35" fill="none" stroke="rgba(255,107,53,0.2)" stroke-width="1" />
+            <circle cx="100" cy="100" r="15" fill="rgba(255,107,53,0.4)" />
+          </svg>
+        </div>
+        <div class="hero-container">
+          <div class="hero-content">
+            <span class="hero-badge">🎵 India's Premier Music Store</span>
+            <h1 class="hero-title">Feel the Music,<br>Own the <span class="highlight">Legacy</span></h1>
+            <p class="hero-desc">Discover a curated collection of premium vinyl records, audio CDs, and vintage cassettes. From Bollywood classics to international rock — your perfect sound awaits.</p>
+            <div class="hero-cta">
+              <a href="#" onclick="navigate('products'); return false;" class="btn btn-primary btn-lg">🛍 Shop Now</a>
+              <a href="#" onclick="navigate('products', {cat: 'vinyl'}); return false;" class="btn btn-secondary btn-lg">💿 Browse Vinyl</a>
+            </div>
+            <div class="hero-stats">
+              <div class="stat-item"><div class="stat-value">500+</div><div class="stat-label">Products</div></div>
+              <div class="stat-item"><div class="stat-value">10K+</div><div class="stat-label">Happy Customers</div></div>
+              <div class="stat-item"><div class="stat-value">5</div><div class="stat-label">Formats</div></div>
+            </div>
+          </div>
+          <div class="hero-visual">
+            <div class="vinyl-showcase">
+              <div class="vinyl-record">
+                <div class="vinyl-label">
+                  <div class="label-title">Velorex Music</div>
+                  <div class="label-sub">♫ PREMIUM ♫</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">Shop by <span>Category</span></h2>
+              <p class="section-subtitle">Find your favorite format and language</p>
+            </div>
+          </div>
+          <div class="categories-grid">
+            <a href="#" onclick="navigate('products', {cat:'vinyl'}); return false;" class="category-card">
+              <div class="category-card-bg" style="background: linear-gradient(135deg, #1a0a2e, #533483);"></div>
+              <div class="category-card-overlay"></div>
+              <div class="category-card-content"><div class="category-card-icon">💿</div><div class="category-card-title">Vinyl Records</div><div class="category-card-count" id="vinyl-count">Loading...</div></div>
+            </a>
+            <a href="#" onclick="navigate('products', {cat:'cd'}); return false;" class="category-card">
+              <div class="category-card-bg" style="background: linear-gradient(135deg, #0f3460, #16213e);"></div>
+              <div class="category-card-overlay"></div>
+              <div class="category-card-content"><div class="category-card-icon">💽</div><div class="category-card-title">Audio CDs</div><div class="category-card-count" id="cd-count">Loading...</div></div>
+            </a>
+            <a href="#" onclick="navigate('products', {cat:'cassette'}); return false;" class="category-card">
+              <div class="category-card-bg" style="background: linear-gradient(135deg, #3d1a00, #8b4513);"></div>
+              <div class="category-card-overlay"></div>
+              <div class="category-card-content"><div class="category-card-icon">📼</div><div class="category-card-title">Cassettes</div><div class="category-card-count" id="cassette-count">Loading...</div></div>
+            </a>
+            <a href="#" onclick="navigate('products', {cat:'bluray'}); return false;" class="category-card">
+              <div class="category-card-bg" style="background: linear-gradient(135deg, #004d40, #00251a);"></div>
+              <div class="category-card-overlay"></div>
+              <div class="category-card-content"><div class="category-card-icon">🎬</div><div class="category-card-title">Blu-rays</div><div class="category-card-count" id="bluray-count">Loading...</div></div>
+            </a>
+            <a href="#" onclick="navigate('products', {cat:'dvd'}); return false;" class="category-card">
+              <div class="category-card-bg" style="background: linear-gradient(135deg, #4a148c, #1a0033);"></div>
+              <div class="category-card-overlay"></div>
+              <div class="category-card-content"><div class="category-card-icon">🎞️</div><div class="category-card-title">DVDs</div><div class="category-card-count" id="dvd-count">Loading...</div></div>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-alt" id="best-selling">
+        <div class="container">
+          <div class="section-header">
+            <div><h2 class="section-title">🔥 Best <span>Selling</span></h2><p class="section-subtitle">Our most popular picks this month</p></div>
+            <a href="#" onclick="navigate('products'); return false;" class="btn btn-secondary">View All →</a>
+          </div>
+          <div class="products-grid" id="best-selling-grid"><div class="loading-spinner"></div></div>
+        </div>
+      </section>
+
+      <section class="section" id="new-releases">
+        <div class="container">
+          <div class="section-header">
+            <div><h2 class="section-title">✨ New <span>Releases</span></h2><p class="section-subtitle">Fresh arrivals just landed in our store</p></div>
+            <a href="#" onclick="navigate('products'); return false;" class="btn btn-secondary">View All →</a>
+          </div>
+          <div class="products-grid" id="new-releases-grid"><div class="loading-spinner"></div></div>
+        </div>
+      </section>
+
+      <section class="section section-alt" id="upcoming">
+        <div class="container">
+          <div class="section-header">
+            <div><h2 class="section-title">⏳ <span>Upcoming</span></h2><p class="section-subtitle">Pre-order before they're gone</p></div>
+          </div>
+          <div class="products-grid" id="upcoming-grid"><div class="loading-spinner"></div></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container">
+          <div style="background: var(--vinyl-gradient); border-radius: var(--radius-lg); padding: 3rem; text-align: center; position: relative; overflow: hidden;">
+            <div style="position:absolute;inset:0;background:radial-gradient(ellipse at center, rgba(255,107,53,0.2), transparent);pointer-events:none;"></div>
+            <h2 style="font-family:var(--font-display);font-size:2rem;margin-bottom:1rem;">🎧 Join 10,000+ Music Lovers</h2>
+            <p style="color:var(--text-muted);margin-bottom:2rem;max-width:500px;margin-left:auto;margin-right:auto;">Subscribe to our newsletter and get ₹200 off your first order, plus exclusive early access to new arrivals.</p>
+            <div style="display:flex;max-width:400px;margin:0 auto;gap:0.75rem;">
+              <input type="email" placeholder="Enter your email..." style="flex:1;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;padding:0.75rem 1rem;font-size:0.9rem;">
+              <button class="btn btn-primary">Subscribe</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- PRODUCTS PAGE -->
+    <div id="page-products" class="page-section">
+      <div class="page-hero">
+        <div class="container">
+          <h1 class="page-hero-title" id="page-title">All Products</h1>
+        </div>
+      </div>
+      <section class="section" style="padding-top:0;">
+        <div class="container">
+          <div class="products-layout">
+            <aside class="filters-sidebar" id="filtersSidebar">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+                <h3 style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;">🎛 Filters</h3>
+                <button class="btn btn-sm btn-secondary" onclick="clearAllFilters()">Clear All</button>
+              </div>
+
+              <!-- Category Filter -->
+              <div class="filter-section">
+                <p class="filter-title">📁 Category</p>
+                <div class="filter-options">
+                  <label class="filter-option"><input type="checkbox" name="cat" value="vinyl" onchange="applyFilters()">💿 Vinyl Records<span class="filter-count" id="count-vinyl">0</span></label>
+                  <label class="filter-option"><input type="checkbox" name="cat" value="cd" onchange="applyFilters()">💽 Audio CDs<span class="filter-count" id="count-cd">0</span></label>
+                  <label class="filter-option"><input type="checkbox" name="cat" value="cassette" onchange="applyFilters()">📼 Cassettes<span class="filter-count" id="count-cassette">0</span></label>
+                  <label class="filter-option"><input type="checkbox" name="cat" value="bluray" onchange="applyFilters()">🎬 Blu-rays<span class="filter-count" id="count-bluray">0</span></label>
+                  <label class="filter-option"><input type="checkbox" name="cat" value="dvd" onchange="applyFilters()">🎞️ DVDs<span class="filter-count" id="count-dvd">0</span></label>
+                </div>
+              </div>
+
+              <!-- Language Filter -->
+              <div class="filter-section">
+                <p class="filter-title">🌐 Language</p>
+                <div class="filter-options">
+                  <label class="filter-option"><input type="checkbox" name="lang" value="hindi" onchange="applyFilters()">🇮🇳 Hindi<span class="filter-count" id="count-hindi">0</span></label>
+                  <label class="filter-option"><input type="checkbox" name="lang" value="english" onchange="applyFilters()">🌍 English<span class="filter-count" id="count-english">0</span></label>
+                </div>
+              </div>
+
+              <!-- Price Range Filter -->
+              <div class="filter-section">
+                <p class="filter-title">💰 Price Range</p>
+                <div class="filter-options">
+                  <label class="filter-option"><input type="checkbox" name="price" value="0-499" onchange="applyFilters()">Under ₹500</label>
+                  <label class="filter-option"><input type="checkbox" name="price" value="500-999" onchange="applyFilters()">₹500 – ₹999</label>
+                  <label class="filter-option"><input type="checkbox" name="price" value="1000-1999" onchange="applyFilters()">₹1,000 – ₹1,999</label>
+                  <label class="filter-option"><input type="checkbox" name="price" value="2000-9999" onchange="applyFilters()">₹2,000+</label>
+                </div>
+              </div>
+
+              <!-- Availability -->
+              <div class="filter-section">
+                <p class="filter-title">📦 Availability</p>
+                <div class="filter-options">
+                  <label class="filter-option"><input type="checkbox" name="avail" value="instock" onchange="applyFilters()">In Stock</label>
+                  <label class="filter-option"><input type="checkbox" name="avail" value="outofstock" onchange="applyFilters()">Out of Stock</label>
+                </div>
+              </div>
+
+              <!-- =============================================
+                   PEOPLE FILTER — Music Directors, Artists,
+                   Actors & Actresses
+                   ============================================= -->
+              <div class="filter-section filter-section-collapsible">
+                <p class="filter-title">🎬 People</p>
+                <input
+                  type="text"
+                  class="people-search-input"
+                  id="peopleSearch"
+                  placeholder="Search directors, artists…"
+                  oninput="filterPeopleOptions(this.value)"
+                />
+                <div class="filter-options" id="people-filter-options">
+                  <!-- Music Directors -->
+                  <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--secondary);padding:0.3rem 0.6rem 0.1rem;margin-top:0.25rem;" class="people-group-label">🎼 Music Directors</div>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="rd-burman" onchange="applyFilters()">R.D. Burman<span class="filter-count" id="count-rd-burman">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="ar-rahman" onchange="applyFilters()">A.R. Rahman<span class="filter-count" id="count-ar-rahman">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="laxmikant-pyarelal" onchange="applyFilters()">Laxmikant-Pyarelal<span class="filter-count" id="count-laxmikant-pyarelal">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="jatin-lalit" onchange="applyFilters()">Jatin-Lalit<span class="filter-count" id="count-jatin-lalit">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="shankar-ehsaan-loy" onchange="applyFilters()">Shankar-Ehsaan-Loy<span class="filter-count" id="count-shankar-ehsaan-loy">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="anu-malik" onchange="applyFilters()">Anu Malik<span class="filter-count" id="count-anu-malik">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="anupam-roy" onchange="applyFilters()">Anupam Roy<span class="filter-count" id="count-anupam-roy">0</span></label>
+
+                  <!-- Bollywood Artists / Singers -->
+                  <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--secondary);padding:0.3rem 0.6rem 0.1rem;margin-top:0.5rem;" class="people-group-label">🎤 Singers</div>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="lata-mangeshkar" onchange="applyFilters()">Lata Mangeshkar<span class="filter-count" id="count-lata-mangeshkar">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="mukesh" onchange="applyFilters()">Mukesh<span class="filter-count" id="count-mukesh">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="udit-narayan" onchange="applyFilters()">Udit Narayan<span class="filter-count" id="count-udit-narayan">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="arijit-singh" onchange="applyFilters()">Arijit Singh<span class="filter-count" id="count-arijit-singh">0</span></label>
+
+                  <!-- International Artists -->
+                  <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--secondary);padding:0.3rem 0.6rem 0.1rem;margin-top:0.5rem;" class="people-group-label">🌍 International Artists</div>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="pink-floyd" onchange="applyFilters()">Pink Floyd<span class="filter-count" id="count-pink-floyd">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="michael-jackson" onchange="applyFilters()">Michael Jackson<span class="filter-count" id="count-michael-jackson">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="beatles" onchange="applyFilters()">The Beatles<span class="filter-count" id="count-beatles">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="fleetwood-mac" onchange="applyFilters()">Fleetwood Mac<span class="filter-count" id="count-fleetwood-mac">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="adele" onchange="applyFilters()">Adele<span class="filter-count" id="count-adele">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="ed-sheeran" onchange="applyFilters()">Ed Sheeran<span class="filter-count" id="count-ed-sheeran">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="bruce-springsteen" onchange="applyFilters()">Bruce Springsteen<span class="filter-count" id="count-bruce-springsteen">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="nirvana" onchange="applyFilters()">Nirvana<span class="filter-count" id="count-nirvana">0</span></label>
+
+                  <!-- Actors -->
+                  <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--secondary);padding:0.3rem 0.6rem 0.1rem;margin-top:0.5rem;" class="people-group-label">🎭 Actors</div>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="amitabh-bachchan" onchange="applyFilters()">Amitabh Bachchan<span class="filter-count" id="count-amitabh-bachchan">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="shahrukh-khan" onchange="applyFilters()">Shah Rukh Khan<span class="filter-count" id="count-shahrukh-khan">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="aamir-khan" onchange="applyFilters()">Aamir Khan<span class="filter-count" id="count-aamir-khan">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="ranveer-singh" onchange="applyFilters()">Ranveer Singh<span class="filter-count" id="count-ranveer-singh">0</span></label>
+
+                  <!-- Actresses -->
+                  <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--secondary);padding:0.3rem 0.6rem 0.1rem;margin-top:0.5rem;" class="people-group-label">👩‍🎤 Actresses</div>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="kajol" onchange="applyFilters()">Kajol<span class="filter-count" id="count-kajol">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="deepika-padukone" onchange="applyFilters()">Deepika Padukone<span class="filter-count" id="count-deepika-padukone">0</span></label>
+
+                  <!-- Directors -->
+                  <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--secondary);padding:0.3rem 0.6rem 0.1rem;margin-top:0.5rem;" class="people-group-label">🎥 Directors</div>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="ss-rajamouli" onchange="applyFilters()">S.S. Rajamouli<span class="filter-count" id="count-ss-rajamouli">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="christopher-nolan" onchange="applyFilters()">Christopher Nolan<span class="filter-count" id="count-christopher-nolan">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="francis-ford-coppola" onchange="applyFilters()">Francis Ford Coppola<span class="filter-count" id="count-francis-ford-coppola">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="ashutosh-gowariker" onchange="applyFilters()">Ashutosh Gowariker<span class="filter-count" id="count-ashutosh-gowariker">0</span></label>
+                  <label class="filter-option people-option"><input type="checkbox" name="people" value="yash-chopra" onchange="applyFilters()">Yash Chopra<span class="filter-count" id="count-yash-chopra">0</span></label>
+                </div>
+              </div>
+              <!-- END PEOPLE FILTER -->
+
+            </aside>
+
+            <div>
+              <div class="active-filters" id="activeFilters"></div>
+              <div class="products-toolbar">
+                <p class="products-count" id="products-count">Showing all products</p>
+                <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+                  <select class="sort-select" id="sortSelect" onchange="applyFilters()">
+                    <option value="">Sort: Default</option>
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                    <option value="rating">Top Rated</option>
+                    <option value="newest">Newest First</option>
+                    <option value="name-asc">Name: A–Z</option>
+                  </select>
+                  <div style="display:flex;gap:0.25rem;">
+                    <button class="btn btn-sm btn-secondary" id="gridViewBtn" onclick="setView('grid')" title="Grid View">⊞</button>
+                    <button class="btn btn-sm btn-secondary" id="listViewBtn" onclick="setView('list')" title="List View">☰</button>
+                  </div>
+                </div>
+              </div>
+              <div class="products-grid" id="products-grid"><div class="loading-spinner"></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- PRODUCT DETAIL PAGE -->
+    <div id="page-product" class="page-section">
+      <div class="page-hero">
+        <div class="container">
+          <h1 class="page-hero-title" id="detail-title">Product Details</h1>
+        </div>
+      </div>
+      <section class="section" style="padding-top:0;">
+        <div class="container">
+          <div id="product-detail-container"><div class="loading-spinner"></div></div>
+          <div id="related-section" style="margin-top:4rem; display:none;">
+            <div class="section-header">
+              <div><h2 class="section-title">You May Also <span>Like</span></h2><p class="section-subtitle">Similar products you might enjoy</p></div>
+            </div>
+            <div class="products-grid" id="related-grid"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- CART PAGE -->
+    <div id="page-cart" class="page-section">
+      <div class="page-hero"><div class="container"><h1 class="page-hero-title">🛒 Shopping Cart</h1></div></div>
+      <section class="section" style="padding-top:0;"><div class="container"><div id="cart-main"></div></div></section>
+    </div>
+
+    <!-- PROFILE PAGE -->
+    <div id="page-profile" class="page-section">
+      <div class="page-hero"><div class="container"><h1 class="page-hero-title">👤 My Profile</h1></div></div>
+      <section class="section" style="padding-top:0;">
+        <div class="container">
+          <div class="profile-layout">
+            <aside>
+              <div class="profile-sidebar-card">
+                <div class="profile-avatar">🎵</div>
+                <h3 class="profile-name" id="profile-name">Rahul Sharma</h3>
+                <p class="profile-email" id="profile-email">rahul@musiclover.com</p>
+                <div style="display:inline-flex;align-items:center;gap:0.4rem;background:rgba(0,212,170,0.1);border:1px solid rgba(0,212,170,0.3);color:var(--success);padding:0.25rem 0.75rem;border-radius:50px;font-size:0.75rem;margin-bottom:1.5rem;">✅ Verified Member</div>
+                <div class="profile-stats">
+                  <div class="p-stat"><div class="p-stat-value">12</div><div class="p-stat-label">Orders</div></div>
+                  <div class="p-stat"><div class="p-stat-value">₹8.2K</div><div class="p-stat-label">Spent</div></div>
+                  <div class="p-stat"><div class="p-stat-value">3</div><div class="p-stat-label">Wishlist</div></div>
+                  <div class="p-stat"><div class="p-stat-value">⭐4.9</div><div class="p-stat-label">Rating</div></div>
+                </div>
+                <nav class="profile-nav">
+                  <div class="profile-nav-item active" onclick="showTab('orders', this)">📦 Order History</div>
+                  <div class="profile-nav-item" onclick="showTab('account', this)">👤 Account Details</div>
+                  <div class="profile-nav-item" onclick="showTab('wishlist', this)">❤️ Wishlist</div>
+                  <div class="profile-nav-item" onclick="showTab('addresses', this)">📍 Addresses</div>
+                  <div class="profile-nav-item" onclick="showTab('settings', this)">⚙️ Settings</div>
+                </nav>
+              </div>
+            </aside>
+            <div>
+              <div id="tab-orders" class="profile-tab">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+                  <h2 style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;">Order History</h2>
+                  <select class="sort-select" onchange="filterOrders(this.value)">
+                    <option value="all">All Orders</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="processing">Processing</option>
+                    <option value="shipped">Shipped</option>
+                  </select>
+                </div>
+                <div id="orders-list"></div>
+              </div>
+              <div id="tab-account" class="profile-tab" style="display:none;">
+                <h2 style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;margin-bottom:1.5rem;">Account Details</h2>
+                <div class="admin-form-card">
+                  <div class="form-grid">
+                    <div class="form-group"><label class="form-label">First Name</label><input class="form-control" type="text" value="Rahul" id="firstName"></div>
+                    <div class="form-group"><label class="form-label">Last Name</label><input class="form-control" type="text" value="Sharma" id="lastName"></div>
+                    <div class="form-group full-width"><label class="form-label">Email Address</label><input class="form-control" type="email" value="rahul@musiclover.com" id="userEmail"></div>
+                    <div class="form-group"><label class="form-label">Phone</label><input class="form-control" type="tel" value="+91 98765 43210"></div>
+                    <div class="form-group"><label class="form-label">Date of Birth</label><input class="form-control" type="date" value="1995-06-15"></div>
+                    <div class="form-group full-width"><label class="form-label">Music Preferences</label><input class="form-control" type="text" value="Classic Rock, Bollywood, Jazz" placeholder="E.g. Rock, Bollywood, Jazz"></div>
+                  </div>
+                  <div style="margin-top:1.5rem;display:flex;gap:0.75rem;">
+                    <button class="btn btn-primary" onclick="saveProfile()">💾 Save Changes</button>
+                    <button class="btn btn-secondary">Cancel</button>
+                  </div>
+                </div>
+                <div class="admin-form-card" style="margin-top:1.5rem;">
+                  <h3 style="font-family:var(--font-display);font-size:1.1rem;margin-bottom:1.25rem;">🔐 Change Password</h3>
+                  <div class="form-grid">
+                    <div class="form-group full-width"><label class="form-label">Current Password</label><input class="form-control" type="password" placeholder="Enter current password"></div>
+                    <div class="form-group"><label class="form-label">New Password</label><input class="form-control" type="password" placeholder="New password"></div>
+                    <div class="form-group"><label class="form-label">Confirm Password</label><input class="form-control" type="password" placeholder="Confirm password"></div>
+                  </div>
+                  <button class="btn btn-primary" style="margin-top:1.25rem;" onclick="showToast('Password updated!','success')">Update Password</button>
+                </div>
+              </div>
+              <div id="tab-wishlist" class="profile-tab" style="display:none;">
+                <h2 style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;margin-bottom:1.5rem;">❤️ Wishlist</h2>
+                <div class="products-grid" id="wishlist-grid"></div>
+              </div>
+              <div id="tab-addresses" class="profile-tab" style="display:none;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+                  <h2 style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;">📍 Saved Addresses</h2>
+                  <button class="btn btn-primary btn-sm" onclick="showToast('Address form coming soon!','info')">+ Add Address</button>
+                </div>
+                <div id="addresses-list" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;"></div>
+              </div>
+              <div id="tab-settings" class="profile-tab" style="display:none;">
+                <h2 style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;margin-bottom:1.5rem;">⚙️ Settings</h2>
+                <div class="admin-form-card" id="settings-container"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <div id="footer-placeholder"></div>
+
+  <script>
+    window.addEventListener('scroll', () => {
+      const btn = document.getElementById('backToTop');
+      if (!btn) return;
+      btn.classList.toggle('visible', window.scrollY > 300);
+    });
+
+    const Utils = {
+      escape(str) {
+        if (typeof str !== 'string') return str;
+        return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+      }
+    };
+  </script>
+
+  <!-- PAYMENT MODAL -->
+  <div id="payment-modal" class="payment-modal">
+    <div class="payment-card">
+      <div id="payment-main-view">
+        <div class="payment-header">
+          <h2>Secure Checkout</h2>
+          <p style="font-size:0.8rem;color:var(--text-muted);">Velorex Music Payment Gateway</p>
+        </div>
+        <div class="payment-body">
+          <div class="payment-amount" id="payment-amount-display">₹0.00</div>
+          <p style="font-size:0.8rem;font-weight:600;margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">Select Payment Method</p>
+          <div class="payment-methods">
+            <div class="method-btn active" onclick="selectPaymentMethod(this, 'card')"><i class="fas fa-credit-card"></i><span>Card</span></div>
+            <div class="method-btn" onclick="selectPaymentMethod(this, 'upi')"><i class="fas fa-mobile-screen"></i><span>UPI</span></div>
+            <div class="method-btn" onclick="selectPaymentMethod(this, 'net')"><i class="fas fa-building-columns"></i><span>Net Banking</span></div>
+            <div class="method-btn" onclick="selectPaymentMethod(this, 'wallet')"><i class="fas fa-wallet"></i><span>Wallet</span></div>
+          </div>
+          <div id="form-card" class="payment-form active">
+            <input type="text" id="pay-card-num" class="form-control" placeholder="Card Number (16 digits)" value="4242424242424242" maxlength="16">
+            <div style="display:flex;gap:1rem;">
+              <input type="text" id="pay-card-exp" class="form-control" placeholder="MM/YY" value="12/28" maxlength="5">
+              <input type="password" id="pay-card-cvv" class="form-control" placeholder="CVV" value="123" maxlength="3">
+            </div>
+          </div>
+          <div id="form-upi" class="payment-form">
+            <input type="text" id="pay-upi-id" class="form-control" placeholder="UPI ID (e.g. user@okaxis)" value="velorex@upi">
+          </div>
+        </div>
+        <div class="payment-footer">
+          <button class="btn btn-secondary btn-block" onclick="closePaymentModal()">Cancel</button>
+          <button class="btn btn-primary btn-block" onclick="processPayment()">⚡ Pay Now</button>
+        </div>
+      </div>
+      <div id="payment-processing-view" class="payment-processing">
+        <div class="payment-spinner"></div>
+        <div style="text-align:center;"><h3 style="margin-bottom:0.5rem;">Processing Payment...</h3><p style="color:var(--text-muted);font-size:0.8rem;">Please do not refresh the page</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="confirmModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="confirmModalTitle">Confirm</h2>
+        <div class="modal-close" onclick="closeConfirmDialog()">✕</div>
+      </div>
+      <div class="modal-body" id="confirmModalMessage">Are you sure?</div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeConfirmDialog()">Cancel</button>
+        <button class="btn btn-danger" id="confirmModalConfirmBtn">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =============================================
+    // PRODUCT DATA — each product has a `people` array
+    // mapping to slugs in the People filter above
+    // =============================================
+    const DEFAULT_PRODUCTS = [
+      {
+        id: 1, title: "Sholay - Original Soundtrack", artist: "R.D. Burman",
+        category: "vinyl", language: "hindi", price: 1299, originalPrice: 1599,
+        description: "The iconic Sholay original soundtrack featuring legendary compositions by R.D. Burman. A timeless masterpiece of Bollywood music that defined an era.",
+        image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop",
+        rating: 4.8, reviews: 242, badge: "hot", stock: 15,
+        musicDirector: "R.D. Burman",
+        trackListing: "Mehbooba Mehbooba\nYeh Dosti Hum Nahin Todenge\nHoli Ke Din\nKoi Hamein Junglee Kahtaa Hai",
+        specs: { format: "12\" LP", speed: "33⅓ RPM", label: "HMV Records", year: "1975", tracks: 10, genre: "Bollywood", theme: "Vintage Bollywood" },
+        people: ["rd-burman", "amitabh-bachchan"]
+      },
+      {
+        id: 2, title: "Kabhi Kabhie", artist: "Lata Mangeshkar, Mukesh",
+        category: "vinyl", language: "hindi", price: 999, originalPrice: 1299,
+        description: "Lata Mangeshkar and Mukesh's sublime performance on this legendary Yash Chopra film soundtrack. Pure nostalgia pressed on vinyl.",
+        image: "https://images.unsplash.com/photo-1471478331149-c72f17e33c73?w=400&h=400&fit=crop",
+        rating: 4.7, reviews: 188, badge: "new", stock: 8,
+        specs: { format: "12\" LP", speed: "33⅓ RPM", label: "Polydor", year: "1976", tracks: 8, genre: "Bollywood" },
+        people: ["lata-mangeshkar", "mukesh", "yash-chopra", "amitabh-bachchan"]
+      },
+      {
+        id: 3, title: "Aashiqui 2 - Deluxe Edition", artist: "Arijit Singh",
+        category: "vinyl", language: "hindi", price: 1799, originalPrice: 2199,
+        description: "The record-breaking romantic album that launched Arijit Singh into superstardom. Pressed on premium 180g vinyl with gatefold sleeve.",
+        image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop",
+        rating: 4.9, reviews: 512, badge: "hot", stock: 5,
+        specs: { format: "12\" LP 180g", speed: "33⅓ RPM", label: "T-Series", year: "2013", tracks: 12, genre: "Romantic" },
+        people: ["arijit-singh"]
+      },
+      {
+        id: 4, title: "Dil Wale Dulhania Le Jayenge", artist: "Lata Mangeshkar, Udit Narayan",
+        category: "vinyl", language: "hindi", price: 1499, originalPrice: 1999,
+        description: "25th Anniversary edition of the most beloved Bollywood soundtrack. Features the iconic 'Tujhe Dekha Toh' and 'Mehndi Laga Ke Rakhna'.",
+        image: "https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=400&h=400&fit=crop",
+        rating: 4.9, reviews: 387, badge: "new", stock: 10,
+        specs: { format: "12\" LP", speed: "33⅓ RPM", label: "Venus Records", year: "1995", tracks: 11, genre: "Bollywood" },
+        people: ["lata-mangeshkar", "udit-narayan", "jatin-lalit", "shahrukh-khan", "kajol"]
+      },
+      {
+        id: 5, title: "Dark Side of the Moon", artist: "Pink Floyd",
+        category: "vinyl", language: "english", price: 3499, originalPrice: 4199,
+        description: "One of the best-selling albums of all time, now available as a premium remastered 180g audiophile vinyl. Experience 'Money' and 'Time' like never before.",
+        image: "https://images.unsplash.com/photo-1598387993441-a364f854cffd?w=400&h=400&fit=crop",
+        rating: 5.0, reviews: 1024, badge: "hot", stock: 12,
+        specs: { format: "12\" LP 180g", speed: "33⅓ RPM", label: "Harvest/EMI", year: "1973 (2023 Remaster)", tracks: 10, genre: "Progressive Rock" },
+        people: ["pink-floyd"]
+      },
+      {
+        id: 6, title: "Thriller - 40th Anniversary", artist: "Michael Jackson",
+        category: "vinyl", language: "english", price: 2999, originalPrice: 3599,
+        description: "Celebrate 40 years of the world's best-selling album. This special edition includes the iconic artwork and all original tracks on premium vinyl.",
+        image: "https://images.unsplash.com/photo-1619983081563-430f63602796?w=400&h=400&fit=crop",
+        rating: 4.9, reviews: 892, badge: "new", stock: 20,
+        specs: { format: "12\" LP 180g", speed: "33⅓ RPM", label: "Epic/MJJ", year: "1982 (2022 Reissue)", tracks: 9, genre: "Pop/R&B" },
+        people: ["michael-jackson"]
+      },
+      {
+        id: 7, title: "Abbey Road", artist: "The Beatles",
+        category: "vinyl", language: "english", price: 3199, originalPrice: null,
+        description: "The Beatles' penultimate studio album and one of their most iconic. The Abbey Road remaster captures every nuance of this musical journey.",
+        image: "https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400&h=400&fit=crop",
+        rating: 5.0, reviews: 756, badge: "hot", stock: 7,
+        specs: { format: "12\" LP 180g", speed: "33⅓ RPM", label: "Apple Records", year: "1969 (2019 Remaster)", tracks: 17, genre: "Rock" },
+        people: ["beatles"]
+      },
+      {
+        id: 8, title: "Rumours - Super Deluxe", artist: "Fleetwood Mac",
+        category: "vinyl", language: "english", price: 2799, originalPrice: 3299,
+        description: "One of rock's greatest albums in a stunning super deluxe edition with expanded artwork and liner notes. Features the timeless 'Go Your Own Way'.",
+        image: "https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=400&h=400&fit=crop",
+        rating: 4.8, reviews: 445, badge: null, stock: 18,
+        specs: { format: "12\" LP 180g", speed: "33⅓ RPM", label: "Reprise", year: "1977 (2023 Reissue)", tracks: 11, genre: "Soft Rock" },
+        people: ["fleetwood-mac"]
+      },
+      {
+        id: 9, title: "Rockstar - Original Soundtrack", artist: "A.R. Rahman",
+        category: "cd", language: "hindi", price: 399, originalPrice: 499,
+        description: "A.R. Rahman's soulful masterpiece for the film Rockstar. Features the chart-topping 'Sadda Haq' and emotionally charged ballads.",
+        image: "https://images.unsplash.com/photo-1552831388-6a0b3575b32a?w=400&h=400&fit=crop",
+        rating: 4.9, reviews: 678, badge: "hot", stock: 50,
+        specs: { format: "Audio CD", tracks: 14, label: "T-Series", year: "2011", genre: "Bollywood/Sufi", runtime: "58 min" },
+        people: ["ar-rahman", "ranveer-singh"]
+      },
+      {
+        id: 10, title: "Piku & Tamasha - Double Feature", artist: "Anupam Roy, A.R. Rahman",
+        category: "cd", language: "hindi", price: 299, originalPrice: null,
+        description: "A special double feature CD with Anupam Roy's gentle Piku score and Rahman's vibrant Tamasha soundtrack. Perfect for road trips.",
+        image: "https://images.unsplash.com/photo-1461360370896-22624d12aa1?w=400&h=400&fit=crop",
+        rating: 4.5, reviews: 189, badge: null, stock: 35,
+        specs: { format: "2-CD Set", tracks: 22, label: "Sony Music", year: "2015", genre: "Bollywood", runtime: "82 min" },
+        people: ["anupam-roy", "ar-rahman", "deepika-padukone"]
+      },
+      {
+        id: 11, title: "25 - Adele", artist: "Adele",
+        category: "cd", language: "english", price: 549, originalPrice: 699,
+        description: "Adele's third studio album featuring the Grammy-winning 'Hello'. A stunning showcase of her powerhouse vocals and emotional songwriting.",
+        image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop",
+        rating: 4.8, reviews: 534, badge: null, stock: 40,
+        specs: { format: "Audio CD", tracks: 11, label: "XL Recordings", year: "2015", genre: "Pop/Soul", runtime: "48 min" },
+        people: ["adele"]
+      },
+      {
+        id: 12, title: "÷ (Divide) - Ed Sheeran", artist: "Ed Sheeran",
+        category: "cd", language: "english", price: 449, originalPrice: 599,
+        description: "Ed Sheeran's record-breaking third album featuring 'Shape of You', 'Castle on the Hill', and 'Perfect'. A modern pop masterpiece.",
+        image: "https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&h=400&fit=crop",
+        rating: 4.7, reviews: 423, badge: "sale", stock: 60,
+        specs: { format: "Audio CD", tracks: 16, label: "Asylum/Atlantic", year: "2017", genre: "Pop/Folk", runtime: "59 min" },
+        people: ["ed-sheeran"]
+      },
+      {
+        id: 13, title: "Zindagi Na Milegi Dobara", artist: "Shankar-Ehsaan-Loy",
+        category: "cd", language: "hindi", price: 349, originalPrice: null,
+        description: "The uplifting, travel-themed soundtrack from Zoya Akhtar's cult classic. Features 'Senorita', 'Ik Junoon', and the soul-stirring 'Khaabon Ke Parinday'.",
+        image: "https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?w=400&h=400&fit=crop",
+        rating: 4.8, reviews: 298, badge: "new", stock: 45,
+        specs: { format: "Audio CD", tracks: 9, label: "T-Series", year: "2011", genre: "Bollywood/Pop", runtime: "42 min" },
+        people: ["shankar-ehsaan-loy", "deepika-padukone"]
+      },
+      {
+        id: 14, title: "Dilwale Dulhania - Cassette", artist: "Jatin-Lalit",
+        category: "cassette", language: "hindi", price: 249, originalPrice: null,
+        description: "Relive the 90s with this authentic cassette edition of the DDLJ soundtrack. A true collector's item for Bollywood fans.",
+        image: "https://images.unsplash.com/photo-1550399105-c4db5fb85c18?w=400&h=400&fit=crop",
+        rating: 4.6, reviews: 145, badge: "new", stock: 25,
+        specs: { format: "Audio Cassette", tracks: 11, label: "Venus Records", year: "1995 (2024 Reissue)", genre: "Bollywood", runtime: "50 min" },
+        people: ["jatin-lalit", "shahrukh-khan", "kajol", "lata-mangeshkar", "udit-narayan"]
+      },
+      {
+        id: 15, title: "Born to Run - Cassette", artist: "Bruce Springsteen",
+        category: "cassette", language: "english", price: 349, originalPrice: null,
+        description: "The Boss on cassette! A limited reissue of Born to Run, perfectly suited for playing on your vintage Walkman. Analog warmth at its finest.",
+        image: "https://images.unsplash.com/photo-1458560871784-56d23406c091?w=400&h=400&fit=crop",
+        rating: 4.7, reviews: 98, badge: "new", stock: 15,
+        specs: { format: "Audio Cassette (Chrome)", tracks: 8, label: "Columbia", year: "1975 (2024 Reissue)", genre: "Rock", runtime: "39 min" },
+        people: ["bruce-springsteen"]
+      },
+      {
+        id: 16, title: "Baazigar - Cassette", artist: "Anu Malik",
+        category: "cassette", language: "hindi", price: 199, originalPrice: 249,
+        description: "The smash-hit Baazigar soundtrack on vintage cassette. Featuring the iconic 'Baazigar O Baazigar' and 'Ye Kaali Kaali Ankhen'.",
+        image: "https://images.unsplash.com/photo-1484755560615-a4c64e778a6c?w=400&h=400&fit=crop",
+        rating: 4.5, reviews: 112, badge: null, stock: 20,
+        specs: { format: "Audio Cassette", tracks: 8, label: "HMV", year: "1993 (2023 Reissue)", genre: "Bollywood", runtime: "36 min" },
+        people: ["anu-malik", "shahrukh-khan", "kajol"]
+      },
+      {
+        id: 17, title: "Nevermind - Cassette Reissue", artist: "Nirvana",
+        category: "cassette", language: "english", price: 399, originalPrice: 499,
+        description: "Nirvana's landmark Nevermind album reissued on cassette for the 32nd anniversary. 'Smells Like Teen Spirit' sounds incredible on tape.",
+        image: "https://images.unsplash.com/photo-1599659863658-5beada90a1ab?w=400&h=400&fit=crop",
+        rating: 4.8, reviews: 201, badge: "upcoming", stock: 0,
+        specs: { format: "Audio Cassette (Chrome)", tracks: 13, label: "DGC Records", year: "1991 (2023 Reissue)", genre: "Grunge/Alternative", runtime: "49 min" },
+        people: ["nirvana"]
+      },
+      {
+        id: 18, title: "Interstellar - Collector's Edition", artist: "Christopher Nolan",
+        category: "bluray", language: "english", price: 1499, originalPrice: 1999,
+        description: "Experience Christopher Nolan's space epic in stunning 4K Blu-ray. Features behind-the-scenes footage and a limited edition artbook.",
+        image: "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?w=400&h=400&fit=crop",
+        rating: 5.0, reviews: 1240, badge: "hot", stock: 15,
+        specs: { format: "4K UHD Blu-ray", resolution: "2160p", label: "Warner Bros.", year: "2014", runtime: "169 min", genre: "Sci-Fi" },
+        people: ["christopher-nolan"]
+      },
+      {
+        id: 19, title: "RRR - Deluxe Blu-ray", artist: "S.S. Rajamouli",
+        category: "bluray", language: "hindi", price: 1299, originalPrice: null,
+        description: "The global phenomenon RRR now on Blu-ray. Featuring the Oscar-winning 'Naatu Naatu' and high-octane action in crystal clear quality.",
+        image: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400&h=400&fit=crop",
+        rating: 4.9, reviews: 856, badge: "new", stock: 20,
+        specs: { format: "Blu-ray Disc", resolution: "1080p", label: "DVV Entertainment", year: "2022", runtime: "187 min", genre: "Action/Drama" },
+        people: ["ss-rajamouli", "ar-rahman"]
+      },
+      {
+        id: 20, title: "The Godfather Trilogy", artist: "Francis Ford Coppola",
+        category: "dvd", language: "english", price: 999, originalPrice: 1499,
+        description: "The complete Godfather trilogy on DVD. A cinematic masterpiece that every movie lover must own.",
+        image: "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=400&h=400&fit=crop",
+        rating: 5.0, reviews: 2100, badge: "sale", stock: 30,
+        specs: { format: "DVD Set (3 Discs)", resolution: "480p", label: "Paramount", year: "1972-1990", runtime: "549 min", genre: "Crime/Drama" },
+        people: ["francis-ford-coppola"]
+      },
+      {
+        id: 21, title: "Lagaan - Special Edition", artist: "Ashutosh Gowariker",
+        category: "dvd", language: "hindi", price: 499, originalPrice: null,
+        description: "The Oscar-nominated Lagaan on a special 2-disc DVD set. Includes making-of documentary and deleted scenes.",
+        image: "https://images.unsplash.com/photo-1512070670218-0a446d3419bb?w=400&h=400&fit=crop",
+        rating: 4.8, reviews: 432, badge: null, stock: 25,
+        specs: { format: "DVD (2 Discs)", resolution: "480p", label: "Aamir Khan Productions", year: "2001", runtime: "224 min", genre: "Sports/Drama" },
+        people: ["ashutosh-gowariker", "aamir-khan", "ar-rahman"]
+      }
+    ];
+
+    // ---- PEOPLE FILTER SLUG → DISPLAY LABEL ----
+    const PEOPLE_LABELS = {
+      'rd-burman': 'R.D. Burman',
+      'ar-rahman': 'A.R. Rahman',
+      'laxmikant-pyarelal': 'Laxmikant-Pyarelal',
+      'jatin-lalit': 'Jatin-Lalit',
+      'shankar-ehsaan-loy': 'Shankar-Ehsaan-Loy',
+      'anu-malik': 'Anu Malik',
+      'anupam-roy': 'Anupam Roy',
+      'lata-mangeshkar': 'Lata Mangeshkar',
+      'mukesh': 'Mukesh',
+      'udit-narayan': 'Udit Narayan',
+      'arijit-singh': 'Arijit Singh',
+      'pink-floyd': 'Pink Floyd',
+      'michael-jackson': 'Michael Jackson',
+      'beatles': 'The Beatles',
+      'fleetwood-mac': 'Fleetwood Mac',
+      'adele': 'Adele',
+      'ed-sheeran': 'Ed Sheeran',
+      'bruce-springsteen': 'Bruce Springsteen',
+      'nirvana': 'Nirvana',
+      'amitabh-bachchan': 'Amitabh Bachchan',
+      'shahrukh-khan': 'Shah Rukh Khan',
+      'aamir-khan': 'Aamir Khan',
+      'ranveer-singh': 'Ranveer Singh',
+      'kajol': 'Kajol',
+      'deepika-padukone': 'Deepika Padukone',
+      'ss-rajamouli': 'S.S. Rajamouli',
+      'christopher-nolan': 'Christopher Nolan',
+      'francis-ford-coppola': 'Francis Ford Coppola',
+      'ashutosh-gowariker': 'Ashutosh Gowariker',
+      'yash-chopra': 'Yash Chopra'
+    };
+
+    // ---- Storage Helpers ----
+    const Storage = {
+      getProducts() {
+        const stored = localStorage.getItem('vv_products');
+        if (!stored) { localStorage.setItem('vv_products', JSON.stringify(DEFAULT_PRODUCTS)); return DEFAULT_PRODUCTS; }
+        const parsed = JSON.parse(stored);
+        // Merge people data for existing stored products that may lack it
+        return parsed.map(p => {
+          const def = DEFAULT_PRODUCTS.find(d => d.id === p.id);
+          if (def && !p.people) p.people = def.people || [];
+          return p;
+        });
+      },
+      saveProducts(products) { localStorage.setItem('vv_products', JSON.stringify(products)); },
+      getOrders() { const s = localStorage.getItem('vv_orders'); return s ? JSON.parse(s) : []; },
+      saveOrder(order) { const o = this.getOrders(); o.unshift(order); localStorage.setItem('vv_orders', JSON.stringify(o)); },
+      getCart() { const s = localStorage.getItem('vv_cart'); return s ? JSON.parse(s) : []; },
+      saveCart(cart) { localStorage.setItem('vv_cart', JSON.stringify(cart)); CartHelpers.updateBadge(); },
+      resetProducts() { localStorage.setItem('vv_products', JSON.stringify(DEFAULT_PRODUCTS)); return DEFAULT_PRODUCTS; }
+    };
+
+    const CartHelpers = {
+      addToCart(productId, qty = 1) {
+        const products = Storage.getProducts();
+        const product = products.find(p => p.id === productId);
+        if (!product || qty <= 0) return false;
+        if (product.stock === 0) { showToast('This item is out of stock', 'error'); return false; }
+        let cart = Storage.getCart();
+        const existing = cart.find(item => item.id === productId);
+        const reservedQty = existing ? existing.qty : 0;
+        const available = Math.max(0, product.stock - reservedQty);
+        if (available === 0) { showToast('⚠️ Only ' + product.stock + ' available in stock', 'error'); return false; }
+        const addQty = Math.min(qty, available);
+        if (existing) existing.qty += addQty; else cart.push({ id: productId, qty: addQty });
+        Storage.saveCart(cart);
+        CartHelpers.updateBadge();
+        if (addQty < qty) showToast('⚠️ Only ' + product.stock + ' available. Cart quantity capped to stock.', 'error');
+        else showToast('"' + product.title + '" added to cart! 🎵', 'success');
+        return true;
+      },
+      removeFromCart(productId) { let cart = Storage.getCart().filter(item => item.id !== productId); Storage.saveCart(cart); this.updateBadge(); },
+      updateQty(productId, qty) {
+        let cart = Storage.getCart();
+        const item = cart.find(i => i.id === productId);
+        if (!item) return;
+        const product = Storage.getProducts().find(p => p.id === productId);
+        if (!product) return;
+        if (qty <= 0) { this.removeFromCart(productId); return; }
+        if (qty > product.stock) {
+          if (product.stock === 0) { this.removeFromCart(productId); showToast('❌ Product is out of stock and removed from cart', 'error'); return; }
+          item.qty = product.stock; Storage.saveCart(cart); this.updateBadge();
+          showToast('⚠️ Only ' + product.stock + ' available in stock. Quantity adjusted.', 'error'); return;
+        }
+        item.qty = qty; Storage.saveCart(cart); this.updateBadge();
+      },
+      getCartWithDetails() {
+        const cart = Storage.getCart(), products = Storage.getProducts();
+        return cart.map(item => { const p = products.find(p => p.id === item.id); return p ? {...p, qty: item.qty} : null; }).filter(Boolean);
+      },
+      getCartCount() { return Storage.getCart().reduce((sum, item) => sum + item.qty, 0); },
+      getCartTotal() { return this.getCartWithDetails().reduce((sum, item) => sum + item.price * item.qty, 0); },
+      updateBadge() {
+        const badges = document.querySelectorAll('.cart-badge'), count = this.getCartCount();
+        badges.forEach(b => { b.textContent = count > 99 ? '99+' : count; b.classList.toggle('visible', count > 0); });
+      }
+    };
+
+    function showToast(message, type = 'info') {
+      let container = document.getElementById('toast-container');
+      if (!container) { container = document.createElement('div'); container.id = 'toast-container'; container.className = 'toast-container'; document.body.appendChild(container); }
+      const icons = { success: '<i class="fas fa-circle-check"></i>', error: '<i class="fas fa-circle-xmark"></i>', info: '<i class="fas fa-circle-info"></i>' };
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.innerHTML = `<span>${icons[type] || '🎵'}</span><span>${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => { toast.classList.add('removing'); setTimeout(() => toast.remove(), 300); }, 3000);
+    }
+
+    function openConfirmDialog(options) {
+      var modal = document.getElementById('confirmModal'); if (!modal) return;
+      document.getElementById('confirmModalTitle').textContent = options.title || 'Confirm';
+      document.getElementById('confirmModalMessage').textContent = options.message || 'Are you sure?';
+      var btn = document.getElementById('confirmModalConfirmBtn');
+      btn.textContent = options.confirmText || 'Confirm';
+      btn.onclick = function() { closeConfirmDialog(); if (typeof options.onConfirm === 'function') options.onConfirm(); };
+      modal.classList.add('open');
+    }
+    function closeConfirmDialog() { var m = document.getElementById('confirmModal'); if (m) m.classList.remove('open'); }
+
+    function createProductCard(product) {
+      const badgeHtml = product.badge ? `<span class="product-badge badge-${product.badge}"><i class="fas fa-${product.badge === 'hot' ? 'fire' : product.badge === 'new' ? 'sparkles' : product.badge === 'upcoming' ? 'clock' : 'tag'}"></i> ${Utils.escape(product.badge === 'hot' ? 'Hot' : product.badge === 'new' ? 'New' : product.badge === 'upcoming' ? 'Soon' : 'Sale')}</span>` : '';
+      const stars = '<i class="fas fa-star" style="color:var(--accent);"></i>'.repeat(Math.round(product.rating)) + '<i class="far fa-star" style="color:var(--accent);"></i>'.repeat(5 - Math.round(product.rating));
+      const priceHtml = product.originalPrice ? `<span class="product-price">₹${product.price.toLocaleString()}</span><span class="product-price-original">₹${product.originalPrice.toLocaleString()}</span>` : `<span class="product-price">₹${product.price.toLocaleString()}</span>`;
+      const catLabel = product.category === 'vinyl' ? '<i class="fas fa-compact-disc"></i> Vinyl' : product.category === 'cd' ? '<i class="fas fa-compact-disc"></i> CD' : product.category === 'cassette' ? '<i class="fas fa-tape"></i> Cassette' : product.category === 'bluray' ? '<i class="fas fa-film"></i> Blu-ray' : '<i class="fas fa-film"></i> DVD';
+      const langLabel = product.language === 'hindi' ? '<i class="fas fa-globe"></i> Hindi' : '<i class="fas fa-earth-americas"></i> English';
+      return `
+      <div class="product-card" data-id="${product.id}">
+        <div class="product-card-image">
+          <img src="${product.image}" alt="${Utils.escape(product.title)}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=400&h=400&fit=crop'">
+          ${badgeHtml}
+          <div class="product-card-actions">
+            <button class="quick-action-btn" onclick="CartHelpers.addToCart(${product.id})" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
+            <a href="#" onclick="return openProduct(${product.id})" class="quick-action-btn" title="Quick View"><i class="fas fa-eye"></i></a>
+          </div>
+        </div>
+        <div class="product-card-body">
+          <div class="product-category-tag">${catLabel} · ${langLabel}</div>
+          <h3 class="product-title">${Utils.escape(product.title)}</h3>
+          <p class="product-artist">${Utils.escape(product.artist)}</p>
+          <div class="product-rating"><span class="stars">${stars}</span><span class="rating-count">(${product.reviews})</span></div>
+          <div class="product-price-row">
+            <div>${priceHtml}</div>
+            ${product.stock === 0 ? '<span style="color:var(--danger);font-size:0.75rem;font-weight:700;">Out of Stock</span>' : ''}
+          </div>
+        </div>
+        <div class="product-card-footer">
+          <a href="#" onclick="navigate('product',{id:${product.id}});return false;" class="btn btn-primary btn-sm btn-block">View Details</a>
+        </div>
+      </div>`;
+    }
+
+    function injectNavbar(activePage = '') {
+      const nav = document.getElementById('navbar-placeholder'); if (!nav) return;
+      const isAdmin = activePage === 'admin';
+      nav.innerHTML = `
+      <nav class="navbar">
+        <a href="#" onclick="navigate('index'); return false;" class="navbar-brand">
+          <div class="logo-icon"><i class="fas fa-music"></i></div>
+          <span class="brand-name">Velorex Music</span>
+          ${isAdmin ? '<span style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-left:0.5rem;border-left:1px solid var(--border);padding-left:0.5rem;">Admin</span>' : ''}
+        </a>
+        <ul class="navbar-nav" id="mainNav">
+          ${isAdmin ? `
+            <li class="nav-item"><a href="#" onclick="navigate('index'); return false;" class="nav-link"><i class="fas fa-house"></i> View Store</a></li>
+            <li class="nav-item"><span class="nav-link active">Admin Dashboard</span></li>
+          ` : `
+            <li class="nav-item"><a href="#" onclick="navigate('index'); return false;" class="nav-link ${activePage === 'home' ? 'active' : ''}">Home</a></li>
+            <li class="nav-item">
+              <a href="#" onclick="navigate('products', {cat:'vinyl'}); return false;" class="nav-link ${activePage === 'vinyl' ? 'active' : ''}">
+                Vinyl <span class="arrow"><i class="fas fa-chevron-down" style="font-size:0.7rem;"></i></span>
+              </a>
+              <div class="dropdown-menu">
+                <a href="#" onclick="navigate('products', {cat:'vinyl', lang:'hindi'}); return false;" class="dropdown-item"><i class="fas fa-globe"></i> Hindi Vinyl</a>
+                <a href="#" onclick="navigate('products', {cat:'vinyl', lang:'english'}); return false;" class="dropdown-item"><i class="fas fa-earth-americas"></i> English Vinyl</a>
+                <div class="dropdown-divider"></div>
+                <a href="#" onclick="navigate('products', {cat:'vinyl'}); return false;" class="dropdown-item">All Vinyl</a>
+              </div>
+            </li>
+            <li class="nav-item"><a href="#" onclick="navigate('products', {cat:'cd'}); return false;" class="nav-link ${activePage === 'cd' ? 'active' : ''}">Audio CDs</a></li>
+            <li class="nav-item"><a href="#" onclick="navigate('products', {cat:'cassette'}); return false;" class="nav-link ${activePage === 'cassette' ? 'active' : ''}">Cassettes</a></li>
+            <li class="nav-item"><a href="#" onclick="navigate('products', {cat:'bluray'}); return false;" class="nav-link ${activePage === 'bluray' ? 'active' : ''}">Blu-rays</a></li>
+            <li class="nav-item"><a href="#" onclick="navigate('products', {cat:'dvd'}); return false;" class="nav-link ${activePage === 'dvd' ? 'active' : ''}">DVDs</a></li>
+            <li class="nav-item"><a href="#" onclick="navigate('products'); return false;" class="nav-link ${activePage === 'products' ? 'active' : ''}">All Products</a></li>
+          `}
+        </ul>
+        ${isAdmin ? '' : `<div class="navbar-search"><span class="search-icon"><i class="fas fa-magnifying-glass"></i></span><input type="text" id="globalSearch" placeholder="Search albums, artists..." autocomplete="off"></div>`}
+        <div class="navbar-actions">
+          ${isAdmin ? '' : `<a href="#" onclick="navigate('cart'); return false;" class="nav-action-btn"><i class="fas fa-shopping-cart"></i><span class="cart-badge" id="cartBadge"></span></a>`}
+          <button class="nav-action-btn" id="themeToggle" onclick="toggleTheme()" title="Toggle Theme"><i class="fas fa-moon"></i></button>
+          <a href="#" onclick="navigate('profile'); return false;" class="nav-action-btn"><i class="fas fa-user"></i></a>
+          <div class="hamburger" id="hamburger" onclick="toggleMobileNav()"><span></span><span></span><span></span></div>
+        </div>
+      </nav>`;
+      CartHelpers.updateBadge();
+      const searchInput = document.getElementById('globalSearch');
+      if (searchInput) {
+        searchInput.value = currentParams && currentParams.search ? currentParams.search : '';
+        searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && searchInput.value.trim()) navigate('products', { search: searchInput.value.trim() }); });
+      }
+    }
+
+    function toggleMobileNav() { const nav = document.getElementById('mainNav'); nav.classList.toggle('mobile-open'); }
+
+    function injectFooter() {
+      const footer = document.getElementById('footer-placeholder'); if (!footer) return;
+      footer.innerHTML = `
+      <footer class="footer">
+        <div class="container">
+          <div class="footer-grid">
+            <div class="footer-brand">
+              <span class="brand-name"><i class="fas fa-music"></i> Velorex Music</span>
+              <p class="footer-desc">Your ultimate destination for premium vinyl records, audio CDs, and cassettes. Curated collections spanning Hindi & English music across all genres.</p>
+              <div class="social-links">
+                <a href="#" class="social-link"><i class="fab fa-facebook"></i></a>
+                <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
+                <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
+                <a href="#" class="social-link"><i class="fab fa-youtube"></i></a>
+              </div>
+            </div>
+            <div>
+              <p class="footer-col-title">Shop</p>
+              <div class="footer-links">
+                <a href="#" onclick="navigate('products', {cat:'vinyl'}); return false;" class="footer-link">Vinyl Records</a>
+                <a href="#" onclick="navigate('products', {cat:'cd'}); return false;" class="footer-link">Audio CDs</a>
+                <a href="#" onclick="navigate('products', {cat:'cassette'}); return false;" class="footer-link">Cassettes</a>
+                <a href="#" onclick="navigate('products', {cat:'bluray'}); return false;" class="footer-link">Blu-rays</a>
+                <a href="#" onclick="navigate('products', {cat:'dvd'}); return false;" class="footer-link">DVDs</a>
+                <a href="#" onclick="navigate('products', {lang:'hindi'}); return false;" class="footer-link">Hindi Music</a>
+                <a href="#" onclick="navigate('products', {lang:'english'}); return false;" class="footer-link">English Music</a>
+              </div>
+            </div>
+            <div>
+              <p class="footer-col-title">Account</p>
+              <div class="footer-links">
+                <a href="#" onclick="navigate('profile'); return false;" class="footer-link">My Profile</a>
+                <a href="#" onclick="navigate('cart'); return false;" class="footer-link">Cart</a>
+                <a href="#" onclick="navigate('profile'); return false;" class="footer-link">Order History</a>
+                <a href="admin.html" class="footer-link" style="opacity:0.15;font-size:0.8rem;margin-top:0.5rem;">⚙️ Admin Panel</a>
+              </div>
+            </div>
+            <div>
+              <p class="footer-col-title">Help</p>
+              <div class="footer-links">
+                <a href="shipping.html" class="footer-link">Shipping Policy</a>
+                <a href="returns.html" class="footer-link">Returns & Refunds</a>
+                <a href="track-order.html" class="footer-link">Track Order</a>
+                <a href="contact.html" class="footer-link">Contact Us</a>
+                <a href="faq.html" class="footer-link">FAQ</a>
+              </div>
+            </div>
+          </div>
+          <div class="footer-bottom">
+            <p>© ${new Date().getFullYear()} Velorex Music. All rights reserved.</p>
+            <p>Made with 🎵 for music lovers</p>
+          </div>
+        </div>
+      </footer>`;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => { CartHelpers.updateBadge(); initTheme(); });
+
+    function initTheme() {
+      const t = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+      updateThemeIcon(t);
+    }
+    function toggleTheme() {
+      const cur = document.documentElement.getAttribute('data-theme'), next = cur === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      updateThemeIcon(next);
+    }
+    function updateThemeIcon(theme) {
+      const icon = document.querySelector('#themeToggle i');
+      if (icon) icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+    }
+
+    // =============================================
+    // SPA ROUTER
+    // =============================================
+    var currentPage = 'index', _detailQty = 1, _detailMax = 1, currentParams = {};
+
+    var DUMMY_ORDERS_SPA = [
+      { id: 'VD-2024-001', date: 'April 20, 2025', status: 'delivered', items: [{ name: 'Dark Side of the Moon', qty: 1, price: 3499 }, { name: 'Thriller', qty: 1, price: 2999 }], total: 6498 },
+      { id: 'VD-2024-002', date: 'April 15, 2025', status: 'processing', items: [{ name: 'Aashiqui 2 - Deluxe', qty: 2, price: 3598 }], total: 3697 },
+      { id: 'VD-2024-003', date: 'April 10, 2025', status: 'shipped', items: [{ name: 'Rockstar OST', qty: 1, price: 399 }, { name: 'DDLJ', qty: 1, price: 1499 }], total: 1997 },
+      { id: 'VD-2024-004', date: 'March 28, 2025', status: 'delivered', items: [{ name: 'Abbey Road', qty: 1, price: 3199 }], total: 3298 },
+    ];
+
+    function buildPageUrl(page, params) {
+      params = params || {};
+      var keys = Object.keys(params).filter(k => params[k] !== undefined && params[k] !== null && params[k] !== '');
+      if (page === 'index' && keys.length === 0) return window.location.pathname + window.location.search;
+      var hash = page;
+      if (keys.length) { var s = new URLSearchParams(); keys.forEach(k => s.set(k, params[k])); hash += '?' + s.toString(); }
+      return window.location.pathname + window.location.search + '#' + hash;
+    }
+
+    function parsePageFromUrl() {
+      var hash = window.location.hash.slice(1);
+      if (!hash) return { page: 'index', params: {} };
+      var parts = hash.split('?'), page = parts[0] || 'index', params = {};
+      if (parts[1]) { var sp = new URLSearchParams(parts[1]); sp.forEach((v, k) => { params[k] = k === 'id' ? parseInt(v, 10) || v : v; }); }
+      return { page, params };
+    }
+
+    function navigate(page, params, options) {
+      options = options || {};
+      currentPage = page; currentParams = params || {};
+      document.querySelectorAll('.page-section').forEach(p => p.style.display = 'none');
+      var el = document.getElementById('page-' + page);
+      if (el) { el.style.display = 'block'; window.scrollTo(0, 0); }
+      updateBreadcrumbs(page, params);
+      var highlightPage = page;
+      if (page === 'products' && params && params.cat) highlightPage = params.cat;
+      injectNavbar(highlightPage);
+      var mobileNav = document.getElementById('mainNav');
+      if (mobileNav) mobileNav.classList.remove('mobile-open');
+      initPage(page, params);
+      const footer = document.querySelector('.footer');
+      if (footer) footer.style.display = 'block';
+      if (options.pushState !== false) {
+        var url = buildPageUrl(page, params);
+        if (options.replace) window.history.replaceState({ page, params }, '', url);
+        else window.history.pushState({ page, params }, '', url);
+      }
+    }
+
+    window.addEventListener('popstate', function(event) {
+      var state = event.state;
+      if (state && state.page) navigate(state.page, state.params, { pushState: false });
+      else { var parsed = parsePageFromUrl(); navigate(parsed.page, parsed.params, { pushState: false }); }
+    });
+
+    function updateBreadcrumbs(page, params) {
+      const container = document.querySelector('.breadcrumbs-container'), list = document.getElementById('breadcrumb-list');
+      if (!container || !list) return;
+      if (page === 'index') { container.style.display = 'none'; return; }
+      container.style.display = 'block';
+      let items = [{ name: 'Home', link: 'index' }];
+      if (page === 'products') {
+        if (params && params.cat) {
+          items.push({ name: params.cat.toUpperCase(), link: 'products?cat=' + params.cat });
+          if (params.lang) items.push({ name: params.lang.toUpperCase(), active: true });
+          else items[items.length - 1].active = true;
+        } else items.push({ name: 'All Products', active: true });
+      } else if (page === 'product') { items.push({ name: 'Products', link: 'products' }); items.push({ name: 'Details', active: true }); }
+      else if (page === 'cart') items.push({ name: 'Shopping Cart', active: true });
+      else if (page === 'profile') items.push({ name: 'My Profile', active: true });
+      else items.push({ name: page.charAt(0).toUpperCase() + page.slice(1), active: true });
+      list.innerHTML = items.map(item => `<li class="breadcrumb-item ${item.active ? 'active' : ''}">${item.active ? item.name : `<a href="#" onclick="navigate('${item.link}'); return false;">${item.name}</a>`}</li>`).join('');
+    }
+
+    function initPage(page, params) {
+      if (page === 'index') initPageIndex();
+      else if (page === 'products') initPageProducts(params);
+      else if (page === 'product') initPageProduct(params);
+      else if (page === 'cart') initPageCart();
+      else if (page === 'profile') initPageProfile();
+    }
+
+    function initPageIndex() {
+      var products = Storage.getProducts();
+      var counts = { vinyl: 0, cd: 0, cassette: 0, bluray: 0, dvd: 0 };
+      products.forEach(p => { if (counts[p.category] !== undefined) counts[p.category]++; });
+      ['vinyl','cd','cassette','bluray','dvd'].forEach(cat => {
+        var el = document.getElementById(cat + '-count');
+        if (el) el.textContent = counts[cat] + ' titles available';
+      });
+      var bsg = document.getElementById('best-selling-grid'), nrg = document.getElementById('new-releases-grid'), ug = document.getElementById('upcoming-grid');
+      if (bsg) bsg.innerHTML = products.filter(p => p.badge === 'hot').slice(0, 4).map(createProductCard).join('');
+      if (nrg) nrg.innerHTML = products.filter(p => p.badge === 'new').slice(0, 4).map(createProductCard).join('');
+      if (ug) { var up = products.filter(p => p.badge === 'upcoming' || p.stock === 0).slice(0, 4); ug.innerHTML = up.length ? up.map(createProductCard).join('') : '<p class="text-muted text-center">No upcoming releases</p>'; }
+      fixProductLinks('page-index');
+    }
+
+    function initPageProducts(params) {
+      var allProducts = Storage.getProducts();
+      document.querySelectorAll('#page-products input[name="cat"]').forEach(cb => cb.checked = false);
+      document.querySelectorAll('#page-products input[name="lang"]').forEach(cb => cb.checked = false);
+      document.querySelectorAll('#page-products input[name="people"]').forEach(cb => cb.checked = false);
+      if (params && params.cat) {
+        document.querySelectorAll('#page-products input[name="cat"]').forEach(cb => cb.checked = cb.value === params.cat);
+        var labels = { vinyl: 'Vinyl Records', cd: 'Audio CDs', cassette: 'Cassettes', bluray: 'Blu-ray Movies', dvd: 'DVD Movies' };
+        var pt = document.getElementById('page-title'); if (pt) pt.textContent = labels[params.cat] || 'Products';
+      } else { var pt2 = document.getElementById('page-title'); if (pt2) pt2.textContent = 'All Products'; }
+      if (params && params.lang) document.querySelectorAll('#page-products input[name="lang"]').forEach(cb => cb.checked = cb.value === params.lang);
+      updateCountsProducts(allProducts);
+      applyFilters(params ? params.search : null);
+    }
+
+    function updateCountsProducts(products) {
+      var countMap = {
+        'count-vinyl': p => p.category === 'vinyl',
+        'count-cd': p => p.category === 'cd',
+        'count-cassette': p => p.category === 'cassette',
+        'count-bluray': p => p.category === 'bluray',
+        'count-dvd': p => p.category === 'dvd',
+        'count-hindi': p => p.language === 'hindi',
+        'count-english': p => p.language === 'english'
+      };
+      Object.keys(countMap).forEach(id => {
+        var el = document.getElementById(id);
+        if (el) el.textContent = products.filter(countMap[id]).length;
+      });
+      // Update people counts
+      Object.keys(PEOPLE_LABELS).forEach(slug => {
+        var el = document.getElementById('count-' + slug);
+        if (el) el.textContent = products.filter(p => p.people && p.people.indexOf(slug) !== -1).length;
+      });
+    }
+
+    function applyFilters(searchOverride) {
+      var allProds = Storage.getProducts(), filtered = allProds.slice();
+
+      // Category filter
+      var selCats = Array.from(document.querySelectorAll('#page-products input[name="cat"]:checked')).map(i => i.value);
+      if (selCats.length) filtered = filtered.filter(p => selCats.indexOf(p.category) !== -1);
+
+      // Language filter
+      var selLangs = Array.from(document.querySelectorAll('#page-products input[name="lang"]:checked')).map(i => i.value);
+      if (selLangs.length) filtered = filtered.filter(p => selLangs.indexOf(p.language) !== -1);
+
+      // Price filter
+      var selPrices = Array.from(document.querySelectorAll('#page-products input[name="price"]:checked')).map(i => i.value);
+      if (selPrices.length) {
+        filtered = filtered.filter(p => selPrices.some(range => {
+          var parts = range.split('-').map(Number);
+          return p.price >= parts[0] && p.price <= parts[1];
+        }));
+      }
+
+      // Availability filter
+      var selAvail = Array.from(document.querySelectorAll('#page-products input[name="avail"]:checked')).map(i => i.value);
+      if (selAvail.length) {
+        filtered = filtered.filter(p => (selAvail.indexOf('instock') !== -1 && p.stock > 0) || (selAvail.indexOf('outofstock') !== -1 && p.stock === 0));
+      }
+
+      // ---- PEOPLE FILTER ----
+      var selPeople = Array.from(document.querySelectorAll('#page-products input[name="people"]:checked')).map(i => i.value);
+      if (selPeople.length) {
+        filtered = filtered.filter(p => p.people && selPeople.some(slug => p.people.indexOf(slug) !== -1));
+      }
+
+      // Search override
+      if (searchOverride) {
+        var q = searchOverride.toLowerCase();
+        filtered = filtered.filter(p => p.title.toLowerCase().indexOf(q) !== -1 || p.artist.toLowerCase().indexOf(q) !== -1);
+      }
+
+      // Sort
+      var sort = (document.getElementById('sortSelect') || { value: '' }).value;
+      if (sort === 'price-asc') filtered.sort((a, b) => a.price - b.price);
+      else if (sort === 'price-desc') filtered.sort((a, b) => b.price - a.price);
+      else if (sort === 'rating') filtered.sort((a, b) => b.rating - a.rating);
+      else if (sort === 'newest') filtered.sort((a, b) => b.id - a.id);
+      else if (sort === 'name-asc') filtered.sort((a, b) => a.title.localeCompare(b.title));
+
+      var grid = document.getElementById('products-grid');
+      if (grid) {
+        grid.innerHTML = !filtered.length
+          ? '<div class="no-products" style="grid-column:1/-1;"><div class="no-products-icon">🔍</div><h3>No products found</h3><p>Try adjusting your filters</p></div>'
+          : filtered.map(createProductCard).join('');
+        fixProductLinks('page-products');
+      }
+      var countEl = document.getElementById('products-count');
+      if (countEl) countEl.textContent = 'Showing ' + filtered.length + ' of ' + allProds.length + ' products';
+      renderActiveFiltersProducts();
+    }
+
+    function clearAllFilters() {
+      document.querySelectorAll('#page-products .filter-option input').forEach(i => i.checked = false);
+      var sortEl = document.getElementById('sortSelect'); if (sortEl) sortEl.value = '';
+      var pt = document.getElementById('page-title'); if (pt) pt.textContent = 'All Products';
+      var ps = document.getElementById('peopleSearch'); if (ps) { ps.value = ''; filterPeopleOptions(''); }
+      applyFilters();
+    }
+
+    function setView(view) { var g = document.getElementById('products-grid'); if (g) g.style.gridTemplateColumns = view === 'list' ? '1fr' : ''; }
+
+    // ---- People search box inside filter ----
+    function filterPeopleOptions(query) {
+      var q = query.toLowerCase().trim();
+      document.querySelectorAll('#people-filter-options .people-option').forEach(label => {
+        var text = label.textContent.toLowerCase();
+        label.style.display = (!q || text.indexOf(q) !== -1) ? '' : 'none';
+      });
+      // Show/hide group labels based on visible siblings
+      document.querySelectorAll('#people-filter-options .people-group-label').forEach(header => {
+        var next = header.nextElementSibling;
+        var anyVisible = false;
+        while (next && next.classList.contains('people-option')) {
+          if (next.style.display !== 'none') { anyVisible = true; break; }
+          next = next.nextElementSibling;
+        }
+        header.style.display = anyVisible ? '' : 'none';
+      });
+    }
+
+    function renderActiveFiltersProducts() {
+      var container = document.getElementById('activeFilters'); if (!container) return;
+      var tags = [];
+      Array.from(document.querySelectorAll('#page-products input[name="cat"]:checked')).forEach(i => {
+        var labels = { vinyl: '💿 Vinyl', cd: '💽 CD', cassette: 'Cassette', bluray: '🎬 Blu-ray', dvd: '🎞️ DVD' };
+        tags.push({ label: labels[i.value] || i.value, input: i });
+      });
+      Array.from(document.querySelectorAll('#page-products input[name="lang"]:checked')).forEach(i => {
+        tags.push({ label: i.value === 'hindi' ? '🇮🇳 Hindi' : '🌍 English', input: i });
+      });
+      Array.from(document.querySelectorAll('#page-products input[name="people"]:checked')).forEach(i => {
+        tags.push({ label: '🎬 ' + (PEOPLE_LABELS[i.value] || i.value), input: i });
+      });
+      container.innerHTML = tags.map((tag, idx) => `<span class="filter-tag">${tag.label}<span class="filter-tag-remove" onclick="removeFilterProduct(${idx})">✕</span></span>`).join('');
+      window._filterTags = tags;
+    }
+
+    function removeFilterProduct(idx) {
+      if (window._filterTags && window._filterTags[idx]) { window._filterTags[idx].input.checked = false; applyFilters(); }
+    }
+
+    function openProduct(id) { navigate('product', { id: id }); return false; }
+
+    function initPageProduct(params) {
+      if (!params || !params.id) {
+        var c = document.getElementById('product-detail-container');
+        if (c) c.innerHTML = '<div class="empty-cart"><div class="empty-cart-icon">😔</div><h3>No product selected</h3><a href="#" onclick="navigate(\'products\')" class="btn btn-primary">Browse Products</a></div>';
+        return;
+      }
+      var id = parseInt(params.id), products = Storage.getProducts(), product = products.find(p => p.id === id);
+      if (!product) {
+        var c2 = document.getElementById('product-detail-container');
+        if (c2) c2.innerHTML = '<div class="empty-cart"><div class="empty-cart-icon">😔</div><h3>Product not found</h3><a href="#" onclick="navigate(\'products\')" class="btn btn-primary">Browse Products</a></div>';
+        return;
+      }
+      var dt = document.getElementById('detail-title'); if (dt) dt.textContent = product.title;
+      renderProductDetail(product);
+      renderRelatedProducts(product, products);
+    }
+
+    function renderProductDetail(product) {
+      var stars = '★'.repeat(Math.round(product.rating)) + '☆'.repeat(5 - Math.round(product.rating));
+      var catLabel = product.category === 'vinyl' ? '💿 Vinyl Record' : product.category === 'cd' ? '💽 Audio CD' : product.category === 'cassette' ? '📼 Cassette' : product.category === 'bluray' ? '🎬 Blu-ray' : '🎞️ DVD';
+      var langLabel = product.language === 'hindi' ? '🇮🇳 Hindi' : '🌍 English';
+      var isOOS = product.stock === 0;
+      var discount = product.originalPrice ? Math.round((1 - product.price / product.originalPrice) * 100) : null;
+      var specsHtml = '';
+      if (product.specs) {
+        var specOrder = ['format', 'tracks', 'label', 'year', 'genre', 'runtime', 'theme'];
+        var specLabels = { format: 'Format', tracks: 'Tracks', label: 'Label', year: 'Year', genre: 'Genre', runtime: 'Runtime', theme: 'Theme' };
+        specOrder.forEach(key => { if (product.specs[key] !== undefined && product.specs[key] !== '') specsHtml += `<div class="spec-row"><span class="spec-label">${specLabels[key]}</span><span class="spec-value">${product.specs[key]}</span></div>`; });
+        Object.entries(product.specs).forEach(([k, v]) => { if (!specOrder.includes(k)) specsHtml += `<div class="spec-row"><span class="spec-label">${k.charAt(0).toUpperCase() + k.slice(1)}</span><span class="spec-value">${v}</span></div>`; });
+      }
+      var stockWarn = (product.stock <= 5 && product.stock > 0) ? `<span style="color:var(--danger);font-size:0.8rem;font-weight:600;">⚠️ Only ${product.stock} left!</span>` : '';
+      var actionBtns = isOOS ? '<button class="btn btn-secondary" disabled style="opacity:0.5;cursor:not-allowed;">❌ Out of Stock</button>'
+        : '<div class="product-actions-group"><button class="btn btn-outline-primary btn-lg" id="addCartBtn" onclick="handleAddToCartDetail(' + product.id + ')">🛒 Add to Cart</button><button class="btn btn-gold btn-lg" onclick="handleBuyNowDetail(' + product.id + ')">⚡ Buy Now</button></div>';
+      var origPriceHtml = product.originalPrice ? `<span class="product-detail-price-original">₹${product.originalPrice.toLocaleString()}</span>` : '';
+      var discountHtml = discount ? `<span class="product-detail-discount">${discount}% OFF</span>` : '';
+      var musicDirectorHtml = product.musicDirector ? `<p class="product-detail-music-director">Music Director: <strong>${product.musicDirector}</strong></p>` : '';
+
+      // People tags on product detail
+      var peopleHtml = '';
+      if (product.people && product.people.length) {
+        var peopleTagsHtml = product.people.map(slug => {
+          var label = PEOPLE_LABELS[slug] || slug;
+          return `<a href="#" onclick="navigate('products',{people_filter:'${slug}'});return false;" style="display:inline-flex;align-items:center;gap:0.3rem;background:rgba(255,107,53,0.1);border:1px solid rgba(255,107,53,0.25);color:var(--secondary);padding:0.2rem 0.6rem;border-radius:50px;font-size:0.75rem;font-weight:600;transition:var(--transition);" onmouseover="this.style.background='rgba(255,107,53,0.2)'" onmouseout="this.style.background='rgba(255,107,53,0.1)'">${label}</a>`;
+        }).join('');
+        peopleHtml = `<div style="margin-bottom:0.75rem;"><p style="font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.07em;color:var(--text-muted);margin-bottom:0.5rem;">🎬 Associated</p><div style="display:flex;flex-wrap:wrap;gap:0.4rem;">${peopleTagsHtml}</div></div>`;
+      }
+
+      var trackListingHtml = '';
+      function parseTrackLines(raw) {
+        if (!raw) return [];
+        return String(raw).split(/\r?\n/).map(t => t.trim()).map(t => t.replace(/^\s*\d+[\.)]?\s*/, '')).filter(t => t && !/^(tracks|track listing)$/i.test(t));
+      }
+      if (product.trackListingSides && typeof product.trackListingSides === 'object') {
+        var sidesOrder = [{ key: 'A', label: 'Side A' }, { key: 'B', label: 'Side B' }, { key: 'C', label: 'Side C' }, { key: 'D', label: 'Side D' }];
+        var sideHtml2 = '';
+        sidesOrder.forEach(s => {
+          var raw = product.trackListingSides[s.key] || product.trackListingSides[s.key.toLowerCase()] || product.trackListingSides['side' + s.key] || '';
+          var sideTracks2 = parseTrackLines(raw);
+          if (!sideTracks2.length) return;
+          sideHtml2 += `<div class="track-side"><h3>${s.label}</h3><ul>${sideTracks2.map(t => `<li>${Utils.escape(t)}</li>`).join('')}</ul></div>`;
+        });
+        if (sideHtml2) trackListingHtml = `<div class="track-list"><h2 class="specs-title">Track Listing</h2>${sideHtml2}</div>`;
+      } else if (product.trackListing) {
+        var tracks = parseTrackLines(product.trackListing);
+        if (tracks.length) {
+          var sideNames = ['Side A', 'Side B', 'Side C', 'Side D'];
+          var sideCount = Math.min(4, tracks.length), perSide = Math.ceil(tracks.length / sideCount), sideHtml = '';
+          for (var i = 0; i < sideCount; i++) {
+            var sideTracks = tracks.slice(i * perSide, (i + 1) * perSide);
+            if (!sideTracks.length) continue;
+            sideHtml += `<div class="track-side"><h3>${sideNames[i]}</h3><ul>${sideTracks.map(t => `<li>${Utils.escape(t)}</li>`).join('')}</ul></div>`;
+          }
+          if (sideHtml) trackListingHtml = `<div class="track-list"><h2 class="specs-title">Track Listing</h2>${sideHtml}</div>`;
+        }
+      }
+
+      var container = document.getElementById('product-detail-container'); if (!container) return;
+      container.innerHTML = `
+      <div class="product-detail">
+        <div class="product-detail-gallery">
+          <div class="product-detail-main-image"><img src="${product.image}" alt="${product.title}" id="mainImage" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=800&h=800&fit=crop'"></div>
+          <div class="product-detail-thumbs">
+            <button type="button" class="product-detail-thumb active" onclick="document.getElementById('mainImage').src='${product.image}'"><img src="${product.image}" alt="thumbnail"></button>
+            <button type="button" class="product-detail-thumb" onclick="document.getElementById('mainImage').src='${product.image}'"><img src="${product.image}" alt="thumbnail"></button>
+            <button type="button" class="product-detail-thumb" onclick="document.getElementById('mainImage').src='${product.image}'"><img src="${product.image}" alt="thumbnail"></button>
+          </div>
+        </div>
+        <div class="product-detail-info">
+          <div class="product-detail-header">
+            <div class="product-detail-tags">
+              <span class="product-badge badge-${product.badge || 'new'}">${catLabel}</span>
+              <span class="product-detail-pill">${langLabel}</span>
+            </div>
+            ${stockWarn}
+          </div>
+          <h1 class="product-detail-title">${product.title}</h1>
+          <p class="product-detail-subtitle">by <strong>${product.artist}</strong></p>
+          ${musicDirectorHtml}
+          ${peopleHtml}
+          <div class="product-detail-meta"><div style="display:flex;align-items:center;gap:0.5rem;"><span style="color:var(--accent);">${stars}</span><strong>${product.rating}</strong><span style="color:var(--text-muted);font-size:0.875rem;">(${product.reviews} reviews)</span></div></div>
+          <div class="product-detail-price-block">
+            <div class="product-detail-price-meta">
+              <span class="product-detail-price">₹${product.price.toLocaleString()}</span>${origPriceHtml}
+            </div>
+            ${discountHtml}
+            <div class="product-detail-availability">${product.stock > 0 ? 'In stock: ' + product.stock + ' units' : 'Pre-order available'}</div>
+          </div>
+          <p class="product-detail-desc">${product.description}</p>
+          ${trackListingHtml}
+          ${specsHtml ? `<div class="product-specs"><h2 class="specs-title">Product details</h2>${specsHtml}</div>` : ''}
+          <div class="product-detail-actions">
+            <div>
+              <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.05em;font-weight:600;">Quantity</p>
+              <div class="quantity-control"><div class="qty-btn" onclick="changeQtyDetail(-1)">−</div><div class="qty-display" id="qtyDisplay">1</div><div class="qty-btn" onclick="changeQtyDetail(1)">+</div></div>
+            </div>
+            <div class="product-actions-group">${actionBtns}</div>
+            <div class="product-detail-footnote">
+              <div>🚚 Free shipping on orders above ₹999</div>
+              <div>↩️ Easy 30-day returns</div>
+              <div>🔒 Secure payment</div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+      _detailQty = product.stock > 0 ? 1 : 0;
+      _detailMax = product.stock;
+      var qEl = document.getElementById('qtyDisplay'); if (qEl) qEl.textContent = _detailQty;
+    }
+
+    function renderRelatedProducts(product, products) {
+      var related = products.filter(p => p.id !== product.id && (p.category === product.category || p.language === product.language)).slice(0, 4);
+      var sec = document.getElementById('related-section'), grid = document.getElementById('related-grid');
+      if (related.length && sec && grid) { sec.style.display = 'block'; grid.innerHTML = related.map(createProductCard).join(''); fixProductLinks('page-product'); }
+      else if (sec) sec.style.display = 'none';
+    }
+
+    function changeQtyDetail(d) {
+      if (_detailMax <= 0) { showToast('❌ Product is out of stock', 'danger'); _detailQty = 0; var el = document.getElementById('qtyDisplay'); if (el) el.textContent = _detailQty; return; }
+      var nextQty = _detailQty + d;
+      if (nextQty > _detailMax) { showToast('⚠️ Only ' + _detailMax + ' available in stock', 'danger'); return; }
+      _detailQty = Math.max(1, nextQty);
+      var el = document.getElementById('qtyDisplay'); if (el) el.textContent = _detailQty;
+    }
+    function handleAddToCartDetail(id) {
+      if (!CartHelpers.addToCart(id, _detailQty)) return;
+      var btn = document.getElementById('addCartBtn');
+      if (btn) { btn.textContent = '✅ Added!'; btn.disabled = true; setTimeout(() => { btn.textContent = '🛒 Add to Cart'; btn.disabled = false; }, 2000); }
+    }
+    function handleBuyNowDetail(id) { if (CartHelpers.addToCart(id, _detailQty)) navigate('cart'); }
+
+    function initPageCart() {
+      var cartItems = CartHelpers.getCartWithDetails(), container = document.getElementById('cart-main'); if (!container) return;
+      if (!cartItems.length) { container.innerHTML = '<div class="empty-cart" style="padding:6rem 2rem;"><div class="empty-cart-icon"><i class="fas fa-shopping-cart"></i></div><h3>Your cart is empty</h3><p>Let\'s fix that!</p><a href="#" onclick="navigate(\'products\')" class="btn btn-primary btn-lg"><i class="fas fa-music"></i> Start Shopping</a></div>'; return; }
+      var subtotal = CartHelpers.getCartTotal(), shipping = subtotal >= 999 ? 0 : 99, total = subtotal + shipping;
+      var itemsHtml = cartItems.map(item => `
+      <div class="cart-item">
+        <div class="cart-item-image" onclick="navigate('product',{id:${item.id}})" style="cursor:pointer;"><img src="${item.image}" alt="${Utils.escape(item.title)}" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=200&fit=crop'"></div>
+        <div>
+          <h4 class="cart-item-title" onclick="navigate('product',{id:${item.id}})" style="cursor:pointer;">${Utils.escape(item.title)}</h4>
+          <p class="cart-item-meta">${Utils.escape(item.artist)} · ${item.category.toUpperCase()}</p>
+          <div class="cart-item-qty">
+            <button class="cart-qty-btn" onclick="updateCartQtySPA(${item.id},${item.qty - 1})">−</button>
+            <span class="cart-qty-num">${item.qty}</span>
+            <button class="cart-qty-btn" onclick="updateCartQtySPA(${item.id},${item.qty + 1})">+</button>
+            <span class="cart-item-remove" onclick="removeCartSPA(${item.id})" style="cursor:pointer;">🗑</span>
+          </div>
+        </div>
+        <div class="cart-item-price"><div class="price">₹${(item.price * item.qty).toLocaleString()}</div><div class="unit-price">₹${item.price.toLocaleString()} each</div></div>
+      </div>`).join('');
+      var shippingHtml = shipping === 0 ? '🚚 ✅ <strong style="color:var(--success);">Free shipping applied!</strong>' : `🚚 Add ₹${(999 - subtotal).toLocaleString()} more for <strong style="color:var(--success);">FREE shipping</strong>`;
+      container.innerHTML = `<div class="cart-layout"><div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;"><h2 style="font-family:var(--font-display);font-size:1.25rem;">${cartItems.length} item${cartItems.length > 1 ? 's' : ''} in cart</h2><button class="btn btn-sm btn-danger" onclick="clearCartSPA()"><i class="fas fa-trash-can"></i> Clear Cart</button></div>
+        <div class="cart-items-list">${itemsHtml}</div>
+        <div style="margin-top:1.5rem;padding:1.25rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);"><i class="fas fa-truck"></i> ${shippingHtml}</div>
+      </div>
+      <div><div class="cart-summary">
+        <h3 class="summary-title">Order Summary</h3>
+        <div class="summary-row"><span>Subtotal</span><span>₹${subtotal.toLocaleString()}</span></div>
+        <div class="summary-row"><span>Shipping</span><span>${shipping === 0 ? '<span style="color:var(--success);">FREE</span>' : '₹' + shipping}</span></div>
+        <div class="coupon-input"><input type="text" id="couponInput" placeholder="Coupon code"><button class="btn btn-sm btn-secondary" onclick="applyCouponSPA()">Apply</button></div>
+        <div class="summary-row total"><span>Total</span><span class="amount">₹${total.toLocaleString()}</span></div>
+        <button class="btn btn-primary btn-lg btn-block" style="margin-top:1.5rem;" onclick="checkoutSPA()">⚡ Proceed to Checkout</button>
+        <a href="#" onclick="navigate('products')" class="btn btn-secondary btn-block" style="margin-top:0.75rem;">← Continue Shopping</a>
+      </div></div></div>`;
+    }
+
+    function updateCartQtySPA(id, qty) { if (qty <= 0) CartHelpers.removeFromCart(id); else CartHelpers.updateQty(id, qty); initPageCart(); }
+    function removeCartSPA(id) { CartHelpers.removeFromCart(id); showToast('Item removed', 'info'); initPageCart(); }
+    function clearCartSPA() { openConfirmDialog({ title: 'Clear Cart', message: 'Clear all items from cart?', confirmText: 'Clear Cart', onConfirm: () => { Storage.saveCart([]); initPageCart(); showToast('Cart cleared', 'success'); } }); }
+    function applyCouponSPA() {
+      var code = ((document.getElementById('couponInput') || {}).value || '').toUpperCase();
+      var valid = { VINYL10: 10, MUSIC20: 20 };
+      if (valid[code]) showToast(`Coupon "${code}" applied! ${valid[code]}% off`, 'success'); else showToast('Invalid coupon code', 'error');
+    }
+    function checkoutSPA() {
+      const total = CartHelpers.getCartTotal() + (CartHelpers.getCartTotal() >= 999 ? 0 : 99);
+      document.getElementById('payment-amount-display').textContent = '₹' + total.toLocaleString();
+      document.getElementById('payment-modal').classList.add('active');
+      document.getElementById('payment-main-view').style.display = 'block';
+      document.getElementById('payment-processing-view').classList.remove('active');
+    }
+    function closePaymentModal() { document.getElementById('payment-modal').classList.remove('active'); }
+    function selectPaymentMethod(el, method) {
+      document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.payment-form').forEach(f => f.classList.remove('active'));
+      el.classList.add('active');
+      if (method === 'card') document.getElementById('form-card').classList.add('active');
+      if (method === 'upi') document.getElementById('form-upi').classList.add('active');
+    }
+    function processPayment() {
+      const method = document.querySelector('.method-btn.active').textContent.trim().toLowerCase();
+      if (method === 'card') {
+        const cardNum = document.getElementById('pay-card-num').value.replace(/\s+/g, '');
+        const cardExp = document.getElementById('pay-card-exp').value.trim();
+        const cardCvv = document.getElementById('pay-card-cvv').value.trim();
+        if (!/^\d{16}$/.test(cardNum)) return showToast('Please enter a valid 16-digit card number', 'error');
+        if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(cardExp)) return showToast('Please enter a valid expiry date (MM/YY)', 'error');
+        if (!/^\d{3}$/.test(cardCvv)) return showToast('Please enter a valid 3-digit CVV', 'error');
+      } else if (method === 'upi') {
+        const upiId = document.getElementById('pay-upi-id').value.trim();
+        if (!/^[\w.-]+@[\w.-]+$/.test(upiId)) return showToast('Please enter a valid UPI ID', 'error');
+      }
+      const cartItems = CartHelpers.getCartWithDetails(), subtotal = CartHelpers.getCartTotal(), shipping = subtotal >= 999 ? 0 : 99, totalAmount = subtotal + shipping;
+      var options = {
+        "key": "rzp_test_TYeNqBfWpLdfxQ", "amount": totalAmount * 100, "currency": "INR",
+        "name": "Velorex Music", "description": "Vinyl Vault Purchase",
+        "image": "https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=120&h=120&fit=crop",
+        "handler": function(response) {
+          document.getElementById('payment-main-view').style.display = 'none';
+          document.getElementById('payment-processing-view').classList.add('active');
+          setTimeout(() => {
+            const orderId = 'VD-' + Date.now().toString().slice(-6);
+            Storage.saveOrder({ id: orderId, date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }), status: 'processing', paymentId: response.razorpay_payment_id, items: cartItems.map(i => ({ name: i.title, qty: i.qty, price: i.price })), total: totalAmount });
+            Storage.saveCart([]);
+            showToast('🎉 Payment Successful! Order ID: ' + orderId, 'success');
+            closePaymentModal();
+            navigate('profile');
+          }, 1500);
+        },
+        "prefill": { "name": "Valued Customer", "email": "customer@example.com", "contact": "9999999999" },
+        "theme": { "color": "#ff6b35" }
+      };
+      var rzp1 = new Razorpay(options);
+      rzp1.on('payment.failed', response => showToast('Payment Failed: ' + response.error.description, 'error'));
+      rzp1.open();
+    }
+
+    function initPageProfile() { renderOrdersSPA(Storage.getOrders()); renderWishlistSPA(); renderAddressesSPA(); renderSettingsSPA(); }
+
+    function renderAddressesSPA() {
+      var container = document.getElementById('addresses-list'); if (!container) return;
+      container.innerHTML = ['Home', 'Office'].map((type, i) => `
+      <div class="order-card">
+        <div style="display:flex;justify-content:space-between;margin-bottom:0.75rem;">
+          <span style="font-weight:700;font-size:0.9rem;">🏠 ${type}</span>
+          ${i === 0 ? '<span style="background:rgba(0,212,170,0.1);color:var(--success);padding:0.2rem 0.5rem;border-radius:4px;font-size:0.7rem;">Default</span>' : ''}
+        </div>
+        <p style="font-size:0.875rem;color:var(--text-muted);line-height:1.6;">Rahul Sharma<br>${i === 0 ? '42, Shanti Nagar, Sector 3<br>Meerut, UP - 250001' : 'B-12, Technopark<br>Noida, UP - 201301'}<br>+91 98765 43210</p>
+        <div style="display:flex;gap:0.5rem;margin-top:1rem;">
+          <button class="btn btn-sm btn-secondary" onclick="showToast('Edit coming soon!','info')">✏️ Edit</button>
+          <button class="btn btn-sm btn-danger" onclick="showToast('Address removed','info')">🗑</button>
+        </div>
+      </div>`).join('');
+    }
+
+    function renderSettingsSPA() {
+      var container = document.getElementById('settings-container'); if (!container) return;
+      var settings = [['Email Notifications', 'Get order updates via email'], ['SMS Alerts', 'Get shipping alerts via SMS'], ['New Arrivals', 'Be notified of new products'], ['Price Drop Alerts', 'Get notified when wishlist items drop in price']];
+      var itemsHtml = settings.map(s => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.75rem 0;border-bottom:1px solid var(--border);">
+        <div><p style="font-weight:500;font-size:0.9rem;">${s[0]}</p><p style="font-size:0.8rem;color:var(--text-muted);">${s[1]}</p></div>
+        <label style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer;">
+          <input type="checkbox" checked style="opacity:0;width:0;height:0;" onchange="showToast('Setting updated','success')">
+          <span style="position:absolute;inset:0;background:var(--secondary);border-radius:24px;"></span>
+          <span style="position:absolute;top:2px;left:2px;width:20px;height:20px;background:white;border-radius:50%;transition:0.2s;"></span>
+        </label>
+      </div>`).join('');
+      container.innerHTML = '<h3 style="font-size:1rem;font-weight:700;margin-bottom:1.25rem;">🔔 Notifications</h3>' + itemsHtml + '<div style="margin-top:1.5rem;display:flex;gap:0.75rem;"><button class="btn btn-danger" onclick="if(confirm(\'Are you sure?\'))showToast(\'Account deletion requested\',\'error\')">🗑 Delete Account</button></div>';
+    }
+
+    function renderOrdersSPA(orders) {
+      var container = document.getElementById('orders-list'); if (!container) return;
+      if (!orders.length) { container.innerHTML = '<div class="no-products"><div class="no-products-icon"><i class="fas fa-box"></i></div><p>No orders found</p></div>'; return; }
+      container.innerHTML = orders.map(order => {
+        var statusLabel = order.status === 'delivered' ? '<i class="fas fa-circle-check"></i> Delivered' : order.status === 'processing' ? '<i class="fas fa-hourglass-half"></i> Processing' : '<i class="fas fa-truck"></i> Shipped';
+        var itemsHtml = order.items.map(item => `<div class="order-item-row"><span><i class="fas fa-music"></i> ${Utils.escape(item.name)} × ${item.qty}</span><span>₹${item.price.toLocaleString()}</span></div>`).join('');
+        var extraBtns = order.status === 'delivered' ? '<button class="btn btn-sm btn-outline-primary" onclick="showToast(\'Invoice downloaded!\',\'success\')"><i class="fas fa-file-invoice"></i> Invoice</button><button class="btn btn-sm btn-secondary" onclick="showToast(\'Reordered!\',\'success\')"><i class="fas fa-rotate-right"></i> Reorder</button>' : '';
+        return `<div class="order-card"><div class="order-header"><div><p class="order-id"><i class="fas fa-box"></i> Order #${order.id}</p><p class="order-date"><i class="fas fa-calendar-days"></i> ${order.date}</p></div><span class="order-status status-${order.status}">${statusLabel}</span></div><div class="order-items">${itemsHtml}<div class="order-total-row"><span>Order Total</span><span class="total-amt">₹${order.total.toLocaleString()}</span></div></div><div style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap;"><button class="btn btn-sm btn-secondary" onclick="showToast('Tracking coming soon!','info')"><i class="fas fa-location-dot"></i> Track Order</button>${extraBtns}</div></div>`;
+      }).join('');
+    }
+
+    function filterOrders(status) { var filtered = status === 'all' ? DUMMY_ORDERS_SPA : DUMMY_ORDERS_SPA.filter(o => o.status === status); renderOrdersSPA(filtered); }
+
+    function renderWishlistSPA() {
+      var grid = document.getElementById('wishlist-grid'); if (!grid) return;
+      grid.innerHTML = Storage.getProducts().slice(0, 3).map(createProductCard).join('');
+      fixProductLinks('page-profile');
+    }
+
+    function showTab(name, el) {
+      document.querySelectorAll('#page-profile .profile-tab').forEach(t => t.style.display = 'none');
+      document.querySelectorAll('#page-profile .profile-nav-item').forEach(i => i.classList.remove('active'));
+      var tab = document.getElementById('tab-' + name); if (tab) tab.style.display = 'block';
+      if (el) el.classList.add('active');
+    }
+
+    function saveProfile() {
+      var first = document.getElementById('firstName'), last = document.getElementById('lastName'), email = document.getElementById('userEmail');
+      if (first && last) { var pn = document.getElementById('profile-name'); if (pn) pn.textContent = first.value + ' ' + last.value; }
+      if (email) { var pe = document.getElementById('profile-email'); if (pe) pe.textContent = email.value; }
+      showToast('Profile updated successfully! ✅', 'success');
+    }
+
+    function fixProductLinks(pageId) {
+      var section = document.getElementById(pageId); if (!section) return;
+      section.querySelectorAll('.product-card').forEach(card => {
+        var id = parseInt(card.dataset.id); if (!id) return;
+        card.querySelectorAll('a.btn, a.btn-primary, a.btn-sm').forEach(btn => {
+          btn.setAttribute('href', '#');
+          btn.onclick = (pid => e => { e.preventDefault(); navigate('product', { id: pid }); return false; })(id);
+        });
+        card.querySelectorAll('.quick-action-btn').forEach(btn => {
+          if (btn.title === 'Quick View') {
+            btn.setAttribute('href', '#');
+            btn.onclick = (pid => e => { e.preventDefault(); navigate('product', { id: pid }); return false; })(id);
+          }
+        });
+      });
+    }
+
+    // =============================================
+    // INIT APP
+    // =============================================
+    document.addEventListener('DOMContentLoaded', function() {
+      injectNavbar('home');
+      injectFooter();
+
+      setTimeout(function() {
+        var cdb = document.getElementById('confirmDeleteBtn');
+        if (cdb) cdb.addEventListener('click', function() {
+          if (!deleteTargetId) return;
+          Storage.saveProducts(Storage.getProducts().filter(p => p.id !== deleteTargetId));
+          showToast('Product deleted', 'error');
+          closeModal('deleteModal');
+          deleteTargetId = null;
+        });
+        var dm = document.getElementById('deleteModal');
+        if (dm) dm.addEventListener('click', e => { if (e.target === e.currentTarget) closeModal('deleteModal'); });
+      }, 200);
+
+      setTimeout(function() {
+        document.querySelectorAll('.navbar-brand').forEach(b => b.addEventListener('click', e => { e.preventDefault(); navigate('index'); }));
+        var gs = document.getElementById('globalSearch');
+        if (gs) gs.addEventListener('keydown', e => { if (e.key === 'Enter' && gs.value.trim()) navigate('products', { search: gs.value.trim() }); });
+      }, 150);
+
+      var initial = parsePageFromUrl();
+      if (initial.page === 'index' && !window.location.hash) {
+        navigate('index', {}, { pushState: false });
+        window.history.replaceState({ page: 'index', params: {} }, '', window.location.pathname + window.location.search);
+      } else {
+        navigate(initial.page, initial.params, { pushState: false });
+        window.history.replaceState({ page: initial.page, params: initial.params }, '', buildPageUrl(initial.page, initial.params));
+      }
+    });
+  </script>
+
+  <div class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0, behavior:'smooth'})">
+    <i class="fas fa-arrow-up"></i>
+  </div>
+</body>
+</html>

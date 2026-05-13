@@ -1,0 +1,553 @@
+
+<h2 class="sr-only">Velorex Music Admin Panel — full dashboard with products, add/edit, categories, and orders management</h2>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+.adm{display:grid;grid-template-columns:200px 1fr;min-height:600px;border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden;background:var(--color-background-primary)}
+.sidebar{background:var(--color-background-secondary);border-right:0.5px solid var(--color-border-tertiary);display:flex;flex-direction:column;padding:16px 0}
+.sidebar-brand{padding:0 16px 16px;border-bottom:0.5px solid var(--color-border-tertiary);margin-bottom:8px}
+.sidebar-brand p{font-size:14px;font-weight:500;color:var(--color-text-primary)}
+.sidebar-brand span{font-size:11px;color:var(--color-text-secondary)}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 16px;font-size:13px;color:var(--color-text-secondary);cursor:pointer;border-left:2px solid transparent;transition:all 0.15s}
+.nav-item:hover{background:var(--color-background-primary);color:var(--color-text-primary)}
+.nav-item.active{background:var(--color-background-primary);color:var(--color-text-primary);border-left:2px solid #7F77DD;font-weight:500}
+.nav-icon{font-size:14px;width:18px;text-align:center}
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.panel{display:none;padding:20px;overflow-y:auto;flex:1}
+.panel.active{display:flex;flex-direction:column;gap:16px}
+.panel-header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+.panel-title{font-size:18px;font-weight:500;color:var(--color-text-primary)}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.stat-card{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:12px 14px}
+.stat-lbl{font-size:11px;color:var(--color-text-secondary);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+.stat-val{font-size:22px;font-weight:500;color:var(--color-text-primary)}
+.stat-sub{font-size:11px;color:var(--color-text-secondary);margin-top:2px}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);overflow:hidden}
+.card-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.card-title{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--color-background-secondary);padding:8px 12px;text-align:left;font-size:11px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.05em;font-weight:500}
+td{padding:9px 12px;border-bottom:0.5px solid var(--color-border-tertiary);color:var(--color-text-primary);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--color-background-secondary)}
+.thumb{width:36px;height:36px;border-radius:6px;object-fit:cover;background:var(--color-background-secondary)}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500}
+.badge-vinyl{background:#EEEDFE;color:#3C3489}
+.badge-cd{background:#E1F5EE;color:#085041}
+.badge-cassette{background:#FAEEDA;color:#633806}
+.badge-hot{background:#FCEBEB;color:#791F1F}
+.badge-new{background:#EAF3DE;color:#27500A}
+.badge-soon{background:#FAEEDA;color:#633806}
+.badge-delivered{background:#EAF3DE;color:#27500A}
+.badge-processing{background:#FAEEDA;color:#633806}
+.badge-shipped{background:#E6F1FB;color:#0C447C}
+.stock-ok{color:#1D9E75;font-weight:500}
+.stock-low{color:#BA7517;font-weight:500}
+.stock-out{color:#E24B4A;font-weight:500}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input[type=text],input[type=number],input[type=url],select,textarea{font-size:13px;padding:6px 10px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);outline:none}
+input[type=text]:focus,input[type=number]:focus,select:focus,textarea:focus{border-color:#7F77DD;box-shadow:0 0 0 2px #EEEDFE}
+button{font-size:12px;padding:6px 14px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-primary);color:var(--color-text-primary);cursor:pointer;font-family:var(--font-sans)}
+button:hover{background:var(--color-background-secondary)}
+button.primary{background:#534AB7;color:#EEEDFE;border-color:#534AB7}
+button.primary:hover{background:#3C3489;border-color:#3C3489}
+button.danger{background:#FCEBEB;color:#A32D2D;border-color:#F7C1C1}
+button.danger:hover{background:#F7C1C1}
+button.sm{padding:4px 10px;font-size:11px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group.full{grid-column:1/-1}
+.form-label{font-size:11px;font-weight:500;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.04em}
+.form-control{width:100%}
+.actions{display:flex;gap:6px}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);padding:10px 16px;font-size:13px;color:var(--color-text-primary);z-index:100;opacity:0;transition:opacity .3s;pointer-events:none;border-left:3px solid #534AB7}
+.toast.show{opacity:1}
+.modal-wrap{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:50;align-items:center;justify-content:center}
+.modal-wrap.open{display:flex}
+.modal{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);width:480px;max-height:80vh;overflow-y:auto}
+.modal-hdr{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.modal-title{font-size:15px;font-weight:500;color:var(--color-text-primary)}
+.modal-body{padding:18px}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:0.5px solid var(--color-border-tertiary)}
+.chart-bar-wrap{display:flex;flex-direction:column;gap:10px;padding:16px}
+.bar-row{display:grid;grid-template-columns:80px 1fr 40px;align-items:center;gap:10px}
+.bar-lbl{font-size:12px;color:var(--color-text-secondary)}
+.bar-track{height:8px;background:var(--color-background-secondary);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .6s ease}
+.bar-val{font-size:12px;font-weight:500;color:var(--color-text-primary);text-align:right}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.preview-img{width:80px;height:80px;object-fit:cover;border-radius:8px;border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary)}
+.progress-ring{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+</style>
+
+<div class="adm" id="adminApp">
+  <nav class="sidebar">
+    <div class="sidebar-brand">
+      <p>Velorex Music</p>
+      <span>Admin Panel</span>
+    </div>
+    <div class="nav-item active" onclick="showPanel('dashboard',this)"><span class="nav-icon">▦</span>Dashboard</div>
+    <div class="nav-item" onclick="showPanel('products',this)"><span class="nav-icon">♫</span>Products</div>
+    <div class="nav-item" onclick="showPanel('add',this)"><span class="nav-icon">+</span>Add product</div>
+    <div class="nav-item" onclick="showPanel('categories',this)"><span class="nav-icon">◫</span>Categories</div>
+    <div class="nav-item" onclick="showPanel('orders',this)"><span class="nav-icon">◫</span>Orders</div>
+    <div style="margin-top:auto;padding:12px 16px;border-top:0.5px solid var(--color-border-tertiary)">
+      <span style="font-size:11px;color:var(--color-text-secondary)">Logged in as admin</span>
+    </div>
+  </nav>
+
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div class="panel active" id="panel-dashboard">
+      <div class="panel-header">
+        <span class="panel-title">Dashboard</span>
+        <button onclick="refreshDash()">Refresh</button>
+      </div>
+      <div class="stats-grid" id="dash-stats"></div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Category breakdown</span></div>
+          <div class="chart-bar-wrap" id="cat-chart"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Recent products</span></div>
+          <table id="recent-tbl"><tbody></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRODUCTS -->
+    <div class="panel" id="panel-products">
+      <div class="panel-header">
+        <span class="panel-title">Products</span>
+        <div class="toolbar">
+          <input type="text" id="srch" placeholder="Search..." oninput="filterProds()" style="width:160px">
+          <select id="catFilter" onchange="filterProds()">
+            <option value="">All categories</option>
+            <option value="vinyl">Vinyl</option>
+            <option value="cd">CD</option>
+            <option value="cassette">Cassette</option>
+          </select>
+          <button class="primary" onclick="showPanel('add',document.querySelectorAll('.nav-item')[2]);resetForm()">+ Add product</button>
+          <button onclick="resetData()">Reset data</button>
+        </div>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th></th><th>Title</th><th>Category</th><th>Language</th><th>Price</th><th>Stock</th><th>Badge</th><th>Actions</th></tr></thead>
+          <tbody id="prod-tbody"></tbody>
+        </table>
+      </div>
+      <div id="prod-info" style="font-size:11px;color:var(--color-text-secondary)"></div>
+    </div>
+
+    <!-- ADD / EDIT -->
+    <div class="panel" id="panel-add">
+      <div class="panel-header">
+        <span class="panel-title" id="form-title">Add product</span>
+      </div>
+      <div class="card" style="padding:18px">
+        <form id="pForm" onsubmit="submitProduct(event)">
+          <input type="hidden" id="f-id">
+          <div class="form-grid">
+            <div class="form-group full">
+              <label class="form-label">Title *</label>
+              <input class="form-control" type="text" id="f-title" placeholder="Album title" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Artist *</label>
+              <input class="form-control" type="text" id="f-artist" placeholder="Artist name" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Category *</label>
+              <select class="form-control" id="f-cat" required>
+                <option value="">Select...</option>
+                <option value="vinyl">Vinyl</option>
+                <option value="cd">Audio CD</option>
+                <option value="cassette">Cassette</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Language *</label>
+              <select class="form-control" id="f-lang" required>
+                <option value="">Select...</option>
+                <option value="hindi">Hindi</option>
+                <option value="english">English</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Price (₹) *</label>
+              <input class="form-control" type="number" id="f-price" placeholder="1299" min="1" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Original price (₹)</label>
+              <input class="form-control" type="number" id="f-orig" placeholder="Leave blank if no discount">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Stock *</label>
+              <input class="form-control" type="number" id="f-stock" placeholder="10" min="0" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Badge</label>
+              <select class="form-control" id="f-badge">
+                <option value="">None</option>
+                <option value="new">New</option>
+                <option value="hot">Hot</option>
+                <option value="upcoming">Upcoming</option>
+                <option value="sale">Sale</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Rating (0–5)</label>
+              <input class="form-control" type="number" id="f-rating" placeholder="4.5" min="0" max="5" step="0.1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Review count</label>
+              <input class="form-control" type="number" id="f-reviews" placeholder="0">
+            </div>
+            <div class="form-group full">
+              <label class="form-label">Image URL</label>
+              <div style="display:flex;gap:10px;align-items:flex-start">
+                <input class="form-control" type="url" id="f-image" placeholder="https://..." oninput="prevImg(this.value)" style="flex:1">
+                <img id="img-prev" class="preview-img" src="https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=80&h=80&fit=crop" alt="preview">
+              </div>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">Description *</label>
+              <textarea class="form-control" id="f-desc" rows="3" placeholder="Describe the product..." required style="resize:vertical"></textarea>
+            </div>
+            <div class="form-group full" style="border-top:0.5px solid var(--color-border-tertiary);padding-top:12px">
+              <label class="form-label" style="margin-bottom:8px">Specs</label>
+              <div class="form-grid">
+                <div class="form-group"><label class="form-label">Format</label><input class="form-control" type="text" id="f-format" placeholder="12&quot; LP 180g"></div>
+                <div class="form-group"><label class="form-label">Label</label><input class="form-control" type="text" id="f-label" placeholder="T-Series"></div>
+                <div class="form-group"><label class="form-label">Year</label><input class="form-control" type="text" id="f-year" placeholder="2023"></div>
+                <div class="form-group"><label class="form-label">Genre</label><input class="form-control" type="text" id="f-genre" placeholder="Rock, Bollywood..."></div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:16px">
+            <button type="submit" class="primary" id="submit-btn">Save product</button>
+            <button type="button" onclick="resetForm();showPanel('products',document.querySelectorAll('.nav-item')[1])">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- CATEGORIES -->
+    <div class="panel" id="panel-categories">
+      <div class="panel-header">
+        <span class="panel-title">Categories</span>
+      </div>
+      <div class="stats-grid" id="cat-stats"></div>
+      <div class="card" style="padding:18px">
+        <p style="font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:12px">Manage categories</p>
+        <div id="cat-chips" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"></div>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="new-cat" placeholder="New category name..." style="flex:1">
+          <button class="primary" onclick="addCat()">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORDERS -->
+    <div class="panel" id="panel-orders">
+      <div class="panel-header">
+        <span class="panel-title">Orders</span>
+        <div class="toolbar">
+          <select onchange="filterOrders(this.value)">
+            <option value="">All statuses</option>
+            <option value="delivered">Delivered</option>
+            <option value="processing">Processing</option>
+            <option value="shipped">Shipped</option>
+          </select>
+          <button onclick="toast('Exported to CSV')">Export CSV</button>
+        </div>
+      </div>
+      <div class="card">
+        <table>
+          <thead><tr><th>Order ID</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+          <tbody id="orders-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Delete modal -->
+<div class="modal-wrap" id="del-modal">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">Delete product</span>
+      <button onclick="closeModal()" style="border:none;background:none;font-size:16px;cursor:pointer;color:var(--color-text-secondary)">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--color-text-secondary);background:var(--color-background-secondary);padding:10px 12px;border-radius:var(--border-radius-md);border-left:3px solid #E24B4A;margin-bottom:12px">This action cannot be undone.</p>
+      <p style="font-size:13px;color:var(--color-text-primary)">Delete <strong id="del-name"></strong>?</p>
+    </div>
+    <div class="modal-footer">
+      <button onclick="closeModal()">Cancel</button>
+      <button class="danger" id="del-confirm-btn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast-el"></div>
+
+<script>
+const DEFAULT_PRODUCTS = [
+  {id:1,title:"Sholay OST",artist:"R.D. Burman",category:"vinyl",language:"hindi",price:1299,originalPrice:1599,description:"Iconic Sholay soundtrack on vinyl.",image:"https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=80&h=80&fit=crop",rating:4.8,reviews:242,badge:"hot",stock:15,specs:{format:"12\" LP",label:"HMV",year:"1975",genre:"Bollywood"}},
+  {id:2,title:"Kabhi Kabhie",artist:"Lata Mangeshkar",category:"vinyl",language:"hindi",price:999,originalPrice:1299,description:"Lata Mangeshkar's sublime performance.",image:"https://images.unsplash.com/photo-1471478331149-c72f17e33c73?w=80&h=80&fit=crop",rating:4.7,reviews:188,badge:"new",stock:8,specs:{format:"12\" LP",label:"Polydor",year:"1976",genre:"Bollywood"}},
+  {id:3,title:"Dark Side of the Moon",artist:"Pink Floyd",category:"vinyl",language:"english",price:3499,originalPrice:4199,description:"Premium remastered 180g audiophile vinyl.",image:"https://images.unsplash.com/photo-1598387993441-a364f854cffd?w=80&h=80&fit=crop",rating:5.0,reviews:1024,badge:"hot",stock:12,specs:{format:"12\" LP 180g",label:"Harvest/EMI",year:"1973",genre:"Progressive Rock"}},
+  {id:4,title:"Thriller 40th Ann.",artist:"Michael Jackson",category:"vinyl",language:"english",price:2999,originalPrice:3599,description:"40th anniversary edition on premium vinyl.",image:"https://images.unsplash.com/photo-1619983081563-430f63602796?w=80&h=80&fit=crop",rating:4.9,reviews:892,badge:"new",stock:20,specs:{format:"12\" LP 180g",label:"Epic/MJJ",year:"1982",genre:"Pop/R&B"}},
+  {id:5,title:"Rockstar OST",artist:"A.R. Rahman",category:"cd",language:"hindi",price:399,originalPrice:499,description:"A.R. Rahman's soulful Rockstar soundtrack.",image:"https://images.unsplash.com/photo-1552831388-6a0b3575b32a?w=80&h=80&fit=crop",rating:4.9,reviews:678,badge:"hot",stock:50,specs:{format:"Audio CD",label:"T-Series",year:"2011",genre:"Bollywood/Sufi"}},
+  {id:6,title:"25 — Adele",artist:"Adele",category:"cd",language:"english",price:549,originalPrice:699,description:"Adele's Grammy-winning third album.",image:"https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=80&h=80&fit=crop",rating:4.8,reviews:534,badge:null,stock:40,specs:{format:"Audio CD",label:"XL Recordings",year:"2015",genre:"Pop/Soul"}},
+  {id:7,title:"DDLJ Cassette",artist:"Jatin-Lalit",category:"cassette",language:"hindi",price:249,originalPrice:null,description:"Authentic DDLJ cassette reissue.",image:"https://images.unsplash.com/photo-1550399105-c4db5fb85c18?w=80&h=80&fit=crop",rating:4.6,reviews:145,badge:"new",stock:25,specs:{format:"Cassette",label:"Venus",year:"1995",genre:"Bollywood"}},
+  {id:8,title:"Nevermind — Cassette",artist:"Nirvana",category:"cassette",language:"english",price:399,originalPrice:499,description:"Nirvana's landmark album on cassette.",image:"https://images.unsplash.com/photo-1599659863658-5beada90a1ab?w=80&h=80&fit=crop",rating:4.8,reviews:201,badge:"upcoming",stock:0,specs:{format:"Cassette Chrome",label:"DGC",year:"1991",genre:"Grunge"}},
+];
+
+const ORDERS = [
+  {id:'VD-001',customer:'Rahul Sharma',items:3,total:6498,status:'delivered',date:'Apr 20'},
+  {id:'VD-002',customer:'Priya Singh',items:2,total:3697,status:'processing',date:'Apr 15'},
+  {id:'VD-003',customer:'Arjun Kumar',items:1,total:3199,status:'shipped',date:'Apr 12'},
+  {id:'VD-004',customer:'Neha Gupta',items:4,total:5288,status:'delivered',date:'Apr 10'},
+  {id:'VD-005',customer:'Vikram Patel',items:2,total:1997,status:'processing',date:'Apr 8'},
+];
+
+function getProds(){const s=localStorage.getItem('vv_prods');if(!s){localStorage.setItem('vv_prods',JSON.stringify(DEFAULT_PRODUCTS));return DEFAULT_PRODUCTS;}return JSON.parse(s);}
+function saveProds(p){localStorage.setItem('vv_prods',JSON.stringify(p));}
+
+let delId=null;
+
+function showPanel(name,el){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  const panel=document.getElementById('panel-'+name);
+  if(panel)panel.classList.add('active');
+  if(el)el.classList.add('active');
+  if(name==='dashboard')refreshDash();
+  if(name==='products')renderProds();
+  if(name==='categories')renderCats();
+  if(name==='orders')renderOrders(ORDERS);
+}
+
+function refreshDash(){
+  const prods=getProds();
+  const sc=document.getElementById('dash-stats');
+  const totalVal=prods.reduce((s,p)=>s+p.price*p.stock,0);
+  sc.innerHTML=[
+    {lbl:'Total products',val:prods.length,sub:'across all formats'},
+    {lbl:'Vinyl records',val:prods.filter(p=>p.category==='vinyl').length,sub:'in stock'},
+    {lbl:'Inventory value',val:'₹'+Math.round(totalVal/1000)+'K',sub:'estimated'},
+    {lbl:'Out of stock',val:prods.filter(p=>p.stock===0).length,sub:'need restocking'},
+  ].map(s=>`<div class="stat-card"><div class="stat-lbl">${s.lbl}</div><div class="stat-val">${s.val}</div><div class="stat-sub">${s.sub}</div></div>`).join('');
+
+  const cats=[{k:'vinyl',l:'Vinyl'},{k:'cd',l:'Audio CD'},{k:'cassette',l:'Cassette'}];
+  const total=prods.length;
+  const colors=['#7F77DD','#1D9E75','#BA7517'];
+  document.getElementById('cat-chart').innerHTML=cats.map((c,i)=>{
+    const count=prods.filter(p=>p.category===c.k).length;
+    const pct=Math.round(count/total*100);
+    return `<div class="bar-row"><span class="bar-lbl">${c.l}</span><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${colors[i]}"></div></div><span class="bar-val">${count}</span></div>`;
+  }).join('');
+
+  const recent=prods.slice(-4).reverse();
+  document.querySelector('#recent-tbl tbody').innerHTML=recent.map(p=>`
+    <tr>
+      <td><img class="thumb" src="${p.image}" onerror="this.style.background='var(--color-background-secondary)'"></td>
+      <td style="font-weight:500">${p.title}</td>
+      <td><span class="badge badge-${p.category}">${p.category}</span></td>
+      <td>₹${p.price.toLocaleString()}</td>
+    </tr>`).join('');
+}
+
+function renderProds(list){
+  list=list||getProds();
+  const tbody=document.getElementById('prod-tbody');
+  tbody.innerHTML=list.map(p=>`
+    <tr>
+      <td><img class="thumb" src="${p.image}" onerror="this.style.background='var(--color-background-secondary)'"></td>
+      <td><div style="font-weight:500;font-size:12px">${p.title}</div><div style="font-size:11px;color:var(--color-text-secondary)">${p.artist}</div></td>
+      <td><span class="badge badge-${p.category}">${p.category}</span></td>
+      <td>${p.language==='hindi'?'Hindi':'English'}</td>
+      <td>₹${p.price.toLocaleString()}</td>
+      <td class="${p.stock===0?'stock-out':p.stock<=5?'stock-low':'stock-ok'}">${p.stock===0?'Out of stock':p.stock}</td>
+      <td>${p.badge?`<span class="badge badge-${p.badge==='hot'?'hot':p.badge==='new'?'new':'soon'}">${p.badge}</span>`:'-'}</td>
+      <td><div class="actions">
+        <button class="sm" onclick="editProd(${p.id})">Edit</button>
+        <button class="sm danger" onclick="confirmDel(${p.id},'${p.title.replace(/'/g,"\\'")}')">Delete</button>
+      </div></td>
+    </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--color-text-secondary)">No products found</td></tr>';
+  document.getElementById('prod-info').textContent=`Showing ${list.length} of ${getProds().length} products`;
+}
+
+function filterProds(){
+  const q=(document.getElementById('srch').value||'').toLowerCase();
+  const cat=document.getElementById('catFilter').value;
+  let p=getProds();
+  if(q)p=p.filter(x=>x.title.toLowerCase().includes(q)||x.artist.toLowerCase().includes(q));
+  if(cat)p=p.filter(x=>x.category===cat);
+  renderProds(p);
+}
+
+function editProd(id){
+  const p=getProds().find(x=>x.id===id);
+  if(!p)return;
+  document.getElementById('f-id').value=id;
+  document.getElementById('f-title').value=p.title;
+  document.getElementById('f-artist').value=p.artist;
+  document.getElementById('f-cat').value=p.category;
+  document.getElementById('f-lang').value=p.language;
+  document.getElementById('f-price').value=p.price;
+  document.getElementById('f-orig').value=p.originalPrice||'';
+  document.getElementById('f-stock').value=p.stock;
+  document.getElementById('f-badge').value=p.badge||'';
+  document.getElementById('f-rating').value=p.rating;
+  document.getElementById('f-reviews').value=p.reviews;
+  document.getElementById('f-image').value=p.image;
+  document.getElementById('f-desc').value=p.description;
+  document.getElementById('img-prev').src=p.image;
+  if(p.specs){
+    ['format','label','year','genre'].forEach(k=>{const el=document.getElementById('f-'+k);if(el)el.value=p.specs[k]||'';});
+  }
+  document.getElementById('form-title').textContent='Edit product';
+  document.getElementById('submit-btn').textContent='Update product';
+  showPanel('add',document.querySelectorAll('.nav-item')[2]);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function submitProduct(e){
+  e.preventDefault();
+  const prods=getProds();
+  const editId=parseInt(document.getElementById('f-id').value);
+  const isEdit=!isNaN(editId)&&editId>0;
+  const specs={};
+  ['format','label','year','genre'].forEach(k=>{const v=(document.getElementById('f-'+k)||{}).value;if(v)specs[k]=v;});
+  const data={
+    title:document.getElementById('f-title').value.trim(),
+    artist:document.getElementById('f-artist').value.trim(),
+    category:document.getElementById('f-cat').value,
+    language:document.getElementById('f-lang').value,
+    price:parseInt(document.getElementById('f-price').value),
+    originalPrice:document.getElementById('f-orig').value?parseInt(document.getElementById('f-orig').value):null,
+    stock:parseInt(document.getElementById('f-stock').value),
+    badge:document.getElementById('f-badge').value||null,
+    rating:parseFloat(document.getElementById('f-rating').value)||4.0,
+    reviews:parseInt(document.getElementById('f-reviews').value)||0,
+    image:document.getElementById('f-image').value||'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=80&h=80&fit=crop',
+    description:document.getElementById('f-desc').value.trim(),
+    specs:Object.keys(specs).length?specs:{}
+  };
+  if(isEdit){
+    const idx=prods.findIndex(p=>p.id===editId);
+    if(idx!==-1)prods[idx]=Object.assign({},prods[idx],data);
+    toast('"'+data.title+'" updated');
+  } else {
+    const newId=Math.max(...prods.map(p=>p.id),0)+1;
+    prods.push(Object.assign({id:newId},data));
+    toast('"'+data.title+'" added');
+  }
+  saveProds(prods);
+  resetForm();
+  showPanel('products',document.querySelectorAll('.nav-item')[1]);
+}
+
+function resetForm(){
+  document.getElementById('pForm').reset();
+  document.getElementById('f-id').value='';
+  document.getElementById('form-title').textContent='Add product';
+  document.getElementById('submit-btn').textContent='Save product';
+  document.getElementById('img-prev').src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=80&h=80&fit=crop';
+}
+
+function prevImg(url){const p=document.getElementById('img-prev');if(p&&url)p.src=url;}
+
+function confirmDel(id,name){
+  delId=id;
+  document.getElementById('del-name').textContent='"'+name+'"';
+  document.getElementById('del-modal').classList.add('open');
+}
+function closeModal(){document.getElementById('del-modal').classList.remove('open');delId=null;}
+document.getElementById('del-confirm-btn').onclick=function(){
+  if(!delId)return;
+  const prods=getProds().filter(p=>p.id!==delId);
+  saveProds(prods);
+  toast('Product deleted');
+  closeModal();
+  renderProds();
+  refreshDash();
+};
+document.getElementById('del-modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+
+function renderCats(){
+  const prods=getProds();
+  const cats=[{k:'vinyl',l:'Vinyl records',icon:'♫',color:'#EEEDFE',tc:'#3C3489'},{k:'cd',l:'Audio CDs',icon:'◎',color:'#E1F5EE',tc:'#085041'},{k:'cassette',l:'Cassettes',icon:'▣',color:'#FAEEDA',tc:'#633806'}];
+  document.getElementById('cat-stats').innerHTML=cats.map(c=>{
+    const cp=prods.filter(p=>p.category===c.k);
+    const stock=cp.reduce((s,p)=>s+p.stock,0);
+    return `<div class="stat-card"><div class="stat-lbl">${c.l}</div><div class="stat-val">${cp.length}</div><div class="stat-sub">${stock} units in stock</div></div>`;
+  }).join('');
+  document.getElementById('cat-chips').innerHTML=cats.map(c=>`
+    <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);color:var(--color-text-primary)">
+      ${c.icon} ${c.l}
+      <span style="font-size:10px;color:var(--color-text-secondary);cursor:pointer" onclick="toast('Cannot remove default categories')">×</span>
+    </span>`).join('');
+}
+
+function addCat(){
+  const inp=document.getElementById('new-cat');
+  const val=(inp.value||'').trim();
+  if(!val)return;
+  const chips=document.getElementById('cat-chips');
+  const span=document.createElement('span');
+  span.style.cssText='display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:500;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);color:var(--color-text-primary)';
+  span.innerHTML=`◫ ${val} <span style="font-size:10px;color:var(--color-text-secondary);cursor:pointer" onclick="this.parentElement.remove()">×</span>`;
+  chips.appendChild(span);
+  inp.value='';
+  toast('"'+val+'" category added');
+}
+
+function renderOrders(list){
+  document.getElementById('orders-tbody').innerHTML=list.map(o=>`
+    <tr>
+      <td style="font-weight:500">${o.id}</td>
+      <td>${o.customer}</td>
+      <td>${o.items} items</td>
+      <td style="font-weight:500">₹${o.total.toLocaleString()}</td>
+      <td><span class="badge badge-${o.status}">${o.status}</span></td>
+      <td style="color:var(--color-text-secondary)">${o.date}</td>
+      <td><div class="actions">
+        <button class="sm" onclick="toast('Order ${o.id} details')">View</button>
+        <button class="sm" onclick="toast('Invoice for ${o.id} sent')">Invoice</button>
+      </div></td>
+    </tr>`).join('');
+}
+
+function filterOrders(status){
+  const list=status?ORDERS.filter(o=>o.status===status):ORDERS;
+  renderOrders(list);
+}
+
+function resetData(){
+  if(confirm('Reset all products to defaults?')){
+    saveProds(DEFAULT_PRODUCTS);
+    renderProds();
+    refreshDash();
+    toast('Data reset to defaults');
+  }
+}
+
+let toastTimer;
+function toast(msg){
+  const el=document.getElementById('toast-el');
+  el.textContent=msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),2800);
+}
+
+refreshDash();
+renderOrders(ORDERS);
+</script>

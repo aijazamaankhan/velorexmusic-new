@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "node",
+      "args": ["playwright-mcp-server.js"],
+      "env": {
+        "NODE_OPTIONS": "--no-warnings"
+      }
+    }
+  }
+}

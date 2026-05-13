@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data:; font-src 'self' https: data:;">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Shipping Policy | Velorex Music</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1a0a2e; --secondary: #ff6b35; --accent: #ffd700; --bg: #0d0d0d; --surface: #1a1a2e; --text: #f0eaf8; --text-muted: #9890b0; --border: #2e2e5e;
+      --font-display: 'Playfair Display', serif; --font-body: 'DM Sans', sans-serif; --radius: 12px;
+      --orange-gradient: linear-gradient(135deg, #ff6b35, #ff3a00); --gold-gradient: linear-gradient(135deg, #ffd700, #ff8c00);
+    }
+    :root[data-theme="light"] {
+      --primary: #ffffff; --bg: #f8fafc; --surface: #ffffff; --text: #0f172a; --text-muted: #64748b; --border: #e2e8f0;
+    }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-body); line-height: 1.6; margin: 0; }
+    .container { max-width: 900px; margin: 0 auto; padding: 4rem 2rem; }
+    .glass-card { background: rgba(26, 26, 46, 0.6); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: var(--radius); padding: 3rem; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+    [data-theme="light"] .glass-card { background: rgba(255, 255, 255, 0.8); }
+    h1 { font-family: var(--font-display); font-size: 3rem; margin-bottom: 2rem; background: var(--gold-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    h2 { color: var(--secondary); margin-top: 2rem; font-size: 1.5rem; }
+    p { margin-bottom: 1rem; color: var(--text-muted); }
+    .navbar { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: rgba(13, 13, 13, 0.95); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+    body { padding-top: 80px; }
+    [data-theme="light"] .navbar { background: rgba(255, 255, 255, 0.95); }
+    .brand { display: flex; align-items: center; gap: 1rem; text-decoration: none; }
+    .logo-icon { width: 32px; height: 32px; background: var(--orange-gradient); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+    .brand-name { font-family: var(--font-display); font-weight: 900; font-size: 1.25rem; color: var(--text); }
+    .btn { display: inline-block; padding: 0.75rem 1.5rem; background: var(--secondary); color: white; border-radius: 8px; text-decoration: none; transition: 0.3s; }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255,107,53,0.4); }
+  </style>
+  <script>
+    document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
+  </script>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="index.html" class="brand">
+      <div class="logo-icon"><i class="fas fa-music"></i></div>
+      <span class="brand-name">Velorex Music</span>
+    </a>
+    <a href="index.html" class="btn">Back to Shop</a>
+  </nav>
+
+  <div class="container">
+    <div class="glass-card">
+      <h1>Shipping Policy</h1>
+      <p>At Velorex Music, we take pride in delivering your musical treasures safely and swiftly. Every order is packed with extreme care to ensure that your vinyl records and CDs arrive in pristine condition.</p>
+      
+      <h2>Domestic Shipping (India)</h2>
+      <p>We offer free standard shipping on all orders above ₹999. For orders below this amount, a flat shipping fee of ₹99 applies.</p>
+      <p>Typical delivery times:
+        <br>• Metro Cities: 3-5 business days
+        <br>• Other Cities: 5-8 business days
+        <br>• Remote Locations: 10-12 business days
+      </p>
+
+      <h2>International Shipping</h2>
+      <p>We ship worldwide! International shipping rates are calculated at checkout based on weight and destination. Delivery typically takes 10-20 business days depending on customs clearance.</p>
+
+      <h2>Handling & Packaging</h2>
+      <p>Orders are processed within 24-48 hours. Vinyl records are shipped in specialized high-grade cardboard mailers with extra padding to prevent corner dings and seam splits.</p>
+
+      <h2>Tracking Your Order</h2>
+      <p>Once your order is dispatched, you will receive a tracking number via email and SMS. You can also track your order directly on our <a href="track-order.html" style="color:var(--secondary);">Track Order</a> page.</p>
+    </div>
+  </div>
+</body>
+</html>
