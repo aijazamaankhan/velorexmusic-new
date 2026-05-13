@@ -1818,22 +1818,110 @@
     // =============================================
     // DATA LAYER
     // =============================================
+    const API_BASE = '/api';
+
+    function adminAuthHeaders() {
+      return {
+        'Content-Type': 'application/json',
+        'X-Admin-Pass': sessionStorage.getItem('admin_pass') || '',
+      };
+    }
+
     const Storage = {
+      async syncFromServer() {
+        try {
+          const [pRes, cRes] = await Promise.all([
+            fetch(API_BASE + '/products.php', { cache: 'no-store' }),
+            fetch(API_BASE + '/categories.php', { cache: 'no-store' }),
+          ]);
+
+          let serverProducts = null;
+          if (pRes.ok) {
+            const parsed = await pRes.json();
+            if (Array.isArray(parsed)) serverProducts = parsed;
+          }
+
+          if (serverProducts !== null) {
+            const localRaw = localStorage.getItem('vv_products');
+            const local = localRaw ? JSON.parse(localRaw) : [];
+            // First-time migration: server empty + local has data → push local up
+            if (serverProducts.length === 0 && Array.isArray(local) && local.length > 0) {
+              try {
+                await Storage._postProducts(local);
+                console.log('[Storage] Migrated', local.length, 'products from localStorage to server');
+              } catch (e) {
+                console.error('[Storage] Migration failed:', e);
+              }
+            } else {
+              localStorage.setItem('vv_products', JSON.stringify(serverProducts));
+            }
+          }
+
+          if (cRes.ok) {
+            const cats = await cRes.json();
+            if (Array.isArray(cats) && cats.length > 0) {
+              localStorage.setItem('vv_categories', JSON.stringify(cats));
+            }
+          }
+
+          // Orders (admin only)
+          if (sessionStorage.getItem('admin_pass')) {
+            const oRes = await fetch(API_BASE + '/orders.php', {
+              cache: 'no-store',
+              headers: { 'X-Admin-Pass': sessionStorage.getItem('admin_pass') },
+            });
+            if (oRes.ok) {
+              const orders = await oRes.json();
+              if (Array.isArray(orders)) {
+                localStorage.setItem('vv_orders', JSON.stringify(orders));
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[Storage] syncFromServer failed; using cached data:', e.message);
+        }
+      },
+
+      async _postProducts(products) {
+        const res = await fetch(API_BASE + '/products.php', {
+          method: 'POST',
+          headers: adminAuthHeaders(),
+          body: JSON.stringify({ products }),
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error('HTTP ' + res.status + ': ' + txt);
+        }
+        return res.json();
+      },
+
       getProducts() {
         const stored = localStorage.getItem('vv_products');
         return stored ? JSON.parse(stored) : [];
       },
+
       saveProducts(products) {
         localStorage.setItem('vv_products', JSON.stringify(products));
+        Storage._postProducts(products).catch(e => {
+          console.error('[Storage] Product sync failed:', e);
+          if (typeof showToast === 'function') {
+            showToast('⚠️ Server sync failed. Changes saved locally only: ' + e.message, 'danger');
+          }
+        });
       },
+
       getOrders() {
         const stored = localStorage.getItem('vv_orders');
         const orders = stored ? JSON.parse(stored) : [];
         return Array.isArray(orders) ? orders : [];
       },
+
+      // Note: order status changes save locally only. Customer-created orders persist via /api/orders.php POST.
+      // A future PATCH endpoint can sync status changes if needed.
       saveOrders(orders) {
         localStorage.setItem('vv_orders', JSON.stringify(Array.isArray(orders) ? orders : []));
       },
+
       getCategories() {
         const stored = localStorage.getItem('vv_categories');
         const defaults = ['vinyl', 'cd', 'cassette', 'bluray', 'dvd'];
@@ -1841,9 +1929,23 @@
         if (!Array.isArray(categories) || !categories.length) return defaults;
         return categories;
       },
+
       saveCategories(categories) {
         localStorage.setItem('vv_categories', JSON.stringify(categories));
-      }
+        fetch(API_BASE + '/categories.php', {
+          method: 'POST',
+          headers: adminAuthHeaders(),
+          body: JSON.stringify({ categories }),
+        }).then(r => {
+          if (!r.ok && typeof showToast === 'function') {
+            showToast('⚠️ Categories sync failed: HTTP ' + r.status, 'danger');
+          }
+        }).catch(e => {
+          if (typeof showToast === 'function') {
+            showToast('⚠️ Categories sync failed: ' + e.message, 'danger');
+          }
+        });
+      },
     };
 
     // =============================================
@@ -1924,7 +2026,7 @@
       }
     }
 
-    function showAdminLayout() {
+    async function showAdminLayout() {
       const loginScreen = document.getElementById('login-screen');
       const adminLayout = document.getElementById('admin-layout');
 
@@ -1933,10 +2035,12 @@
         return;
       }
 
-      // No animation/timeouts: make login deterministic
       loginScreen.style.opacity = '0';
       loginScreen.style.display = 'none';
       adminLayout.style.display = 'grid';
+
+      // Pull latest data from server before rendering anything
+      await Storage.syncFromServer();
 
       try {
         initDashboard();
@@ -1956,7 +2060,7 @@
       if (user.toLowerCase() === 'owner' && pass === 'owner123') {
         console.log('[DEBUG] Login credentials valid');
         sessionStorage.setItem('admin_auth', 'true');
-        console.log('[DEBUG] sessionStorage set');
+        sessionStorage.setItem('admin_pass', pass);
         showToast('✅ Session initialized', 'success');
         showAdminLayout();
       } else {
@@ -1967,6 +2071,7 @@
 
     function handleLogout() {
       sessionStorage.removeItem('admin_auth');
+      sessionStorage.removeItem('admin_pass');
       window.location.reload();
     }
 

@@ -1236,7 +1236,20 @@
     };
 
     // ---- Storage Helpers ----
+    const API_BASE = '/api';
     const Storage = {
+      async syncFromServer() {
+        try {
+          const res = await fetch(API_BASE + '/products.php', { cache: 'no-store' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const products = await res.json();
+          if (Array.isArray(products) && products.length > 0) {
+            localStorage.setItem('vv_products', JSON.stringify(products));
+          }
+        } catch (e) {
+          console.warn('Storage.syncFromServer failed; using cached/default products:', e.message);
+        }
+      },
       getProducts() {
         const stored = localStorage.getItem('vv_products');
         if (!stored) { localStorage.setItem('vv_products', JSON.stringify(DEFAULT_PRODUCTS)); return DEFAULT_PRODUCTS; }
@@ -1250,7 +1263,16 @@
       },
       saveProducts(products) { localStorage.setItem('vv_products', JSON.stringify(products)); },
       getOrders() { const s = localStorage.getItem('vv_orders'); return s ? JSON.parse(s) : []; },
-      saveOrder(order) { const o = this.getOrders(); o.unshift(order); localStorage.setItem('vv_orders', JSON.stringify(o)); },
+      saveOrder(order) {
+        const o = this.getOrders();
+        o.unshift(order);
+        localStorage.setItem('vv_orders', JSON.stringify(o));
+        fetch(API_BASE + '/orders.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(order),
+        }).catch(e => console.warn('Order server sync failed:', e.message));
+      },
       getCart() { const s = localStorage.getItem('vv_cart'); return s ? JSON.parse(s) : []; },
       saveCart(cart) { localStorage.setItem('vv_cart', JSON.stringify(cart)); CartHelpers.updateBadge(); },
       resetProducts() { localStorage.setItem('vv_products', JSON.stringify(DEFAULT_PRODUCTS)); return DEFAULT_PRODUCTS; }
@@ -2060,7 +2082,8 @@
     // =============================================
     // INIT APP
     // =============================================
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', async function() {
+      await Storage.syncFromServer();
       injectNavbar('home');
       injectFooter();
 
