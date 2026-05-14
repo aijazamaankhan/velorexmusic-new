@@ -170,6 +170,28 @@ CREATE TABLE user_sessions (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Saved shipping addresses. Hard delete; orders snapshot a frozen copy into orders.order_data.
+CREATE TABLE addresses (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  label VARCHAR(50),                    -- optional free-text ("Home", "Office", ...)
+  full_name VARCHAR(150) NOT NULL,
+  phone VARCHAR(30) NOT NULL,           -- includes country code, loose validation
+  line1 VARCHAR(255) NOT NULL,
+  line2 VARCHAR(255),
+  landmark VARCHAR(150),                -- India-only field in the UI
+  city VARCHAR(100) NOT NULL,
+  state VARCHAR(100),                   -- required by the API for IN/US/CA/AU
+  postal_code VARCHAR(20),              -- required by the API for major shipping countries
+  country_code CHAR(2) NOT NULL,        -- ISO-3166-1 alpha-2
+  gstin VARCHAR(20),                    -- India B2B only, optional
+  is_default TINYINT(1) NOT NULL DEFAULT 0,  -- exactly one row per user has this set (enforced in PHP)
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_user (user_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 INSERT INTO categories (name, sort_order) VALUES
   ('vinyl', 1), ('cd', 2), ('cassette', 3), ('bluray', 4), ('dvd', 5);
 ```
@@ -202,7 +224,10 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 | POST | `/api/auth/update-profile.php` | `{ firstName?, lastName?, email?, phone?, dateOfBirth?, musicPreferences? }` | `{ ok, user }` |
 | POST | `/api/auth/change-password.php` | `{ currentPassword, newPassword }` | `{ ok }` (invalidates all OTHER sessions for this user) |
 | GET | `/api/orders.php` | — | `Order[]` (caller's orders) |
-| POST | `/api/orders.php` | `{ id, items[], total, ... }` | `{ ok }` |
+| POST | `/api/orders.php` | `{ id, items[], total, shippingAddress, ... }` | `{ ok }` — `shippingAddress` is stored verbatim inside `order_data` as the historical snapshot |
+| GET | `/api/addresses.php` | — | `Address[]` (caller's saved addresses, default first) |
+| POST | `/api/addresses.php` | `{ id?, fullName, phone, line1, line2?, landmark?, city, state?, postalCode?, countryCode, label?, gstin?, isDefault? }` | `{ ok, address }` — `id` present = update, absent = create. Max 10 per user. |
+| DELETE | `/api/addresses.php?id=N` | — | `{ ok }` — hard delete; promotes the next address to default if needed |
 
 ### Admin-authenticated endpoints (require `X-Admin-Pass: <ADMIN_PASS>`)
 
@@ -523,6 +548,31 @@ ALTER TABLE products MODIFY image LONGTEXT;
 ALTER TABLE products ADD COLUMN images LONGTEXT NULL AFTER image;
 ```
 
+**Pending migration — addresses table** (run once on Hostinger to enable the saved-addresses feature and the checkout shipping-address picker):
+
+```sql
+CREATE TABLE addresses (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  label VARCHAR(50),
+  full_name VARCHAR(150) NOT NULL,
+  phone VARCHAR(30) NOT NULL,
+  line1 VARCHAR(255) NOT NULL,
+  line2 VARCHAR(255),
+  landmark VARCHAR(150),
+  city VARCHAR(100) NOT NULL,
+  state VARCHAR(100),
+  postal_code VARCHAR(20),
+  country_code CHAR(2) NOT NULL,
+  gstin VARCHAR(20),
+  is_default TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_user (user_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+```
+
 ### Verifying a deploy
 
 After every deploy:
@@ -628,7 +678,7 @@ See `PLAYWRIGHT_MCP_README.md` for the optional MCP server setup if you want bro
 |---|---|---|
 | Forgot password (email-based) | Deferred | Currently shows a "contact support" page; admin manually resets via the Customers panel. Implementing email reset requires SMTP creds on Hostinger and PHPMailer. |
 | Email verification on signup | Skipped | Users can log in immediately after signup. Same SMTP dependency as above. |
-| Address book CRUD | Stub UI | The "Addresses" tab in profile shows a placeholder. Would need an `addresses` table and CRUD endpoints. |
+| Address book CRUD | ✅ Shipped | India + international, multi-address per user, default flag, per-country state/postal rules. UI: profile tab + checkout picker. API: `api/addresses.php`. Orders snapshot `shippingAddress` into `orders.order_data` at place-order time. |
 | Wishlist persistence | Stub | The Wishlist tab in profile shows the first 3 products as filler. Would need a `wishlist` table or per-user JSON. |
 | Order status updates | Local-only | Admin can change an order's status in the UI but it only updates localStorage on the admin's browser. Needs a PATCH endpoint on `orders.php`. |
 | Razorpay live key | Test mode | Replace `rzp_test_TYeNqBfWpLdfxQ` with the live key when ready to accept real payments. |

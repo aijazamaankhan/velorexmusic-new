@@ -917,7 +917,7 @@
               <div id="tab-addresses" class="profile-tab" style="display:none;">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
                   <h2 style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;">📍 Saved Addresses</h2>
-                  <button class="btn btn-primary btn-sm" onclick="showToast('Address form coming soon!','info')">+ Add Address</button>
+                  <button class="btn btn-primary btn-sm" onclick="openAddressModal()">+ Add Address</button>
                 </div>
                 <div id="addresses-list" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;"></div>
               </div>
@@ -1034,6 +1034,13 @@
         </div>
         <div class="payment-body">
           <div class="payment-amount" id="payment-amount-display">₹0.00</div>
+
+          <p style="font-size:0.8rem;font-weight:600;margin-bottom:0.5rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">Shipping Address</p>
+          <div id="checkout-address-section" style="margin-bottom:1.25rem;padding:0.75rem;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,0.02);">
+            <div id="checkout-address-summary" style="font-size:0.85rem;line-height:1.5;color:var(--text-muted);">Loading addresses…</div>
+            <div id="checkout-address-picker" style="display:none;margin-top:0.75rem;border-top:1px dashed var(--border);padding-top:0.75rem;"></div>
+          </div>
+
           <p style="font-size:0.8rem;font-weight:600;margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">Select Payment Method</p>
           <div class="payment-methods">
             <div class="method-btn active" onclick="selectPaymentMethod(this, 'card')"><i class="fas fa-credit-card"></i><span>Card</span></div>
@@ -1075,6 +1082,79 @@
         <button class="btn btn-secondary" onclick="closeConfirmDialog()">Cancel</button>
         <button class="btn btn-danger" id="confirmModalConfirmBtn">Confirm</button>
       </div>
+    </div>
+  </div>
+
+  <div id="addressModal" class="modal-overlay">
+    <div class="modal" style="max-width:720px;">
+      <div class="modal-header">
+        <h2 class="modal-title" id="addressModalTitle">Add Address</h2>
+        <div class="modal-close" onclick="closeAddressModal()">✕</div>
+      </div>
+      <form id="addressForm" onsubmit="submitAddressForm(event)" novalidate>
+        <input type="hidden" id="addr-id" value="">
+        <input type="hidden" id="addr-context" value="profile">
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label class="form-label">Country *</label>
+              <select id="addr-country" class="form-control" required onchange="updateAddressFormForCountry()"></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Full Name *</label>
+              <input id="addr-fullName" class="form-control" type="text" required maxlength="150" autocomplete="name">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone *</label>
+              <input id="addr-phone" class="form-control" type="tel" required maxlength="30" placeholder="+91 98765 43210" autocomplete="tel">
+            </div>
+            <div class="form-group full-width">
+              <label class="form-label">Address Line 1 *</label>
+              <input id="addr-line1" class="form-control" type="text" required maxlength="255" placeholder="House / Flat / Building, Street" autocomplete="address-line1">
+            </div>
+            <div class="form-group full-width">
+              <label class="form-label">Address Line 2</label>
+              <input id="addr-line2" class="form-control" type="text" maxlength="255" placeholder="Apartment, suite, unit (optional)" autocomplete="address-line2">
+            </div>
+            <div class="form-group full-width" id="addr-landmark-group">
+              <label class="form-label">Landmark</label>
+              <input id="addr-landmark" class="form-control" type="text" maxlength="150" placeholder="e.g. Near Apollo Hospital (optional)">
+            </div>
+            <div class="form-group">
+              <label class="form-label">City *</label>
+              <input id="addr-city" class="form-control" type="text" required maxlength="100" autocomplete="address-level2">
+            </div>
+            <div class="form-group" id="addr-state-group">
+              <label class="form-label" id="addr-state-label">State / Region *</label>
+              <select id="addr-state-select" class="form-control" style="display:none;"></select>
+              <input id="addr-state-input" class="form-control" type="text" maxlength="100" autocomplete="address-level1">
+            </div>
+            <div class="form-group">
+              <label class="form-label" id="addr-postal-label">Postal Code *</label>
+              <input id="addr-postal" class="form-control" type="text" maxlength="20" autocomplete="postal-code">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Label (optional)</label>
+              <input id="addr-label" class="form-control" type="text" maxlength="50" placeholder="Home, Office, …">
+            </div>
+            <div class="form-group full-width" id="addr-gstin-group" style="display:none;">
+              <label class="form-label">GSTIN (optional, India B2B)</label>
+              <input id="addr-gstin" class="form-control" type="text" maxlength="20" placeholder="22AAAAA0000A1Z5" style="text-transform:uppercase;">
+            </div>
+            <div class="form-group full-width">
+              <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.9rem;">
+                <input id="addr-default" type="checkbox" style="width:18px;height:18px;cursor:pointer;">
+                <span>Set as default shipping address</span>
+              </label>
+            </div>
+          </div>
+          <div id="addressFormError" style="display:none;margin-top:1rem;padding:0.75rem;background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);border-radius:8px;color:var(--danger);font-size:0.85rem;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeAddressModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="addressSubmitBtn">Save Address</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -1312,6 +1392,98 @@
         if (!res.ok) return [];
         const data = await res.json();
         return Array.isArray(data) ? data : [];
+      },
+    };
+
+    // ISO-3166-1 alpha-2 list of common shipping destinations.
+    // India is intentionally first so it's the default selection for the storefront.
+    const COUNTRIES = [
+      ['IN', 'India'], ['US', 'United States'], ['GB', 'United Kingdom'], ['CA', 'Canada'],
+      ['AU', 'Australia'], ['AE', 'United Arab Emirates'], ['SG', 'Singapore'], ['DE', 'Germany'],
+      ['FR', 'France'], ['IT', 'Italy'], ['ES', 'Spain'], ['NL', 'Netherlands'], ['BE', 'Belgium'],
+      ['CH', 'Switzerland'], ['AT', 'Austria'], ['IE', 'Ireland'], ['SE', 'Sweden'], ['NO', 'Norway'],
+      ['DK', 'Denmark'], ['FI', 'Finland'], ['PL', 'Poland'], ['PT', 'Portugal'], ['GR', 'Greece'],
+      ['CZ', 'Czechia'], ['HU', 'Hungary'], ['RO', 'Romania'], ['NZ', 'New Zealand'],
+      ['JP', 'Japan'], ['KR', 'South Korea'], ['HK', 'Hong Kong'], ['TW', 'Taiwan'], ['MY', 'Malaysia'],
+      ['TH', 'Thailand'], ['VN', 'Vietnam'], ['ID', 'Indonesia'], ['PH', 'Philippines'],
+      ['BD', 'Bangladesh'], ['LK', 'Sri Lanka'], ['NP', 'Nepal'], ['BT', 'Bhutan'], ['MV', 'Maldives'],
+      ['PK', 'Pakistan'], ['SA', 'Saudi Arabia'], ['QA', 'Qatar'], ['KW', 'Kuwait'], ['OM', 'Oman'],
+      ['BH', 'Bahrain'], ['IL', 'Israel'], ['TR', 'Turkey'], ['EG', 'Egypt'], ['ZA', 'South Africa'],
+      ['KE', 'Kenya'], ['NG', 'Nigeria'], ['MA', 'Morocco'], ['BR', 'Brazil'], ['MX', 'Mexico'],
+      ['AR', 'Argentina'], ['CL', 'Chile'], ['CO', 'Colombia'], ['PE', 'Peru'], ['RU', 'Russia'],
+      ['UA', 'Ukraine'], ['CN', 'China'],
+    ];
+
+    // 28 states + 8 UTs.
+    const IN_STATES = [
+      'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat',
+      'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh',
+      'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan',
+      'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+      'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu',
+      'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry',
+    ];
+
+    const US_STATES = [
+      ['AL', 'Alabama'], ['AK', 'Alaska'], ['AZ', 'Arizona'], ['AR', 'Arkansas'], ['CA', 'California'],
+      ['CO', 'Colorado'], ['CT', 'Connecticut'], ['DE', 'Delaware'], ['DC', 'District of Columbia'],
+      ['FL', 'Florida'], ['GA', 'Georgia'], ['HI', 'Hawaii'], ['ID', 'Idaho'], ['IL', 'Illinois'],
+      ['IN', 'Indiana'], ['IA', 'Iowa'], ['KS', 'Kansas'], ['KY', 'Kentucky'], ['LA', 'Louisiana'],
+      ['ME', 'Maine'], ['MD', 'Maryland'], ['MA', 'Massachusetts'], ['MI', 'Michigan'],
+      ['MN', 'Minnesota'], ['MS', 'Mississippi'], ['MO', 'Missouri'], ['MT', 'Montana'],
+      ['NE', 'Nebraska'], ['NV', 'Nevada'], ['NH', 'New Hampshire'], ['NJ', 'New Jersey'],
+      ['NM', 'New Mexico'], ['NY', 'New York'], ['NC', 'North Carolina'], ['ND', 'North Dakota'],
+      ['OH', 'Ohio'], ['OK', 'Oklahoma'], ['OR', 'Oregon'], ['PA', 'Pennsylvania'],
+      ['RI', 'Rhode Island'], ['SC', 'South Carolina'], ['SD', 'South Dakota'], ['TN', 'Tennessee'],
+      ['TX', 'Texas'], ['UT', 'Utah'], ['VT', 'Vermont'], ['VA', 'Virginia'], ['WA', 'Washington'],
+      ['WV', 'West Virginia'], ['WI', 'Wisconsin'], ['WY', 'Wyoming'],
+    ];
+
+    // Which countries require a state/region (not optional in the form).
+    const STATE_REQUIRED = new Set(['IN', 'US', 'CA', 'AU']);
+    // Postal codes are required in these countries; for everything else they're optional.
+    const POSTAL_REQUIRED = new Set(['IN', 'US', 'CA', 'GB', 'AU', 'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'CH', 'AT', 'JP', 'KR', 'SG', 'PT', 'CZ', 'PL']);
+
+    const Addresses = {
+      _cached: null,
+      async fetchAll(force = false) {
+        if (!Auth.isLoggedIn()) return [];
+        if (!force && this._cached) return this._cached;
+        const res = await fetch(API_BASE + '/addresses.php', { headers: Auth.headers(), cache: 'no-store' });
+        if (!res.ok) return [];
+        const data = await res.json();
+        this._cached = Array.isArray(data) ? data : [];
+        return this._cached;
+      },
+      async save(payload) {
+        const res = await fetch(API_BASE + '/addresses.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...Auth.headers() },
+          body: JSON.stringify(payload),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || 'Save failed');
+        this._cached = null;
+        return json.address;
+      },
+      async remove(id) {
+        const res = await fetch(API_BASE + '/addresses.php?id=' + encodeURIComponent(id), {
+          method: 'DELETE',
+          headers: Auth.headers(),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || 'Delete failed');
+        this._cached = null;
+        return true;
+      },
+      invalidate() { this._cached = null; },
+      formatOneLine(a) {
+        const parts = [a.line1, a.line2, a.landmark, a.city, a.state, a.postalCode, this.countryName(a.countryCode)].filter(Boolean);
+        return parts.join(', ');
+      },
+      countryName(code) {
+        const c = COUNTRIES.find(x => x[0] === code);
+        return c ? c[1] : code;
       },
     };
 
@@ -2094,10 +2266,17 @@
       var valid = { VINYL10: 10, MUSIC20: 20 };
       if (valid[code]) showToast(`Coupon "${code}" applied! ${valid[code]}% off`, 'success'); else showToast('Invalid coupon code', 'error');
     }
-    function checkoutSPA() {
+    // Selected shipping address id for the current checkout session. Cleared when the modal closes.
+    let CHECKOUT_SELECTED_ADDRESS_ID = null;
+
+    async function checkoutSPA() {
       if (!Auth.isLoggedIn()) {
         showToast('Please sign in to complete your order', 'info');
         navigate('login', { redirect: 'cart' });
+        return;
+      }
+      if (!CartHelpers.getCartWithDetails().length) {
+        showToast('Your cart is empty', 'error');
         return;
       }
       const total = CartHelpers.getCartTotal() + (CartHelpers.getCartTotal() >= 999 ? 0 : 99);
@@ -2105,8 +2284,70 @@
       document.getElementById('payment-modal').classList.add('active');
       document.getElementById('payment-main-view').style.display = 'block';
       document.getElementById('payment-processing-view').classList.remove('active');
+      CHECKOUT_SELECTED_ADDRESS_ID = null;
+      await renderCheckoutAddressPicker();
     }
-    function closePaymentModal() { document.getElementById('payment-modal').classList.remove('active'); }
+    function closePaymentModal() {
+      document.getElementById('payment-modal').classList.remove('active');
+      CHECKOUT_SELECTED_ADDRESS_ID = null;
+    }
+
+    async function renderCheckoutAddressPicker(preferredId) {
+      var summary = document.getElementById('checkout-address-summary');
+      var picker = document.getElementById('checkout-address-picker');
+      if (!summary || !picker) return;
+      var list = [];
+      try { list = await Addresses.fetchAll(true); } catch (e) { /* fall through */ }
+
+      // Pick selection: preferred id (just-saved) → existing selection → default → first.
+      var selected = null;
+      if (preferredId) selected = list.find(a => a.id === preferredId);
+      if (!selected && CHECKOUT_SELECTED_ADDRESS_ID) selected = list.find(a => a.id === CHECKOUT_SELECTED_ADDRESS_ID);
+      if (!selected) selected = list.find(a => a.isDefault) || list[0] || null;
+      CHECKOUT_SELECTED_ADDRESS_ID = selected ? selected.id : null;
+
+      if (!list.length) {
+        summary.innerHTML = `
+          <div style="color:var(--text-muted);">No saved addresses. Please add a shipping address to continue.</div>
+          <button type="button" class="btn btn-sm btn-primary" style="margin-top:0.5rem;" onclick="openAddressModal(null,'checkout')">+ Add Address</button>`;
+        picker.style.display = 'none';
+        picker.innerHTML = '';
+        return;
+      }
+
+      summary.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;flex-wrap:wrap;">
+          <div style="flex:1;min-width:0;">
+            <strong style="display:block;font-size:0.9rem;color:var(--text);">${Utils.escape(selected.fullName)}${selected.label ? ' · ' + Utils.escape(selected.label) : ''}</strong>
+            <span style="color:var(--text-muted);">${Utils.escape(Addresses.formatOneLine(selected))}</span><br>
+            <span style="color:var(--text-muted);">📞 ${Utils.escape(selected.phone)}</span>
+          </div>
+          <button type="button" class="btn btn-sm btn-secondary" onclick="toggleCheckoutAddressPicker()">Change</button>
+        </div>`;
+
+      picker.innerHTML = list.map(a => {
+        var checked = a.id === CHECKOUT_SELECTED_ADDRESS_ID ? 'checked' : '';
+        return `
+          <label style="display:flex;gap:0.5rem;padding:0.5rem 0;cursor:pointer;border-bottom:1px solid var(--border);">
+            <input type="radio" name="checkout-addr" value="${a.id}" ${checked} onchange="selectCheckoutAddress(${a.id})" style="margin-top:0.25rem;">
+            <div style="flex:1;font-size:0.85rem;">
+              <strong>${Utils.escape(a.fullName)}${a.label ? ' · ' + Utils.escape(a.label) : ''}</strong>${a.isDefault ? ' <span style="color:var(--success);font-size:0.7rem;">(default)</span>' : ''}<br>
+              <span style="color:var(--text-muted);">${Utils.escape(Addresses.formatOneLine(a))}</span>
+            </div>
+          </label>`;
+      }).join('') + `
+        <button type="button" class="btn btn-sm btn-primary" style="margin-top:0.75rem;" onclick="openAddressModal(null,'checkout')">+ Add new address</button>`;
+    }
+
+    function toggleCheckoutAddressPicker() {
+      var picker = document.getElementById('checkout-address-picker');
+      picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function selectCheckoutAddress(id) {
+      CHECKOUT_SELECTED_ADDRESS_ID = id;
+      renderCheckoutAddressPicker();
+    }
     function selectPaymentMethod(el, method) {
       document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.payment-form').forEach(f => f.classList.remove('active'));
@@ -2115,6 +2356,14 @@
       if (method === 'upi') document.getElementById('form-upi').classList.add('active');
     }
     function processPayment() {
+      // Require a shipping address before accepting payment.
+      var shippingAddress = (Addresses._cached || []).find(a => a.id === CHECKOUT_SELECTED_ADDRESS_ID);
+      if (!shippingAddress) {
+        showToast('Please select or add a shipping address', 'error');
+        var picker = document.getElementById('checkout-address-picker');
+        if (picker) picker.style.display = 'block';
+        return;
+      }
       const method = document.querySelector('.method-btn.active').textContent.trim().toLowerCase();
       if (method === 'card') {
         const cardNum = document.getElementById('pay-card-num').value.replace(/\s+/g, '');
@@ -2128,6 +2377,22 @@
         if (!/^[\w.-]+@[\w.-]+$/.test(upiId)) return showToast('Please enter a valid UPI ID', 'error');
       }
       const cartItems = CartHelpers.getCartWithDetails(), subtotal = CartHelpers.getCartTotal(), shipping = subtotal >= 999 ? 0 : 99, totalAmount = subtotal + shipping;
+      // Frozen snapshot — strip the id so edits/deletes to the saved address
+      // don't mutate the historical order. Country name expanded for display.
+      const addressSnapshot = {
+        label: shippingAddress.label,
+        fullName: shippingAddress.fullName,
+        phone: shippingAddress.phone,
+        line1: shippingAddress.line1,
+        line2: shippingAddress.line2,
+        landmark: shippingAddress.landmark,
+        city: shippingAddress.city,
+        state: shippingAddress.state,
+        postalCode: shippingAddress.postalCode,
+        countryCode: shippingAddress.countryCode,
+        country: Addresses.countryName(shippingAddress.countryCode),
+        gstin: shippingAddress.gstin,
+      };
       var options = {
         "key": "rzp_test_TYeNqBfWpLdfxQ", "amount": totalAmount * 100, "currency": "INR",
         "name": "Velorex Music", "description": "Vinyl Vault Purchase",
@@ -2137,7 +2402,7 @@
           document.getElementById('payment-processing-view').classList.add('active');
           setTimeout(() => {
             const orderId = 'VD-' + Date.now().toString().slice(-6);
-            Storage.saveOrder({ id: orderId, date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }), status: 'processing', paymentId: response.razorpay_payment_id, items: cartItems.map(i => ({ id: i.id, name: i.title, qty: i.qty, price: i.price })), total: totalAmount });
+            Storage.saveOrder({ id: orderId, date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }), status: 'processing', paymentId: response.razorpay_payment_id, items: cartItems.map(i => ({ id: i.id, name: i.title, qty: i.qty, price: i.price })), total: totalAmount, shippingAddress: addressSnapshot });
             Storage.saveCart([]);
             // Server decremented stock during the order POST; refresh local cache
             // so subsequent product views reflect the new quantities.
@@ -2147,7 +2412,7 @@
             navigate('profile');
           }, 1500);
         },
-        "prefill": { "name": "Valued Customer", "email": "customer@example.com", "contact": "9999999999" },
+        "prefill": { "name": shippingAddress.fullName || '', "email": (Auth.getUser() || {}).email || '', "contact": shippingAddress.phone || '' },
         "theme": { "color": "#ff6b35" }
       };
       var rzp1 = new Razorpay(options);
@@ -2205,15 +2470,230 @@
       });
     }
 
-    function renderAddressesSPA(user) {
+    async function renderAddressesSPA(user) {
       var container = document.getElementById('addresses-list'); if (!container) return;
-      // Addresses aren't persisted server-side yet. Show an empty state.
-      container.innerHTML = `
-        <div class="order-card" style="grid-column:1/-1;text-align:center;">
-          <div style="font-size:2.5rem;margin-bottom:0.75rem;">📭</div>
-          <p style="color:var(--text-muted);margin-bottom:1rem;">No saved addresses yet.</p>
-          <button class="btn btn-sm btn-secondary" onclick="showToast('Address book is coming soon. For now, enter your address at checkout.','info')">+ Add Address</button>
+      container.innerHTML = '<div style="grid-column:1/-1;color:var(--text-muted);font-size:0.9rem;">Loading addresses…</div>';
+      var list = [];
+      try { list = await Addresses.fetchAll(true); } catch (e) { /* fall through to empty render */ }
+      if (!list.length) {
+        container.innerHTML = `
+          <div class="order-card" style="grid-column:1/-1;text-align:center;">
+            <div style="font-size:2.5rem;margin-bottom:0.75rem;">📭</div>
+            <p style="color:var(--text-muted);margin-bottom:1rem;">No saved addresses yet.</p>
+            <button class="btn btn-sm btn-primary" onclick="openAddressModal()">+ Add Address</button>
+          </div>`;
+        return;
+      }
+      container.innerHTML = list.map(addressCard).join('');
+    }
+
+    function addressCard(a) {
+      var label = a.label ? `<span style="font-size:0.75rem;background:var(--surface-2,rgba(255,255,255,0.06));border:1px solid var(--border);padding:0.15rem 0.5rem;border-radius:999px;">${Utils.escape(a.label)}</span>` : '';
+      var def = a.isDefault ? `<span style="font-size:0.7rem;background:rgba(34,197,94,0.15);color:var(--success);border:1px solid rgba(34,197,94,0.4);padding:0.15rem 0.5rem;border-radius:999px;font-weight:600;">DEFAULT</span>` : '';
+      var setDefBtn = a.isDefault ? '' : `<button class="btn btn-sm btn-secondary" onclick="setDefaultAddress(${a.id})"><i class="fas fa-star"></i> Set Default</button>`;
+      var lines = [a.line1, a.line2, a.landmark].filter(Boolean).map(l => Utils.escape(l)).join('<br>');
+      var loc = [a.city, a.state, a.postalCode].filter(Boolean).map(l => Utils.escape(l)).join(', ');
+      var gstinRow = a.gstin ? `<p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.4rem;">GSTIN: ${Utils.escape(a.gstin)}</p>` : '';
+      return `
+        <div class="order-card" style="display:flex;flex-direction:column;gap:0.5rem;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+              <strong style="font-size:0.95rem;">${Utils.escape(a.fullName)}</strong>
+              ${label}${def}
+            </div>
+          </div>
+          <p style="font-size:0.85rem;line-height:1.5;">${lines}</p>
+          <p style="font-size:0.85rem;color:var(--text-muted);">${loc}<br>${Utils.escape(Addresses.countryName(a.countryCode))}</p>
+          <p style="font-size:0.8rem;color:var(--text-muted);">📞 ${Utils.escape(a.phone)}</p>
+          ${gstinRow}
+          <div style="display:flex;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap;">
+            <button class="btn btn-sm btn-secondary" onclick="openAddressModal(${a.id})"><i class="fas fa-pen"></i> Edit</button>
+            ${setDefBtn}
+            <button class="btn btn-sm btn-danger" onclick="confirmDeleteAddress(${a.id})"><i class="fas fa-trash"></i> Delete</button>
+          </div>
         </div>`;
+    }
+
+    function openAddressModal(id, context) {
+      var modal = document.getElementById('addressModal'); if (!modal) return;
+      if (!Auth.isLoggedIn()) { showToast('Please sign in first', 'info'); navigate('login'); return; }
+      // Populate country dropdown once.
+      var countrySel = document.getElementById('addr-country');
+      if (countrySel && !countrySel.options.length) {
+        countrySel.innerHTML = COUNTRIES.map(c => `<option value="${c[0]}">${c[1]}</option>`).join('');
+      }
+      document.getElementById('addressForm').reset();
+      document.getElementById('addr-id').value = '';
+      document.getElementById('addr-context').value = context || 'profile';
+      document.getElementById('addressFormError').style.display = 'none';
+      document.getElementById('addressModalTitle').textContent = id ? 'Edit Address' : 'Add Address';
+      document.getElementById('addressSubmitBtn').textContent = id ? 'Save Changes' : 'Save Address';
+
+      if (id) {
+        var existing = (Addresses._cached || []).find(a => a.id === id);
+        if (!existing) { showToast('Address not found', 'error'); return; }
+        document.getElementById('addr-id').value = existing.id;
+        document.getElementById('addr-country').value = existing.countryCode;
+        document.getElementById('addr-fullName').value = existing.fullName || '';
+        document.getElementById('addr-phone').value = existing.phone || '';
+        document.getElementById('addr-line1').value = existing.line1 || '';
+        document.getElementById('addr-line2').value = existing.line2 || '';
+        document.getElementById('addr-landmark').value = existing.landmark || '';
+        document.getElementById('addr-city').value = existing.city || '';
+        document.getElementById('addr-postal').value = existing.postalCode || '';
+        document.getElementById('addr-label').value = existing.label || '';
+        document.getElementById('addr-gstin').value = existing.gstin || '';
+        document.getElementById('addr-default').checked = !!existing.isDefault;
+        updateAddressFormForCountry();
+        // Set state AFTER updateAddressFormForCountry has wired up the right widget.
+        setAddressFormState(existing.state || '');
+      } else {
+        document.getElementById('addr-country').value = 'IN';
+        updateAddressFormForCountry();
+      }
+
+      modal.classList.add('open');
+    }
+
+    function closeAddressModal() {
+      var m = document.getElementById('addressModal'); if (m) m.classList.remove('open');
+    }
+
+    function updateAddressFormForCountry() {
+      var code = document.getElementById('addr-country').value;
+      var stateLabel = document.getElementById('addr-state-label');
+      var postalLabel = document.getElementById('addr-postal-label');
+      var stateSelect = document.getElementById('addr-state-select');
+      var stateInput = document.getElementById('addr-state-input');
+      var landmark = document.getElementById('addr-landmark-group');
+      var gstinGroup = document.getElementById('addr-gstin-group');
+
+      // State widget: dropdown for IN + US, free text elsewhere.
+      if (code === 'IN') {
+        stateSelect.innerHTML = '<option value="">Select state…</option>' + IN_STATES.map(s => `<option value="${s}">${s}</option>`).join('');
+        stateSelect.style.display = '';
+        stateInput.style.display = 'none';
+        stateInput.value = '';
+      } else if (code === 'US') {
+        stateSelect.innerHTML = '<option value="">Select state…</option>' + US_STATES.map(s => `<option value="${s[1]}">${s[1]}</option>`).join('');
+        stateSelect.style.display = '';
+        stateInput.style.display = 'none';
+        stateInput.value = '';
+      } else {
+        stateSelect.style.display = 'none';
+        stateSelect.innerHTML = '';
+        stateInput.style.display = '';
+      }
+      stateLabel.textContent = STATE_REQUIRED.has(code) ? 'State / Region *' : 'State / Region';
+      postalLabel.textContent = POSTAL_REQUIRED.has(code) ? 'Postal Code *' : 'Postal Code';
+
+      // Landmark is an India-ism — hide elsewhere to keep the form tidy.
+      landmark.style.display = code === 'IN' ? '' : 'none';
+      if (code !== 'IN') document.getElementById('addr-landmark').value = '';
+
+      // GSTIN is India-only.
+      gstinGroup.style.display = code === 'IN' ? '' : 'none';
+      if (code !== 'IN') document.getElementById('addr-gstin').value = '';
+    }
+
+    function setAddressFormState(val) {
+      var sel = document.getElementById('addr-state-select');
+      var input = document.getElementById('addr-state-input');
+      if (sel.style.display !== 'none') {
+        // Make sure the value exists as an option, otherwise leave blank.
+        var opt = Array.from(sel.options).find(o => o.value === val);
+        sel.value = opt ? val : '';
+      } else {
+        input.value = val || '';
+      }
+    }
+
+    function readAddressFormState() {
+      var sel = document.getElementById('addr-state-select');
+      var input = document.getElementById('addr-state-input');
+      return sel.style.display !== 'none' ? sel.value : input.value.trim();
+    }
+
+    async function submitAddressForm(ev) {
+      ev.preventDefault();
+      var errBox = document.getElementById('addressFormError');
+      errBox.style.display = 'none';
+      var country = document.getElementById('addr-country').value;
+      var payload = {
+        label: document.getElementById('addr-label').value.trim() || null,
+        fullName: document.getElementById('addr-fullName').value.trim(),
+        phone: document.getElementById('addr-phone').value.trim(),
+        line1: document.getElementById('addr-line1').value.trim(),
+        line2: document.getElementById('addr-line2').value.trim() || null,
+        landmark: country === 'IN' ? (document.getElementById('addr-landmark').value.trim() || null) : null,
+        city: document.getElementById('addr-city').value.trim(),
+        state: readAddressFormState() || null,
+        postalCode: document.getElementById('addr-postal').value.trim() || null,
+        countryCode: country,
+        gstin: country === 'IN' ? (document.getElementById('addr-gstin').value.trim().toUpperCase() || null) : null,
+        isDefault: document.getElementById('addr-default').checked,
+      };
+      var idStr = document.getElementById('addr-id').value;
+      if (idStr) payload.id = parseInt(idStr, 10);
+
+      // Lightweight client-side guard. The server is authoritative.
+      if (!payload.fullName || !payload.phone || !payload.line1 || !payload.city || !payload.countryCode) {
+        errBox.textContent = 'Please fill in all required fields.';
+        errBox.style.display = 'block';
+        return;
+      }
+
+      var btn = document.getElementById('addressSubmitBtn');
+      var origText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+      try {
+        var saved = await Addresses.save(payload);
+        closeAddressModal();
+        showToast(idStr ? 'Address updated' : 'Address saved', 'success');
+        var context = document.getElementById('addr-context').value;
+        if (context === 'checkout') {
+          await renderCheckoutAddressPicker(saved.id);
+        } else {
+          var user = Auth.getUser();
+          renderAddressesSPA(user);
+        }
+      } catch (e) {
+        errBox.textContent = e.message || 'Save failed';
+        errBox.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = origText;
+      }
+    }
+
+    function confirmDeleteAddress(id) {
+      openConfirmDialog({
+        title: 'Delete Address',
+        message: 'Remove this address from your saved addresses? Existing orders are unaffected.',
+        confirmText: 'Delete',
+        onConfirm: async () => {
+          try {
+            await Addresses.remove(id);
+            showToast('Address deleted', 'success');
+            renderAddressesSPA(Auth.getUser());
+          } catch (e) {
+            showToast(e.message || 'Delete failed', 'error');
+          }
+        },
+      });
+    }
+
+    async function setDefaultAddress(id) {
+      var existing = (Addresses._cached || []).find(a => a.id === id);
+      if (!existing) return;
+      try {
+        await Addresses.save({ ...existing, isDefault: true });
+        showToast('Default address updated', 'success');
+        renderAddressesSPA(Auth.getUser());
+      } catch (e) {
+        showToast(e.message || 'Update failed', 'error');
+      }
     }
 
     function renderSettingsSPA() {
@@ -2241,7 +2721,13 @@
         var itemsHtml = items.map(item => `<div class="order-item-row"><span><i class="fas fa-music"></i> ${Utils.escape(item.name || '')} × ${item.qty || 1}</span><span>₹${Number(item.price || 0).toLocaleString()}</span></div>`).join('');
         var extraBtns = status === 'delivered' ? '<button class="btn btn-sm btn-outline-primary" onclick="showToast(\'Invoice download coming soon\',\'info\')"><i class="fas fa-file-invoice"></i> Invoice</button>' : '';
         var dateStr = order.date || (order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
-        return `<div class="order-card"><div class="order-header"><div><p class="order-id"><i class="fas fa-box"></i> Order #${Utils.escape(String(order.id))}</p><p class="order-date"><i class="fas fa-calendar-days"></i> ${Utils.escape(dateStr)}</p></div><span class="order-status status-${status}">${statusLabel}</span></div><div class="order-items">${itemsHtml}<div class="order-total-row"><span>Order Total</span><span class="total-amt">₹${Number(order.total || 0).toLocaleString()}</span></div></div><div style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap;"><button class="btn btn-sm btn-secondary" onclick="showToast('Tracking coming soon!','info')"><i class="fas fa-location-dot"></i> Track Order</button>${extraBtns}</div></div>`;
+        var addr = order.shippingAddress;
+        var addrHtml = '';
+        if (addr && addr.fullName) {
+          var addrLine = [addr.line1, addr.line2, addr.landmark, addr.city, addr.state, addr.postalCode, addr.country || addr.countryCode].filter(Boolean).map(s => Utils.escape(String(s))).join(', ');
+          addrHtml = `<div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px dashed var(--border);font-size:0.8rem;color:var(--text-muted);"><i class="fas fa-location-dot"></i> <strong style="color:var(--text);">${Utils.escape(addr.fullName)}</strong> · ${addrLine}${addr.phone ? ' · 📞 ' + Utils.escape(addr.phone) : ''}</div>`;
+        }
+        return `<div class="order-card"><div class="order-header"><div><p class="order-id"><i class="fas fa-box"></i> Order #${Utils.escape(String(order.id))}</p><p class="order-date"><i class="fas fa-calendar-days"></i> ${Utils.escape(dateStr)}</p></div><span class="order-status status-${status}">${statusLabel}</span></div><div class="order-items">${itemsHtml}<div class="order-total-row"><span>Order Total</span><span class="total-amt">₹${Number(order.total || 0).toLocaleString()}</span></div></div>${addrHtml}<div style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap;"><button class="btn btn-sm btn-secondary" onclick="showToast('Tracking coming soon!','info')"><i class="fas fa-location-dot"></i> Track Order</button>${extraBtns}</div></div>`;
       }).join('');
     }
 
