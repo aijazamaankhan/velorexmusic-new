@@ -6,15 +6,21 @@
 // file loaded below. The lookup tries multiple paths so the same config.php
 // works on both local dev and Hostinger:
 //
-//   • /home/u286479481/private/velorex_secrets.php  — Hostinger production (one
-//     directory above public_html; survives every git deploy).
-//   • api/secrets.local.php                          — local dev (gitignored).
-//   • api/secrets.php                                — alternate local name.
+//   • Two levels above api/ (i.e. the domain folder on Hostinger:
+//     /home/u286479481/domains/velorexmusic.com/velorex_secrets.php). One level
+//     above public_html, so git deploys can't touch it — but still within
+//     Hostinger's open_basedir restriction.
+//   • /home/u286479481/private/velorex_secrets.php — fallback if you prefer
+//     the home directory. Only works if open_basedir permits it.
+//   • api/secrets.local.php — local dev (gitignored).
+//   • api/secrets.php       — alternate local name.
 //
 // If none of the candidate paths exists, the request fails with a clear 500 so
 // you know exactly what's missing.
 
 $__velorex_secrets_candidates = [
+    __DIR__ . '/../../velorex_secrets.php',
+    '/home/u286479481/domains/velorexmusic.com/velorex_secrets.php',
     '/home/u286479481/private/velorex_secrets.php',
     __DIR__ . '/secrets.local.php',
     __DIR__ . '/secrets.php',
