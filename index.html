@@ -867,7 +867,6 @@
                   <div class="profile-nav-item" onclick="showTab('account', this)">👤 Account Details</div>
                   <div class="profile-nav-item" onclick="showTab('wishlist', this)">❤️ Wishlist</div>
                   <div class="profile-nav-item" onclick="showTab('addresses', this)">📍 Addresses</div>
-                  <div class="profile-nav-item" onclick="showTab('settings', this)">⚙️ Settings</div>
                 </nav>
               </div>
             </aside>
@@ -920,10 +919,6 @@
                   <button class="btn btn-primary btn-sm" onclick="openAddressModal()">+ Add Address</button>
                 </div>
                 <div id="addresses-list" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;"></div>
-              </div>
-              <div id="tab-settings" class="profile-tab" style="display:none;">
-                <h2 style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;margin-bottom:1.5rem;">⚙️ Settings</h2>
-                <div class="admin-form-card" id="settings-container"></div>
               </div>
             </div>
           </div>
@@ -2437,7 +2432,6 @@
       renderOrdersSPA(CURRENT_USER_ORDERS);
       renderWishlistSPA();
       renderAddressesSPA(user);
-      renderSettingsSPA();
     }
 
     function populateProfileFromUser(user) {
@@ -2694,21 +2688,6 @@
       } catch (e) {
         showToast(e.message || 'Update failed', 'error');
       }
-    }
-
-    function renderSettingsSPA() {
-      var container = document.getElementById('settings-container'); if (!container) return;
-      var settings = [['Email Notifications', 'Get order updates via email'], ['SMS Alerts', 'Get shipping alerts via SMS'], ['New Arrivals', 'Be notified of new products'], ['Price Drop Alerts', 'Get notified when wishlist items drop in price']];
-      var itemsHtml = settings.map(s => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.75rem 0;border-bottom:1px solid var(--border);">
-        <div><p style="font-weight:500;font-size:0.9rem;">${s[0]}</p><p style="font-size:0.8rem;color:var(--text-muted);">${s[1]}</p></div>
-        <label style="position:relative;display:inline-block;width:44px;height:24px;cursor:pointer;">
-          <input type="checkbox" checked style="opacity:0;width:0;height:0;" onchange="showToast('Setting updated','success')">
-          <span style="position:absolute;inset:0;background:var(--secondary);border-radius:24px;"></span>
-          <span style="position:absolute;top:2px;left:2px;width:20px;height:20px;background:white;border-radius:50%;transition:0.2s;"></span>
-        </label>
-      </div>`).join('');
-      container.innerHTML = '<h3 style="font-size:1rem;font-weight:700;margin-bottom:1.25rem;">🔔 Notifications</h3>' + itemsHtml + '<div style="margin-top:1.5rem;display:flex;gap:0.75rem;"><button class="btn btn-danger" onclick="if(confirm(\'Are you sure?\'))showToast(\'Account deletion requested\',\'error\')">🗑 Delete Account</button></div>';
     }
 
     function renderOrdersSPA(orders) {
