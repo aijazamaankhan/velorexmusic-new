@@ -445,6 +445,9 @@
     .image-upload-text { font-size: 0.875rem; color: var(--text-muted); }
 
     .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 1rem; opacity: 0; visibility: hidden; transition: var(--transition); }
+    /* Address modal can be opened from inside the payment modal (z-index 3000),
+       so it needs to stack above. */
+    #addressModal.modal-overlay { z-index: 3500; }
     .modal-overlay.open { opacity: 1; visibility: visible; }
     .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; transform: scale(0.95); transition: var(--transition); }
     .modal-overlay.open .modal { transform: scale(1); }
@@ -2358,13 +2361,25 @@
         <button type="button" class="btn btn-sm btn-primary" style="margin-top:0.75rem;" onclick="openAddressModal(null,'checkout')">+ Add new address</button>`;
     }
 
+    // Summary card (showing the current pick) and picker (the radio list of all
+    // addresses) are mutually exclusive — showing both at once duplicates the
+    // selected address visually (it appears as the summary AND as the checked
+    // option in the list), which looks like a bug to the customer.
     function toggleCheckoutAddressPicker() {
       var picker = document.getElementById('checkout-address-picker');
-      picker.style.display = picker.style.display === 'none' ? 'block' : 'none';
+      var summary = document.getElementById('checkout-address-summary');
+      var opening = picker.style.display === 'none';
+      picker.style.display = opening ? 'block' : 'none';
+      if (summary) summary.style.display = opening ? 'none' : '';
     }
 
     function selectCheckoutAddress(id) {
       CHECKOUT_SELECTED_ADDRESS_ID = id;
+      // After picking, collapse the picker and show the summary of the new selection.
+      var picker = document.getElementById('checkout-address-picker');
+      var summary = document.getElementById('checkout-address-summary');
+      if (picker) picker.style.display = 'none';
+      if (summary) summary.style.display = '';
       renderCheckoutAddressPicker();
     }
     function selectPaymentMethod(el, method) {
@@ -2671,6 +2686,11 @@
         showToast(idStr ? 'Address updated' : 'Address saved', 'success');
         var context = document.getElementById('addr-context').value;
         if (context === 'checkout') {
+          // Collapse the picker and show the summary with the just-saved address.
+          var picker = document.getElementById('checkout-address-picker');
+          var summary = document.getElementById('checkout-address-summary');
+          if (picker) picker.style.display = 'none';
+          if (summary) summary.style.display = '';
           await renderCheckoutAddressPicker(saved.id);
         } else {
           var user = Auth.getUser();
