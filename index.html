@@ -1063,27 +1063,32 @@
             <div id="checkout-address-picker" style="display:none;margin-top:0.75rem;border-top:1px dashed var(--border);padding-top:0.75rem;"></div>
           </div>
 
-          <p style="font-size:0.8rem;font-weight:600;margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">Select Payment Method</p>
-          <div class="payment-methods">
-            <div class="method-btn active" onclick="selectPaymentMethod(this, 'card')"><i class="fas fa-credit-card"></i><span>Card</span></div>
-            <div class="method-btn" onclick="selectPaymentMethod(this, 'upi')"><i class="fas fa-mobile-screen"></i><span>UPI</span></div>
-            <div class="method-btn" onclick="selectPaymentMethod(this, 'net')"><i class="fas fa-building-columns"></i><span>Net Banking</span></div>
-            <div class="method-btn" onclick="selectPaymentMethod(this, 'wallet')"><i class="fas fa-wallet"></i><span>Wallet</span></div>
-          </div>
-          <div id="form-card" class="payment-form active">
-            <input type="text" id="pay-card-num" class="form-control" placeholder="Card Number (16 digits)" value="4242424242424242" maxlength="16">
-            <div style="display:flex;gap:1rem;">
-              <input type="text" id="pay-card-exp" class="form-control" placeholder="MM/YY" value="12/28" maxlength="5">
-              <input type="password" id="pay-card-cvv" class="form-control" placeholder="CVV" value="123" maxlength="3">
+          <div id="payment-method-section">
+            <p style="font-size:0.8rem;font-weight:600;margin-bottom:1rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-muted);">Select Payment Method</p>
+            <div class="payment-methods">
+              <div class="method-btn active" onclick="selectPaymentMethod(this, 'card')"><i class="fas fa-credit-card"></i><span>Card</span></div>
+              <div class="method-btn" onclick="selectPaymentMethod(this, 'upi')"><i class="fas fa-mobile-screen"></i><span>UPI</span></div>
+              <div class="method-btn" onclick="selectPaymentMethod(this, 'net')"><i class="fas fa-building-columns"></i><span>Net Banking</span></div>
+              <div class="method-btn" onclick="selectPaymentMethod(this, 'wallet')"><i class="fas fa-wallet"></i><span>Wallet</span></div>
+            </div>
+            <div id="form-card" class="payment-form active">
+              <input type="text" id="pay-card-num" class="form-control" placeholder="Card Number (16 digits)" value="4242424242424242" maxlength="16">
+              <div style="display:flex;gap:1rem;">
+                <input type="text" id="pay-card-exp" class="form-control" placeholder="MM/YY" value="12/28" maxlength="5">
+                <input type="password" id="pay-card-cvv" class="form-control" placeholder="CVV" value="123" maxlength="3">
+              </div>
+            </div>
+            <div id="form-upi" class="payment-form">
+              <input type="text" id="pay-upi-id" class="form-control" placeholder="UPI ID (e.g. user@okaxis)" value="velorex@upi">
             </div>
           </div>
-          <div id="form-upi" class="payment-form">
-            <input type="text" id="pay-upi-id" class="form-control" placeholder="UPI ID (e.g. user@okaxis)" value="velorex@upi">
+          <div id="payment-free-notice" style="display:none;margin-top:0.5rem;padding:0.85rem 1rem;background:rgba(0,212,170,0.08);border:1px solid rgba(0,212,170,0.3);border-radius:8px;color:var(--success);font-size:0.85rem;line-height:1.5;">
+            <strong>Test mode</strong> — order will be placed directly without any payment.
           </div>
         </div>
         <div class="payment-footer">
           <button class="btn btn-secondary btn-block" onclick="closePaymentModal()">Cancel</button>
-          <button class="btn btn-primary btn-block" onclick="processPayment()">⚡ Pay Now</button>
+          <button id="payment-pay-btn" class="btn btn-primary btn-block" onclick="processPayment()">⚡ Pay Now</button>
         </div>
       </div>
       <div id="payment-processing-view" class="payment-processing">
@@ -2244,10 +2249,21 @@
       if (btn) btn.classList.add('active');
     }
 
+    // Test-only coupon. When applied, the order total drops to ₹0 and checkout
+    // skips the payment gateway entirely so the full place-order lifecycle can
+    // be exercised end-to-end without a real payment. The coupon code is stored
+    // in a module-level variable; clearing the cart or placing the order
+    // also clears it.
+    const TEST_COUPON_CODE = 'TESTRUN0';
+    let __activeCoupon = null;
+
     function initPageCart() {
       var cartItems = CartHelpers.getCartWithDetails(), container = document.getElementById('cart-main'); if (!container) return;
       if (!cartItems.length) { container.innerHTML = '<div class="empty-cart" style="padding:6rem 2rem;"><div class="empty-cart-icon"><i class="fas fa-shopping-cart"></i></div><h3>Your cart is empty</h3><p>Let\'s fix that!</p><a href="#" onclick="navigate(\'products\')" class="btn btn-primary btn-lg"><i class="fas fa-music"></i> Start Shopping</a></div>'; return; }
-      var subtotal = CartHelpers.getCartTotal(), shipping = subtotal >= 999 ? 0 : 99, total = subtotal + shipping;
+      var subtotal = CartHelpers.getCartTotal(), shipping = subtotal >= 999 ? 0 : 99;
+      var originalTotal = subtotal + shipping;
+      var couponZeroed = __activeCoupon === TEST_COUPON_CODE;
+      var total = couponZeroed ? 0 : originalTotal;
       var itemsHtml = cartItems.map(item => `
       <div class="cart-item">
         <div class="cart-item-image" onclick="navigate('product',{id:${item.id}})" style="cursor:pointer;"><img src="${item.image}" alt="${Utils.escape(item.title)}" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=200&fit=crop'"></div>
@@ -2273,8 +2289,17 @@
         <h3 class="summary-title">Order Summary</h3>
         <div class="summary-row"><span>Subtotal</span><span>₹${subtotal.toLocaleString()}</span></div>
         <div class="summary-row"><span>Shipping</span><span>${shipping === 0 ? '<span style="color:var(--success);">FREE</span>' : '₹' + shipping}</span></div>
-        <div class="coupon-input"><input type="text" id="couponInput" placeholder="Coupon code"><button class="btn btn-sm btn-secondary" onclick="applyCouponSPA()">Apply</button></div>
-        <div class="summary-row total"><span>Total</span><span class="amount">₹${total.toLocaleString()}</span></div>
+        ${couponZeroed
+          ? `<div style="margin:1rem 0;padding:0.75rem 0.85rem;background:rgba(0,212,170,0.08);border:1px solid rgba(0,212,170,0.3);border-radius:8px;font-size:0.85rem;color:var(--success);display:flex;justify-content:space-between;align-items:center;gap:0.5rem;">
+              <span><strong>${TEST_COUPON_CODE}</strong> applied — order is free (TEST mode)</span>
+              <a href="#" onclick="event.preventDefault();removeCouponSPA();" style="color:var(--danger);text-decoration:underline;font-size:0.78rem;">Remove</a>
+            </div>`
+          : `<div class="coupon-input"><input type="text" id="couponInput" placeholder="Coupon code"><button class="btn btn-sm btn-secondary" onclick="applyCouponSPA()">Apply</button></div>`}
+        <div class="summary-row total"><span>Total</span><span class="amount">${
+          couponZeroed
+            ? `<span style="text-decoration:line-through;color:var(--text-muted);font-weight:500;margin-right:0.5rem;">₹${originalTotal.toLocaleString()}</span>₹0`
+            : `₹${total.toLocaleString()}`
+        }</span></div>
         <button class="btn btn-primary btn-lg btn-block" style="margin-top:1.5rem;" onclick="checkoutSPA()">⚡ Proceed to Checkout</button>
         <a href="#" onclick="navigate('products')" class="btn btn-secondary btn-block" style="margin-top:0.75rem;">← Continue Shopping</a>
       </div></div></div>`;
@@ -2282,11 +2307,23 @@
 
     function updateCartQtySPA(id, qty) { if (qty <= 0) CartHelpers.removeFromCart(id); else CartHelpers.updateQty(id, qty); initPageCart(); }
     function removeCartSPA(id) { CartHelpers.removeFromCart(id); showToast('Item removed', 'info'); initPageCart(); }
-    function clearCartSPA() { openConfirmDialog({ title: 'Clear Cart', message: 'Clear all items from cart?', confirmText: 'Clear Cart', onConfirm: () => { Storage.saveCart([]); initPageCart(); showToast('Cart cleared', 'success'); } }); }
+    function clearCartSPA() { openConfirmDialog({ title: 'Clear Cart', message: 'Clear all items from cart?', confirmText: 'Clear Cart', onConfirm: () => { Storage.saveCart([]); __activeCoupon = null; initPageCart(); showToast('Cart cleared', 'success'); } }); }
     function applyCouponSPA() {
-      var code = ((document.getElementById('couponInput') || {}).value || '').toUpperCase();
+      var code = ((document.getElementById('couponInput') || {}).value || '').toUpperCase().trim();
+      if (code === TEST_COUPON_CODE) {
+        __activeCoupon = TEST_COUPON_CODE;
+        showToast(`✓ ${code} applied — order is free (TEST mode)`, 'success');
+        initPageCart();
+        return;
+      }
       var valid = { VINYL10: 10, MUSIC20: 20 };
-      if (valid[code]) showToast(`Coupon "${code}" applied! ${valid[code]}% off`, 'success'); else showToast('Invalid coupon code', 'error');
+      if (valid[code]) showToast(`Coupon "${code}" applied! ${valid[code]}% off`, 'success');
+      else showToast('Invalid coupon code', 'error');
+    }
+    function removeCouponSPA() {
+      __activeCoupon = null;
+      initPageCart();
+      showToast('Coupon removed', 'info');
     }
     // Selected shipping address id for the current checkout session. Cleared when the modal closes.
     let CHECKOUT_SELECTED_ADDRESS_ID = null;
@@ -2301,8 +2338,25 @@
         showToast('Your cart is empty', 'error');
         return;
       }
-      const total = CartHelpers.getCartTotal() + (CartHelpers.getCartTotal() >= 999 ? 0 : 99);
-      document.getElementById('payment-amount-display').textContent = '₹' + total.toLocaleString();
+      var subtotal = CartHelpers.getCartTotal();
+      var shipping = subtotal >= 999 ? 0 : 99;
+      var couponZeroed = __activeCoupon === TEST_COUPON_CODE;
+      var total = couponZeroed ? 0 : (subtotal + shipping);
+
+      // Amount header: show 0 with the original struck through when the coupon is active.
+      var amtEl = document.getElementById('payment-amount-display');
+      if (couponZeroed) {
+        amtEl.innerHTML = '<span style="text-decoration:line-through;color:var(--text-muted);font-size:0.7em;font-weight:500;margin-right:0.4em;">₹' + (subtotal + shipping).toLocaleString() + '</span>₹0';
+      } else {
+        amtEl.textContent = '₹' + total.toLocaleString();
+      }
+
+      // Hide the payment-method picker + show the "test mode" notice when free.
+      document.getElementById('payment-method-section').style.display = couponZeroed ? 'none' : '';
+      document.getElementById('payment-free-notice').style.display = couponZeroed ? 'block' : 'none';
+      var payBtn = document.getElementById('payment-pay-btn');
+      if (payBtn) payBtn.innerHTML = couponZeroed ? '✓ Place Order' : '⚡ Pay Now';
+
       document.getElementById('payment-modal').classList.add('active');
       document.getElementById('payment-main-view').style.display = 'block';
       document.getElementById('payment-processing-view').classList.remove('active');
@@ -2398,19 +2452,25 @@
         if (picker) picker.style.display = 'block';
         return;
       }
-      const method = document.querySelector('.method-btn.active').textContent.trim().toLowerCase();
-      if (method === 'card') {
-        const cardNum = document.getElementById('pay-card-num').value.replace(/\s+/g, '');
-        const cardExp = document.getElementById('pay-card-exp').value.trim();
-        const cardCvv = document.getElementById('pay-card-cvv').value.trim();
-        if (!/^\d{16}$/.test(cardNum)) return showToast('Please enter a valid 16-digit card number', 'error');
-        if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(cardExp)) return showToast('Please enter a valid expiry date (MM/YY)', 'error');
-        if (!/^\d{3}$/.test(cardCvv)) return showToast('Please enter a valid 3-digit CVV', 'error');
-      } else if (method === 'upi') {
-        const upiId = document.getElementById('pay-upi-id').value.trim();
-        if (!/^[\w.-]+@[\w.-]+$/.test(upiId)) return showToast('Please enter a valid UPI ID', 'error');
+      const couponZeroed = __activeCoupon === TEST_COUPON_CODE;
+      // Skip payment-method form validation entirely when the test coupon is in play —
+      // the gateway is bypassed.
+      if (!couponZeroed) {
+        const method = document.querySelector('.method-btn.active').textContent.trim().toLowerCase();
+        if (method === 'card') {
+          const cardNum = document.getElementById('pay-card-num').value.replace(/\s+/g, '');
+          const cardExp = document.getElementById('pay-card-exp').value.trim();
+          const cardCvv = document.getElementById('pay-card-cvv').value.trim();
+          if (!/^\d{16}$/.test(cardNum)) return showToast('Please enter a valid 16-digit card number', 'error');
+          if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(cardExp)) return showToast('Please enter a valid expiry date (MM/YY)', 'error');
+          if (!/^\d{3}$/.test(cardCvv)) return showToast('Please enter a valid 3-digit CVV', 'error');
+        } else if (method === 'upi') {
+          const upiId = document.getElementById('pay-upi-id').value.trim();
+          if (!/^[\w.-]+@[\w.-]+$/.test(upiId)) return showToast('Please enter a valid UPI ID', 'error');
+        }
       }
-      const cartItems = CartHelpers.getCartWithDetails(), subtotal = CartHelpers.getCartTotal(), shipping = subtotal >= 999 ? 0 : 99, totalAmount = subtotal + shipping;
+      const cartItems = CartHelpers.getCartWithDetails(), subtotal = CartHelpers.getCartTotal(), shipping = subtotal >= 999 ? 0 : 99;
+      const totalAmount = couponZeroed ? 0 : (subtotal + shipping);
       // Frozen snapshot — strip the id so edits/deletes to the saved address
       // don't mutate the historical order. Country name expanded for display.
       const addressSnapshot = {
@@ -2427,6 +2487,36 @@
         country: Addresses.countryName(shippingAddress.countryCode),
         gstin: shippingAddress.gstin,
       };
+
+      // Test-coupon path: skip Razorpay entirely. Save the order directly with a
+      // synthetic payment id, clear the cart and the coupon, navigate to profile.
+      if (couponZeroed) {
+        document.getElementById('payment-main-view').style.display = 'none';
+        document.getElementById('payment-processing-view').classList.add('active');
+        setTimeout(() => {
+          const orderId = 'VD-' + Date.now().toString().slice(-6);
+          Storage.saveOrder({
+            id: orderId,
+            date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
+            status: 'processing',
+            paymentId: 'TEST-COUPON-' + TEST_COUPON_CODE,
+            couponCode: TEST_COUPON_CODE,
+            items: cartItems.map(i => ({ id: i.id, name: i.title, qty: i.qty, price: i.price })),
+            total: 0,
+            subtotal: subtotal,
+            shipping: shipping,
+            originalTotal: subtotal + shipping,
+            shippingAddress: addressSnapshot,
+          });
+          Storage.saveCart([]);
+          Storage.syncFromServer().catch(() => {});
+          __activeCoupon = null;
+          showToast('✓ Order placed (TEST mode): ' + orderId, 'success');
+          closePaymentModal();
+          navigate('profile');
+        }, 800);
+        return;
+      }
       var options = {
         "key": "rzp_test_TYeNqBfWpLdfxQ", "amount": totalAmount * 100, "currency": "INR",
         "name": "Velorex Music", "description": "Vinyl Vault Purchase",

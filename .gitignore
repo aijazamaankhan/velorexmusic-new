@@ -3,7 +3,10 @@ test-results/
 screenshot-*.png
 
 # Real DB credentials live here — never commit
-api/config.php
+api/secrets.local.php
+api/secrets.php
+# Legacy path — kept ignored in case anyone still has a local copy
+api/config.local.php
 
 # OS / editor
 .DS_Store
