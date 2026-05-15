@@ -358,6 +358,30 @@
     .profile-nav-item.active { font-weight: 600; }
     .order-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1rem; transition: var(--transition); }
     .order-card:hover { border-color: rgba(255, 107, 53, 0.3); }
+    /* === Horizontal order-status stepper === */
+    .o-stepper { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; margin-top: 1.25rem; position: relative; padding: 0 0.5rem; }
+    .o-stepper .o-step { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 1; min-width: 60px; }
+    .o-stepper .o-step + .o-step::before { content: ''; position: absolute; left: -50%; right: 50%; top: 18px; height: 3px; background: var(--border); z-index: -1; }
+    .o-stepper .o-step.is-done + .o-step::before,
+    .o-stepper .o-step.is-current + .o-step::before { background: linear-gradient(90deg, var(--secondary), var(--secondary)); }
+    .o-stepper .o-dot { width: 38px; height: 38px; border-radius: 50%; background: var(--surface); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 0.95rem; color: var(--text-muted); }
+    .o-stepper .o-step.is-done .o-dot,
+    .o-stepper .o-step.is-current .o-dot { background: var(--secondary); border-color: var(--secondary); color: #fff; }
+    .o-stepper .o-step.is-current .o-dot { box-shadow: 0 0 0 4px rgba(255,107,53,0.25); }
+    .o-stepper .o-label { margin-top: 0.4rem; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
+    .o-stepper .o-step.is-done .o-label,
+    .o-stepper .o-step.is-current .o-label { color: var(--text); }
+
+    .o-status-badge { display: inline-block; padding: 0.25rem 0.7rem; border-radius: 999px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+    .o-status-pending    { background: rgba(255,184,0,0.12);  color: var(--warning); }
+    .o-status-processing { background: rgba(168,85,247,0.14); color: #c084fc; }
+    .o-status-shipped    { background: rgba(59,130,246,0.14); color: var(--info); }
+    .o-status-delivered  { background: rgba(0,212,170,0.12);  color: var(--success); }
+    .o-status-cancelled  { background: rgba(239,68,68,0.14);  color: var(--danger); }
+
+    .o-cancelled-banner { margin-top: 1.25rem; padding: 0.75rem 1rem; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; color: var(--danger); font-weight: 600; font-size: 0.9rem; text-align: center; }
+    .o-admin-note { margin-top: 1rem; padding: 0.75rem 1rem; background: rgba(255,107,53,0.07); border-left: 3px solid var(--secondary); border-radius: 6px; font-size: 0.85rem; color: var(--text); line-height: 1.45; }
+    .o-admin-note .o-note-label { font-size: 0.7rem; font-weight: 700; color: var(--secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; display: block; }
     .order-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
     .order-id { font-weight: 700; font-size: 0.875rem; }
     .order-date { font-size: 0.8rem; color: var(--text-muted); }
@@ -2690,28 +2714,100 @@
       }
     }
 
+    // Canonical 5-status set (mirrors the server enum). Legacy values from older
+    // rows get collapsed by normalizeCustomerOrderStatus.
+    var CUSTOMER_STATUS_ORDER = ['pending', 'processing', 'shipped', 'delivered'];
+    var CUSTOMER_STATUS_LABELS = {
+      pending: 'Pending', processing: 'Processing', shipped: 'Shipped',
+      delivered: 'Delivered', cancelled: 'Cancelled'
+    };
+    var CUSTOMER_STATUS_ICONS = {
+      pending: 'fa-box', processing: 'fa-box-open',
+      shipped: 'fa-truck', delivered: 'fa-house'
+    };
+    var CUSTOMER_STATUS_ALIASES = {
+      confirmed: 'processing', packed: 'processing',
+      out_for_delivery: 'shipped', returned: 'cancelled', refunded: 'cancelled', canceled: 'cancelled'
+    };
+    function normalizeCustomerOrderStatus(s) {
+      var v = String(s || '').toLowerCase().trim();
+      if (CUSTOMER_STATUS_ALIASES[v]) return CUSTOMER_STATUS_ALIASES[v];
+      if (CUSTOMER_STATUS_LABELS[v]) return v;
+      return 'pending';
+    }
+
+    function renderOrdersStepper(currentStatus) {
+      // Cancelled orders use a different visual (no stepper, just a banner).
+      if (currentStatus === 'cancelled') return '<div class="o-cancelled-banner">This order was cancelled.</div>';
+      var currentIdx = CUSTOMER_STATUS_ORDER.indexOf(currentStatus);
+      if (currentIdx === -1) currentIdx = 0;
+      var steps = CUSTOMER_STATUS_ORDER.map(function (s, i) {
+        var cls = i < currentIdx ? 'is-done' : (i === currentIdx ? 'is-current' : '');
+        return '<div class="o-step ' + cls + '">' +
+          '<div class="o-dot"><i class="fas ' + CUSTOMER_STATUS_ICONS[s] + '"></i></div>' +
+          '<div class="o-label">' + CUSTOMER_STATUS_LABELS[s] + '</div>' +
+          '</div>';
+      }).join('');
+      return '<div class="o-stepper">' + steps + '</div>';
+    }
+
     function renderOrdersSPA(orders) {
       var container = document.getElementById('orders-list'); if (!container) return;
-      if (!orders.length) { container.innerHTML = '<div class="no-products"><div class="no-products-icon"><i class="fas fa-box"></i></div><p>No orders yet — find something you love in the store and your orders will appear here.</p></div>'; return; }
-      container.innerHTML = orders.map(order => {
-        var status = order.status || 'processing';
-        var statusLabel = status === 'delivered' ? '<i class="fas fa-circle-check"></i> Delivered' : status === 'processing' ? '<i class="fas fa-hourglass-half"></i> Processing' : '<i class="fas fa-truck"></i> Shipped';
+      if (!orders.length) {
+        container.innerHTML = '<div class="no-products"><div class="no-products-icon"><i class="fas fa-box"></i></div><p>No orders yet — find something you love in the store and your orders will appear here.</p></div>';
+        return;
+      }
+
+      container.innerHTML = orders.map(function (order) {
+        var status = normalizeCustomerOrderStatus(order.status);
+        var statusLabel = CUSTOMER_STATUS_LABELS[status];
         var items = Array.isArray(order.items) ? order.items : [];
-        var itemsHtml = items.map(item => `<div class="order-item-row"><span><i class="fas fa-music"></i> ${Utils.escape(item.name || '')} × ${item.qty || 1}</span><span>₹${Number(item.price || 0).toLocaleString()}</span></div>`).join('');
-        var extraBtns = status === 'delivered' ? '<button class="btn btn-sm btn-outline-primary" onclick="showToast(\'Invoice download coming soon\',\'info\')"><i class="fas fa-file-invoice"></i> Invoice</button>' : '';
-        var dateStr = order.date || (order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
-        var addr = order.shippingAddress;
-        var addrHtml = '';
-        if (addr && addr.fullName) {
-          var addrLine = [addr.line1, addr.line2, addr.landmark, addr.city, addr.state, addr.postalCode, addr.country || addr.countryCode].filter(Boolean).map(s => Utils.escape(String(s))).join(', ');
-          addrHtml = `<div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px dashed var(--border);font-size:0.8rem;color:var(--text-muted);"><i class="fas fa-location-dot"></i> <strong style="color:var(--text);">${Utils.escape(addr.fullName)}</strong> · ${addrLine}${addr.phone ? ' · 📞 ' + Utils.escape(addr.phone) : ''}</div>`;
-        }
-        return `<div class="order-card"><div class="order-header"><div><p class="order-id"><i class="fas fa-box"></i> Order #${Utils.escape(String(order.id))}</p><p class="order-date"><i class="fas fa-calendar-days"></i> ${Utils.escape(dateStr)}</p></div><span class="order-status status-${status}">${statusLabel}</span></div><div class="order-items">${itemsHtml}<div class="order-total-row"><span>Order Total</span><span class="total-amt">₹${Number(order.total || 0).toLocaleString()}</span></div></div>${addrHtml}<div style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap;"><button class="btn btn-sm btn-secondary" onclick="showToast('Tracking coming soon!','info')"><i class="fas fa-location-dot"></i> Track Order</button>${extraBtns}</div></div>`;
+        var itemsHtml = items.length
+          ? '<div style="font-size:0.85rem;line-height:1.7;">' +
+              items.map(function (it) {
+                var name = Utils.escape(String(it.name || it.title || 'Item'));
+                var qty = Number(it.qty) || 1;
+                var price = Number(it.price || 0);
+                return '• ' + qty + '× ' + name + ' — ₹' + (price * qty).toLocaleString();
+              }).join('<br>') +
+            '</div>'
+          : '<div style="color:var(--text-muted);font-size:0.85rem;">No items recorded.</div>';
+
+        var dateStr = order.createdAt
+          ? new Date(String(order.createdAt).replace(' ', 'T') + 'Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+          : (order.date || '');
+
+        var trackingLine = order.trackingNumber
+          ? '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem;text-align:right;">Tracking: <strong style="color:var(--secondary);font-family:monospace;">' + Utils.escape(String(order.trackingNumber)) + '</strong></div>'
+          : '';
+
+        var adminNoteHtml = order.adminNote
+          ? '<div class="o-admin-note"><span class="o-note-label">📌 Update from seller</span>' + Utils.escape(String(order.adminNote)) + '</div>'
+          : '';
+
+        return '<div class="order-card">' +
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">' +
+            '<div>' +
+              '<div style="font-weight:700;font-size:1.05rem;letter-spacing:0.01em;">' + Utils.escape(String(order.id || '')) + '</div>' +
+              '<div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.2rem;">' + Utils.escape(String(dateStr)) + '</div>' +
+            '</div>' +
+            '<div style="text-align:right;">' +
+              '<span class="o-status-badge o-status-' + status + '">' + statusLabel + '</span>' +
+              '<div style="font-weight:700;font-size:1.1rem;margin-top:0.5rem;color:var(--accent);">₹' + Number(order.total || 0).toLocaleString() + '</div>' +
+              trackingLine +
+            '</div>' +
+          '</div>' +
+          '<hr style="border:none;border-top:1px dashed var(--border);margin:1rem 0 0.75rem;">' +
+          '<div style="font-weight:600;font-size:0.9rem;margin-bottom:0.4rem;">Items:</div>' +
+          itemsHtml +
+          adminNoteHtml +
+          renderOrdersStepper(status) +
+        '</div>';
       }).join('');
     }
 
     function filterOrders(status) {
-      var filtered = status === 'all' ? CURRENT_USER_ORDERS : CURRENT_USER_ORDERS.filter(o => (o.status || 'processing') === status);
+      var filtered = status === 'all' ? CURRENT_USER_ORDERS : CURRENT_USER_ORDERS.filter(o => normalizeCustomerOrderStatus(o.status) === status);
       renderOrdersSPA(filtered);
     }
 

@@ -12,6 +12,7 @@
   <style>
     :root {
       --primary: #1a0a2e; --secondary: #ff6b35; --accent: #ffd700; --bg: #0d0d0d; --surface: #1a1a2e; --text: #f0eaf8; --text-muted: #9890b0; --border: #2e2e5e;
+      --success: #00d4aa; --info: #3b82f6; --warning: #ffb800; --danger: #ef4444;
       --font-display: 'Playfair Display', serif; --font-body: 'DM Sans', sans-serif; --radius: 12px;
       --orange-gradient: linear-gradient(135deg, #ff6b35, #ff3a00); --gold-gradient: linear-gradient(135deg, #ffd700, #ff8c00);
     }
@@ -19,24 +20,47 @@
       --primary: #ffffff; --bg: #f8fafc; --surface: #ffffff; --text: #0f172a; --text-muted: #64748b; --border: #e2e8f0;
     }
     body { background: var(--bg); color: var(--text); font-family: var(--font-body); line-height: 1.6; margin: 0; }
-    .container { max-width: 900px; margin: 0 auto; padding: 4rem 2rem; }
-    .glass-card { background: rgba(26, 26, 46, 0.6); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: var(--radius); padding: 3rem; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
-    [data-theme="light"] .glass-card { background: rgba(255, 255, 255, 0.8); }
-    h1 { font-family: var(--font-display); font-size: 3rem; margin-bottom: 2rem; background: var(--gold-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .form-group { margin-bottom: 1.5rem; }
-    .form-label { display: block; margin-bottom: 0.5rem; font-size: 0.875rem; color: var(--text-muted); }
-    .form-control { width: 100%; padding: 0.75rem 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 8px; color: white; font-size: 1rem; transition: 0.3s; }
-    [data-theme="light"] .form-control { background: #f1f3f5; color: #1a0a2e; }
-    .form-control:focus { outline: none; border-color: var(--secondary); background: rgba(255,255,255,0.1); }
+    .container { max-width: 900px; margin: 0 auto; padding: 3rem 1.5rem; }
+    .glass-card { background: rgba(26, 26, 46, 0.6); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: var(--radius); padding: 2.5rem; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+    [data-theme="light"] .glass-card { background: rgba(255, 255, 255, 0.85); }
+    h1 { font-family: var(--font-display); font-size: 2.4rem; margin: 0 0 1.5rem; background: var(--gold-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .form-group { margin-bottom: 1rem; }
+    .form-label { display: block; margin-bottom: 0.4rem; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+    .form-control { width: 100%; padding: 0.7rem 1rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.95rem; font-family: inherit; transition: 0.2s; box-sizing: border-box; }
+    [data-theme="light"] .form-control { background: #f1f3f5; }
+    .form-control:focus { outline: none; border-color: var(--secondary); background: rgba(255,255,255,0.08); }
     .navbar { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; background: rgba(13, 13, 13, 0.95); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
     body { padding-top: 80px; }
     [data-theme="light"] .navbar { background: rgba(255, 255, 255, 0.95); }
-    .brand { display: flex; align-items: center; gap: 1rem; text-decoration: none; }
+    .brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; }
     .logo-icon { width: 32px; height: 32px; background: var(--orange-gradient); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
     .brand-name { font-family: var(--font-display); font-weight: 900; font-size: 1.25rem; color: var(--text); }
-    .btn { display: inline-block; width: 100%; padding: 0.75rem 1.5rem; background: var(--secondary); color: white; border-radius: 8px; text-decoration: none; transition: 0.3s; border: none; font-size: 1rem; font-weight: 600; cursor: pointer; }
-    .btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255,107,53,0.4); }
-    #tracking-result { margin-top: 2rem; padding: 2rem; background: rgba(0,212,170,0.1); border: 1px solid var(--success); border-radius: 8px; display: none; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.75rem 1.5rem; background: var(--secondary); color: white; border-radius: 8px; text-decoration: none; transition: 0.2s; border: none; font-size: 0.95rem; font-weight: 600; cursor: pointer; }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 5px 15px rgba(255,107,53,0.35); }
+    .btn-block { width: 100%; }
+    .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .badge { display: inline-flex; align-items: center; padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.02em; }
+    .error-banner { margin-top: 1rem; padding: 0.85rem 1rem; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; color: var(--danger); font-size: 0.9rem; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; }
+    @media (max-width: 600px) { .info-grid { grid-template-columns: 1fr; } }
+    .info-card { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; }
+    [data-theme="light"] .info-card { background: rgba(0,0,0,0.02); }
+    .info-card .lbl { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 0.35rem; }
+    .info-card .val { font-weight: 600; }
+    .timeline { margin-top: 2rem; }
+    .timeline-row { position: relative; padding: 0.5rem 0 0.5rem 2.25rem; }
+    .timeline-row::before { content: ''; position: absolute; left: 0.65rem; top: 0; bottom: 0; width: 2px; background: var(--border); }
+    .timeline-row:first-child::before { top: 0.85rem; }
+    .timeline-row:last-child::before { bottom: calc(100% - 0.85rem); }
+    .timeline-dot { position: absolute; left: 0; top: 0.55rem; width: 1.4rem; height: 1.4rem; border-radius: 50%; background: var(--surface); border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: var(--text-muted); }
+    .timeline-row.is-current .timeline-dot { background: var(--secondary); border-color: var(--secondary); color: white; box-shadow: 0 0 0 4px rgba(255,107,53,0.25); }
+    .timeline-row.is-done .timeline-dot { background: var(--success); border-color: var(--success); color: white; }
+    .timeline-title { font-weight: 700; font-size: 0.95rem; }
+    .timeline-meta { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem; }
+    .timeline-note { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem; font-style: italic; }
+    .tracking-cta { margin-top: 1.5rem; padding: 1rem; background: rgba(255,107,53,0.08); border: 1px solid rgba(255,107,53,0.25); border-radius: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
+    .skeleton { color: var(--text-muted); padding: 1rem; text-align: center; }
+    .hidden { display: none !important; }
   </style>
   <script>
     document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
@@ -52,43 +76,249 @@
   </nav>
 
   <div class="container">
-    <div class="glass-card">
+    <div class="glass-card" id="lookup-card">
       <h1>Track Your Order</h1>
-      <p>Enter your order details below to see the current status of your shipment.</p>
-      
-      <form onsubmit="trackOrder(event)">
-        <div class="form-group">
-          <label class="form-label">Order Number</label>
-          <input type="text" class="form-control" placeholder="E.g. VD-2024-001" required id="order-id">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Email Address</label>
-          <input type="email" class="form-control" placeholder="The email used during purchase" required>
-        </div>
-        <button type="submit" class="btn"><i class="fas fa-location-dot"></i> Find My Shipment</button>
-      </form>
+      <p style="color:var(--text-muted);margin-top:-0.5rem;">Enter the order number and the email used at checkout.</p>
 
-      <div id="tracking-result">
-        <h3 style="color:var(--success); margin-bottom:0.5rem;">Shipment Found!</h3>
-        <p style="color:var(--text); font-weight:600;" id="status-text"></p>
-        <div style="font-size:0.8rem; color:var(--text-muted);" id="date-text"></div>
+      <form onsubmit="trackOrder(event)" autocomplete="on">
+        <div class="form-group">
+          <label class="form-label" for="order-id">Order Number</label>
+          <input type="text" id="order-id" class="form-control" placeholder="e.g. VD-A1B2C3" required autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="order-email">Email Address</label>
+          <input type="email" id="order-email" class="form-control" placeholder="The email used during purchase" required autocomplete="email">
+        </div>
+        <button type="submit" class="btn btn-block" id="lookup-btn"><i class="fas fa-location-dot"></i> Find My Shipment</button>
+        <div id="lookup-error" class="error-banner hidden"></div>
+      </form>
+    </div>
+
+    <div class="glass-card hidden" id="result-card" style="margin-top:1.5rem;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:0.75rem;">
+        <div>
+          <h1 style="font-size:1.75rem;margin:0;">Order <span id="result-id"></span></h1>
+          <div id="result-status-line" style="margin-top:0.4rem;"></div>
+        </div>
+        <button type="button" class="btn btn-secondary" onclick="resetTracker()"><i class="fas fa-arrow-left"></i> Track another</button>
       </div>
+
+      <div class="info-grid">
+        <div class="info-card"><div class="lbl">Order Date</div><div class="val" id="result-date">—</div></div>
+        <div class="info-card"><div class="lbl">Order Total</div><div class="val" id="result-total">—</div></div>
+        <div class="info-card"><div class="lbl">Carrier</div><div class="val" id="result-carrier">—</div></div>
+        <div class="info-card"><div class="lbl">Tracking Number</div><div class="val" id="result-awb">—</div></div>
+      </div>
+
+      <div class="tracking-cta hidden" id="result-tracking-cta">
+        <div>
+          <div style="font-weight:700;">Track in real-time</div>
+          <div style="font-size:0.85rem;color:var(--text-muted);">Opens the carrier's live tracking page.</div>
+        </div>
+        <a id="result-carrier-link" class="btn" href="#" target="_blank" rel="noopener"><i class="fas fa-external-link-alt"></i> Track on <span id="result-carrier-label">carrier</span></a>
+      </div>
+
+      <h3 style="margin-top:2rem;font-family:var(--font-display);">Status Timeline</h3>
+      <div id="result-timeline" class="timeline"></div>
+
+      <div id="result-shipto" style="margin-top:2rem;"></div>
     </div>
   </div>
 
   <script>
-    function trackOrder(e) {
-      e.preventDefault();
-      const id = document.getElementById('order-id').value;
-      const result = document.getElementById('tracking-result');
-      const status = document.getElementById('status-text');
-      const date = document.getElementById('date-text');
-      
-      // Dummy logic
-      result.style.display = 'block';
-      status.textContent = "Status: In Transit (On its way to you)";
-      date.textContent = "Last Update: Out for delivery from nearest hub";
+    const API_BASE = '/api';
+
+    const ORDER_STATUSES = ['pending', 'confirmed', 'packed', 'shipped', 'out_for_delivery', 'delivered'];
+    const STATUS_LABEL = {
+      pending: 'Order Placed', confirmed: 'Confirmed', packed: 'Packed',
+      shipped: 'Shipped', out_for_delivery: 'Out for Delivery', delivered: 'Delivered',
+      cancelled: 'Cancelled', returned: 'Returned', refunded: 'Refunded'
+    };
+    const STATUS_ICON = {
+      pending: '📝', confirmed: '✅', packed: '📦', shipped: '🚚',
+      out_for_delivery: '🛵', delivered: '🏠',
+      cancelled: '✖', returned: '↩', refunded: '💸'
+    };
+
+    const CARRIER_LABELS = {
+      delhivery: 'Delhivery', bluedart: 'Bluedart', dtdc: 'DTDC',
+      indiapost: 'India Post', fedex: 'FedEx', dhl: 'DHL', other: 'Carrier'
+    };
+    const CARRIER_URLS = {
+      delhivery: 'https://www.delhivery.com/track-v2/package/{awb}',
+      bluedart:  'https://www.bluedart.com/web/guest/trackdartresult?trackFor=0&trackNo={awb}',
+      dtdc:      'https://www.dtdc.in/tracking/tracking_results.asp?strCnno={awb}&TrkType=cnno',
+      indiapost: 'https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx',
+      fedex:     'https://www.fedex.com/fedextrack/?tracknumbers={awb}',
+      dhl:       'https://www.dhl.com/in-en/home/tracking/tracking-express.html?tracking-id={awb}'
+    };
+
+    function escape(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
     }
+
+    function fmtDateTime(s) {
+      if (!s) return '';
+      // PHP returns 'YYYY-MM-DD HH:MM:SS' (server time). Treat as UTC for portability.
+      try { return new Date(s.replace(' ', 'T') + 'Z').toLocaleString(); } catch { return s; }
+    }
+
+    function fmtMoney(n) { return '₹' + Number(n || 0).toLocaleString(); }
+
+    function carrierTrackingUrl(order) {
+      if (order.trackingUrl) return order.trackingUrl;
+      var code = (order.carrier || '').toLowerCase();
+      var tpl = CARRIER_URLS[code];
+      if (!tpl || !order.trackingNumber) return null;
+      return tpl.replace('{awb}', encodeURIComponent(order.trackingNumber));
+    }
+
+    function carrierLabel(order) {
+      if (!order.carrier) return null;
+      return CARRIER_LABELS[order.carrier.toLowerCase()] || order.carrier;
+    }
+
+    async function trackOrder(ev) {
+      ev.preventDefault();
+      var id = document.getElementById('order-id').value.trim();
+      var email = document.getElementById('order-email').value.trim();
+      var errEl = document.getElementById('lookup-error');
+      var btn = document.getElementById('lookup-btn');
+      errEl.classList.add('hidden');
+      if (!id || !email) return;
+      btn.disabled = true;
+      var orig = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Searching…';
+      try {
+        var res = await fetch(API_BASE + '/orders.php?id=' + encodeURIComponent(id) + '&email=' + encodeURIComponent(email), { cache: 'no-store' });
+        var data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          var msg = data && data.error ? data.error : ('Lookup failed (HTTP ' + res.status + ')');
+          if (res.status === 404) msg = 'No order found for that order number + email combination. Double-check both fields.';
+          errEl.textContent = msg;
+          errEl.classList.remove('hidden');
+          return;
+        }
+        renderOrder(data);
+      } catch (e) {
+        errEl.textContent = 'Network error. Please try again.';
+        errEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false; btn.innerHTML = orig;
+      }
+    }
+
+    function statusBadgeHtml(status) {
+      var s = (status || 'pending').toLowerCase();
+      var palette = {
+        pending:          ['rgba(255,184,0,0.10)', '#ffb800'],
+        confirmed:        ['rgba(255,184,0,0.10)', '#ffb800'],
+        packed:           ['rgba(168,85,247,0.12)', '#c084fc'],
+        shipped:          ['rgba(59,130,246,0.12)', '#3b82f6'],
+        out_for_delivery: ['rgba(14,165,233,0.14)', '#38bdf8'],
+        delivered:        ['rgba(0,212,170,0.10)',  '#00d4aa'],
+        cancelled:        ['rgba(239,68,68,0.12)',  '#ef4444'],
+        returned:         ['rgba(239,68,68,0.10)',  '#ef4444'],
+        refunded:         ['rgba(148,163,184,0.18)', '#94a3b8']
+      };
+      var p = palette[s] || palette.pending;
+      return '<span class="badge" style="background:' + p[0] + ';color:' + p[1] + ';">' + (STATUS_LABEL[s] || s) + '</span>';
+    }
+
+    // Build a "stepper" timeline: shows every step in ORDER_STATUSES, plus any
+    // history entries off the happy path (cancelled / returned / refunded).
+    function buildTimeline(order) {
+      var current = (order.status || 'pending').toLowerCase();
+      var history = Array.isArray(order.statusHistory) ? order.statusHistory : [];
+      // First time each status was reached.
+      var firstAt = {};
+      var firstNote = {};
+      history.forEach(function (h) {
+        var s = (h.status || '').toLowerCase();
+        if (!firstAt[s]) { firstAt[s] = h.at; firstNote[s] = h.note || ''; }
+      });
+
+      var offPath = ['cancelled', 'returned', 'refunded'].find(function (s) { return s === current; });
+      var steps = offPath
+        ? ['pending', current]            // collapsed flow if the order was terminated early
+        : ORDER_STATUSES;
+
+      var currentIdx = steps.indexOf(current);
+      if (currentIdx === -1) currentIdx = 0;
+
+      return steps.map(function (s, i) {
+        var done = i < currentIdx;
+        var isCurrent = i === currentIdx;
+        var cls = done ? 'is-done' : (isCurrent ? 'is-current' : '');
+        var when = firstAt[s] ? fmtDateTime(firstAt[s]) : (i <= currentIdx ? '' : 'Upcoming');
+        var note = firstNote[s] ? '<div class="timeline-note">' + escape(firstNote[s]) + '</div>' : '';
+        return '<div class="timeline-row ' + cls + '">' +
+          '<div class="timeline-dot">' + (STATUS_ICON[s] || '•') + '</div>' +
+          '<div class="timeline-title">' + escape(STATUS_LABEL[s] || s) + '</div>' +
+          '<div class="timeline-meta">' + escape(when) + '</div>' +
+          note +
+          '</div>';
+      }).join('');
+    }
+
+    function renderOrder(order) {
+      document.getElementById('lookup-card').classList.add('hidden');
+      document.getElementById('result-card').classList.remove('hidden');
+
+      document.getElementById('result-id').textContent = '#' + (order.id || '');
+      document.getElementById('result-status-line').innerHTML = statusBadgeHtml(order.status);
+      document.getElementById('result-date').textContent = fmtDateTime(order.createdAt) || '—';
+      document.getElementById('result-total').textContent = order.total != null ? fmtMoney(order.total) : '—';
+
+      var carrier = carrierLabel(order);
+      document.getElementById('result-carrier').textContent = carrier || '—';
+      document.getElementById('result-awb').textContent = order.trackingNumber || '—';
+
+      var cta = document.getElementById('result-tracking-cta');
+      var url = carrierTrackingUrl(order);
+      if (url && carrier) {
+        document.getElementById('result-carrier-link').href = url;
+        document.getElementById('result-carrier-label').textContent = carrier;
+        cta.classList.remove('hidden');
+      } else {
+        cta.classList.add('hidden');
+      }
+
+      document.getElementById('result-timeline').innerHTML = buildTimeline(order);
+
+      var ship = order.shippingAddress;
+      var shipToEl = document.getElementById('result-shipto');
+      if (ship && typeof ship === 'object') {
+        var parts = [ship.line1, ship.line2, ship.landmark, ship.city, ship.state, ship.postalCode, ship.country || ship.countryCode].filter(Boolean);
+        shipToEl.innerHTML = '<div class="info-card"><div class="lbl">Shipping To</div>' +
+          '<div class="val">' + escape(ship.fullName || '') + '</div>' +
+          '<div style="font-size:0.85rem;color:var(--text-muted);margin-top:0.3rem;">' + escape(parts.join(', ')) + '</div>' +
+          (ship.phone ? '<div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem;">📞 ' + escape(ship.phone) + '</div>' : '') +
+          '</div>';
+      } else {
+        shipToEl.innerHTML = '';
+      }
+    }
+
+    function resetTracker() {
+      document.getElementById('result-card').classList.add('hidden');
+      document.getElementById('lookup-card').classList.remove('hidden');
+      document.getElementById('order-id').value = '';
+      document.getElementById('order-email').value = '';
+      document.getElementById('lookup-error').classList.add('hidden');
+    }
+
+    // Auto-fill from query string. If both id + email are present, kick off the
+    // lookup automatically — that's the flow when a customer clicks "Track Order"
+    // from the profile page.
+    (function () {
+      var p = new URLSearchParams(window.location.search);
+      var id = p.get('id'); var email = p.get('email');
+      if (id) document.getElementById('order-id').value = id;
+      if (email) document.getElementById('order-email').value = email;
+      if (id && email) {
+        document.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+      }
+    })();
   </script>
 </body>
 </html>

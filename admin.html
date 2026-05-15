@@ -287,6 +287,74 @@
       font-weight: 800;
     }
 
+    /* === Orders panel === */
+    .orders-top { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    .orders-search-wrap { position: relative; flex: 1; min-width: 220px; max-width: 420px; }
+    .orders-search-wrap i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+    .orders-search-wrap input { width: 100%; padding: 0.6rem 0.85rem 0.6rem 2rem; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; color: var(--text); font-size: 0.9rem; }
+    .orders-search-wrap input:focus { outline: none; border-color: var(--secondary); }
+    .status-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .status-chip { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.35rem 0.85rem; border-radius: 999px; font-size: 0.78rem; font-weight: 600; cursor: pointer; border: 1px solid; transition: 0.15s; user-select: none; background: transparent; }
+    .status-chip:hover { transform: translateY(-1px); }
+    .status-chip .count { background: rgba(255,255,255,0.12); color: inherit; padding: 1px 7px; border-radius: 999px; font-size: 0.7rem; min-width: 18px; text-align: center; }
+    .status-chip.is-active { color: #fff; }
+    .status-chip[data-status="all"]        { color: var(--secondary);  border-color: var(--secondary); }
+    .status-chip[data-status="all"].is-active        { background: var(--secondary); color: #fff; }
+    .status-chip[data-status="pending"]    { color: var(--warning);   border-color: var(--warning); }
+    .status-chip[data-status="pending"].is-active    { background: var(--warning); color: #1a1a2e; }
+    .status-chip[data-status="processing"] { color: #c084fc;          border-color: #c084fc; }
+    .status-chip[data-status="processing"].is-active { background: #c084fc; }
+    .status-chip[data-status="shipped"]    { color: var(--info);      border-color: var(--info); }
+    .status-chip[data-status="shipped"].is-active    { background: var(--info); }
+    .status-chip[data-status="delivered"]  { color: var(--success);   border-color: var(--success); }
+    .status-chip[data-status="delivered"].is-active  { background: var(--success); }
+    .status-chip[data-status="cancelled"]  { color: var(--danger);    border-color: var(--danger); }
+    .status-chip[data-status="cancelled"].is-active  { background: var(--danger); }
+
+    .orders-table .chevron-btn { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.85rem; padding: 0.25rem; }
+    .orders-table .chevron-btn:hover { color: var(--text); }
+    .orders-table tr.is-expanded { background: rgba(255,107,53,0.04); }
+    .order-detail-row { background: rgba(0,0,0,0.18); }
+    .order-detail-cell { padding: 1.25rem !important; }
+    .order-detail-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
+    @media (max-width: 1000px) { .order-detail-grid { grid-template-columns: 1fr; } }
+    .order-detail-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; }
+    .order-detail-panel h4 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin: 0 0 0.6rem; font-weight: 700; }
+    .order-detail-item { display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+    .order-detail-item:last-child { border-bottom: none; }
+    .order-detail-total { display: flex; justify-content: space-between; font-weight: 700; padding-top: 0.6rem; font-size: 0.9rem; color: var(--accent); }
+    .order-status-tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; }
+    .order-row-status { min-width: 130px; }
+    .order-row-delete { background: transparent; border: none; color: var(--danger); cursor: pointer; font-size: 1rem; padding: 0.4rem; transition: 0.15s; border-radius: 6px; }
+    .order-row-delete:hover { background: rgba(239,68,68,0.12); }
+    .tracking-input-row { display: flex; gap: 0.5rem; align-items: center; }
+    .tracking-input-row input { flex: 1; padding: 0.55rem 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: monospace; }
+    .tracking-save-btn { background: var(--secondary); border: none; color: #fff; padding: 0.55rem 0.7rem; border-radius: 8px; cursor: pointer; }
+    .tracking-save-btn:hover { background: #ff5722; }
+    .admin-note-textarea { width: 100%; min-height: 70px; padding: 0.6rem 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; resize: vertical; font-size: 0.85rem; box-sizing: border-box; }
+
+    .last-save-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      color: var(--text-muted);
+      max-width: 340px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: default;
+    }
+    .last-save-badge.is-ok { background: rgba(0,212,170,0.10); color: var(--success); border-color: rgba(0,212,170,0.3); }
+    .last-save-badge.is-err { background: rgba(239,68,68,0.10); color: var(--danger); border-color: rgba(239,68,68,0.4); }
+    .last-save-badge.is-empty { opacity: 0.55; }
+
     .inventory-actions {
       display: flex;
       align-items: center;
@@ -1541,7 +1609,10 @@
         <!-- Inventory List -->
         <div class="inventory-section">
           <div class="section-header">
-            <h2 class="section-title">Store Inventory</h2>
+            <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+              <h2 class="section-title" style="margin:0;">Store Inventory</h2>
+              <div id="last-save-badge" class="last-save-badge" title="Most recent server save"></div>
+            </div>
             <div class="inventory-actions">
               <div class="search-wrapper">
                 <i class="fas fa-search"></i>
@@ -1587,20 +1658,35 @@
 
 
 
-      <!-- Orders Panel (Simplified for this version) -->
+      <!-- Orders Panel -->
       <div id="panel-orders" class="panel">
         <div class="card">
-          <h3 style="margin-bottom: 1.5rem; font-family: var(--font-display);">Live Orders</h3>
-          <div class="table-wrapper">
-            <table class="admin-table">
+          <div class="orders-top">
+            <h3 style="margin:0;font-family: var(--font-display);">Live Orders</h3>
+            <div class="orders-search-wrap">
+              <i class="fas fa-search"></i>
+              <input type="text" id="ordersSearch" placeholder="Search by ID, name, status…" oninput="renderOrdersTable()">
+            </div>
+            <div style="display:flex;gap:0.5rem;margin-left:auto;">
+              <button class="btn btn-secondary btn-sm" type="button" onclick="refreshOrders()" style="width:auto;"><i class="fas fa-rotate"></i> Refresh</button>
+              <button class="btn btn-secondary btn-sm" type="button" onclick="clearOrdersSearch()" style="width:auto;"><i class="fas fa-eraser"></i> Clear</button>
+            </div>
+          </div>
+
+          <div class="status-chips" id="orders-status-chips"></div>
+
+          <div class="table-wrapper" style="margin-top:1rem;">
+            <table class="admin-table orders-table">
               <thead>
                 <tr>
+                  <th style="width:32px;"></th>
                   <th>Order ID</th>
+                  <th>Date</th>
                   <th>Customer</th>
+                  <th>Items</th>
                   <th>Total</th>
                   <th>Status</th>
-                  <th>Date</th>
-                  <th>Actions</th>
+                  <th style="width:64px;text-align:right;">Action</th>
                 </tr>
               </thead>
               <tbody id="orders-table-body">
@@ -2031,6 +2117,75 @@
       };
     }
 
+    // =============================================
+    // LAST-SAVE STATUS BADGE
+    // =============================================
+    // Persists the result of the most recent server write so the admin can
+    // verify at a glance that their changes were accepted by the server (not
+    // just stashed in localStorage). Survives page reloads via localStorage.
+    const LAST_SAVE_KEY = 'vv_admin_last_save';
+
+    function recordSaveResult(entry) {
+      // entry: { status: 'ok' | 'error', op: string, detail?: string, error?: string }
+      var record = {
+        at: Date.now(),
+        status: entry.status || 'ok',
+        op: entry.op || 'save',
+        detail: entry.detail || '',
+        error: entry.error || ''
+      };
+      try { localStorage.setItem(LAST_SAVE_KEY, JSON.stringify(record)); } catch (e) {}
+      renderLastSaveBadge();
+    }
+
+    function getLastSave() {
+      try {
+        var raw = localStorage.getItem(LAST_SAVE_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) { return null; }
+    }
+
+    function relativeTime(ts) {
+      var diff = Math.max(0, Date.now() - ts);
+      var s = Math.floor(diff / 1000);
+      if (s < 30) return 'just now';
+      if (s < 60) return s + 's ago';
+      var m = Math.floor(s / 60);
+      if (m < 60) return m + 'm ago';
+      var h = Math.floor(m / 60);
+      if (h < 24) return h + 'h ago';
+      var d = Math.floor(h / 24);
+      if (d < 7) return d + 'd ago';
+      return new Date(ts).toLocaleDateString();
+    }
+
+    function renderLastSaveBadge() {
+      var el = document.getElementById('last-save-badge');
+      if (!el) return;
+      var r = getLastSave();
+      el.classList.remove('is-ok', 'is-err', 'is-empty');
+      if (!r) {
+        el.classList.add('is-empty');
+        el.textContent = '— No saves yet this session';
+        el.title = 'Add or edit a product and this badge will show the result of the server save.';
+        return;
+      }
+      var when = relativeTime(r.at);
+      var fullTime = new Date(r.at).toLocaleString();
+      if (r.status === 'ok') {
+        el.classList.add('is-ok');
+        el.textContent = '✓ Saved ' + when + (r.detail ? ' · ' + r.detail : '');
+        el.title = 'Server confirmed at ' + fullTime + (r.op ? ' (' + r.op + ')' : '');
+      } else {
+        el.classList.add('is-err');
+        el.textContent = '✕ Save FAILED ' + when + ' — ' + (r.error || 'unknown error');
+        el.title = 'Attempted at ' + fullTime + (r.op ? ' (' + r.op + ')' : '') + '. ' + (r.error || '');
+      }
+    }
+
+    // Tick the relative-time label every 30s while the page is open.
+    setInterval(function () { renderLastSaveBadge(); }, 30000);
+
     const Storage = {
       async syncFromServer() {
         // Server is the source of truth. We unconditionally overwrite the local cache
@@ -2091,7 +2246,71 @@
         return stored ? JSON.parse(stored) : [];
       },
 
+      // Per-item upsert. Waits for the server to confirm before touching the local
+      // cache, so a failed POST never silently "succeeds" only on the client.
+      // Throws on failure — caller is expected to surface the error to the user.
+      async upsertProduct(product) {
+        if (!product || typeof product.id === 'undefined') {
+          throw new Error('Product is missing an id');
+        }
+        const res = await fetch(API_BASE + '/products.php', {
+          method: 'POST',
+          headers: adminAuthHeaders(),
+          body: JSON.stringify(product),
+        });
+        if (!res.ok) {
+          const txt = await res.text().catch(() => '');
+          throw new Error('HTTP ' + res.status + (txt ? ': ' + txt : ''));
+        }
+        // Update the cache row-by-row so we don't trample sibling rows.
+        const list = Storage.getProducts();
+        const idx = list.findIndex(p => p.id === product.id);
+        const isUpdate = idx >= 0;
+        if (isUpdate) list[idx] = { ...list[idx], ...product };
+        else list.push(product);
+        localStorage.setItem('vv_products', JSON.stringify(list));
+        recordSaveResult({
+          status: 'ok',
+          op: isUpdate ? 'update' : 'add',
+          detail: (isUpdate ? 'Updated' : 'Added') + ' "' + (product.title || ('#' + product.id)) + '"'
+        });
+        return res.json();
+      },
+
+      // Per-item delete. Removes from the server first; only mutates the local
+      // cache after the DELETE returns ok.
+      async deleteProduct(id) {
+        const res = await fetch(API_BASE + '/products.php?id=' + encodeURIComponent(id), {
+          method: 'DELETE',
+          headers: adminAuthHeaders(),
+        });
+        if (!res.ok) {
+          const txt = await res.text().catch(() => '');
+          throw new Error('HTTP ' + res.status + (txt ? ': ' + txt : ''));
+        }
+        const list = Storage.getProducts().filter(p => p.id !== id);
+        localStorage.setItem('vv_products', JSON.stringify(list));
+        recordSaveResult({ status: 'ok', op: 'delete', detail: 'Deleted product #' + id });
+        return res.json();
+      },
+
+      // Legacy bulk-replace path. Kept only for explicit "import the full catalog"
+      // operations; every per-item caller should use upsertProduct / deleteProduct.
+      // Refuses to wipe the table by accident — the most common way the previous
+      // single-product saves clobbered the catalogue was a stale local cache
+      // re-POSTing a shrunken list.
       saveProducts(products) {
+        if (!Array.isArray(products)) {
+          console.error('[Storage.saveProducts] expected array, got', products);
+          return;
+        }
+        if (products.length === 0) {
+          console.error('[Storage.saveProducts] refusing to bulk-replace with empty list. Use deleteProduct(id) for individual deletes.');
+          if (typeof showToast === 'function') {
+            showToast('⚠️ Empty-list bulk save blocked (would wipe the catalog).', 'danger');
+          }
+          return;
+        }
         localStorage.setItem('vv_products', JSON.stringify(products));
         Storage._postProducts(products).catch(e => {
           console.error('[Storage] Product sync failed:', e);
@@ -2462,90 +2681,314 @@
       }
     }
 
+    var ORDER_STATUSES = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+    var ORDER_STATUS_LABELS = {
+      pending: 'Pending', processing: 'Processing', shipped: 'Shipped',
+      delivered: 'Delivered', cancelled: 'Cancelled'
+    };
+    // Legacy status aliases — collapse to the new 5-status set on display.
+    var ORDER_STATUS_ALIASES = {
+      confirmed: 'processing', packed: 'processing',
+      out_for_delivery: 'shipped', returned: 'cancelled', refunded: 'cancelled',
+      canceled: 'cancelled'
+    };
+    // Carrier codes + display labels. The customer tracking page maps codes to a
+    // tracking URL; for 'other' the admin provides the URL manually.
+    var CARRIERS = [
+      ['delhivery', 'Delhivery'], ['bluedart', 'Bluedart'], ['dtdc', 'DTDC'],
+      ['indiapost', 'India Post'], ['fedex', 'FedEx'], ['dhl', 'DHL'], ['other', 'Other']
+    ];
+
     function normalizeOrderStatus(status) {
-      var s = (status || '').toLowerCase();
-      if (s === 'delivered') return 'delivered';
-      if (s === 'shipped') return 'shipped';
-      if (s === 'cancelled' || s === 'canceled') return 'cancelled';
-      return 'processing';
+      var s = (status || '').toLowerCase().trim();
+      if (ORDER_STATUS_ALIASES[s]) return ORDER_STATUS_ALIASES[s];
+      return ORDER_STATUSES.indexOf(s) >= 0 ? s : 'pending';
     }
 
     function getStatusBadgeHtml(status) {
       var s = normalizeOrderStatus(status);
-      if (s === 'delivered') return '<span class="badge" style="background: rgba(0,212,170,0.1); color: var(--success);">Delivered</span>';
-      if (s === 'shipped') return '<span class="badge" style="background: rgba(59,130,246,0.12); color: var(--info);">Shipped</span>';
-      if (s === 'cancelled') return '<span class="badge" style="background: rgba(239,68,68,0.12); color: var(--danger);">Cancelled</span>';
-      return '<span class="badge" style="background: rgba(255,184,0,0.1); color: var(--warning);">Processing</span>';
+      var palette = {
+        pending:    ['rgba(255,184,0,0.10)', 'var(--warning)'],
+        processing: ['rgba(168,85,247,0.12)', '#c084fc'],
+        shipped:    ['rgba(59,130,246,0.12)', 'var(--info)'],
+        delivered:  ['rgba(0,212,170,0.10)',  'var(--success)'],
+        cancelled:  ['rgba(239,68,68,0.12)',  'var(--danger)']
+      };
+      var p = palette[s] || palette.pending;
+      return '<span class="badge" style="background: ' + p[0] + '; color: ' + p[1] + ';">' + (ORDER_STATUS_LABELS[s] || s) + '</span>';
+    }
+
+    // Admin orders panel state (in-memory, lost on reload by design — chips and
+    // expansion are transient UI, not user preferences).
+    var ADMIN_ORDER_FILTER = 'all';
+    var ADMIN_EXPANDED_ORDERS = new Set();
+
+    function escapeAttr(s) {
+      return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    }
+
+    function setOrderFilter(s) {
+      ADMIN_ORDER_FILTER = s;
+      renderOrdersTable();
+    }
+
+    function renderStatusChips() {
+      var el = document.getElementById('orders-status-chips');
+      if (!el) return;
+      var orders = Storage.getOrders();
+      var counts = { all: orders.length, pending: 0, processing: 0, shipped: 0, delivered: 0, cancelled: 0 };
+      orders.forEach(function (o) {
+        var s = normalizeOrderStatus(o.status);
+        if (counts[s] !== undefined) counts[s]++;
+      });
+      var chips = [
+        ['all', 'All'], ['pending', 'Pending'], ['processing', 'Processing'],
+        ['shipped', 'Shipped'], ['delivered', 'Delivered'], ['cancelled', 'Cancelled']
+      ];
+      el.innerHTML = chips.map(function (c) {
+        var active = ADMIN_ORDER_FILTER === c[0] ? ' is-active' : '';
+        return '<button type="button" class="status-chip' + active + '" data-status="' + c[0] + '" onclick="setOrderFilter(\'' + c[0] + '\')">' +
+          c[1] + ' <span class="count">' + counts[c[0]] + '</span></button>';
+      }).join('');
+    }
+
+    function refreshOrders() {
+      Storage.syncFromServer().then(function () {
+        renderOrdersTable();
+        showToast('✅ Refreshed from server', 'success');
+      });
+    }
+
+    function clearOrdersSearch() {
+      var inp = document.getElementById('ordersSearch');
+      if (inp) inp.value = '';
+      ADMIN_ORDER_FILTER = 'all';
+      renderOrdersTable();
     }
 
     function renderOrdersTable() {
       var tbody = document.getElementById('orders-table-body');
       if (!tbody) return;
+      renderStatusChips();
       var orders = Storage.getOrders();
+      var q = ((document.getElementById('ordersSearch') || {}).value || '').trim().toLowerCase();
 
-      if (!orders.length) {
-        tbody.innerHTML = '<tr><td colspan="6" style="padding:1.25rem;color:var(--text-muted);">No orders yet. Complete a checkout on the store to see live orders here.</td></tr>';
-        return;
+      var filtered = orders.slice();
+      if (ADMIN_ORDER_FILTER !== 'all') {
+        filtered = filtered.filter(function (o) { return normalizeOrderStatus(o.status) === ADMIN_ORDER_FILTER; });
       }
-
-      // newest first if possible
-      orders = orders.slice().sort(function (a, b) {
-        var ad = Date.parse(a && a.date) || 0;
-        var bd = Date.parse(b && b.date) || 0;
+      if (q) {
+        filtered = filtered.filter(function (o) {
+          var c = getOrderCustomer(o);
+          var s = normalizeOrderStatus(o.status);
+          var hay = [o.id, c.name, c.email, s, ORDER_STATUS_LABELS[s] || ''].join(' ').toLowerCase();
+          return hay.indexOf(q) >= 0;
+        });
+      }
+      filtered.sort(function (a, b) {
+        var ad = Date.parse((a && a.createdAt) || (a && a.date) || '') || 0;
+        var bd = Date.parse((b && b.createdAt) || (b && b.date) || '') || 0;
         if (bd !== ad) return bd - ad;
         return String((b && b.id) || '').localeCompare(String((a && a.id) || ''));
       });
 
-      tbody.innerHTML = orders.map(function (o) {
-        var id = o.id || ('VD-' + Date.now());
-        var customer = o.customerName || o.customer || (o.prefill && o.prefill.name) || 'Valued Customer';
-        var total = (typeof o.total === 'number') ? o.total : 0;
-        var status = normalizeOrderStatus(o.status);
-        var date = formatOrderDate(o);
+      if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="padding:1.25rem;color:var(--text-muted);text-align:center;">No orders match the current filter.</td></tr>';
+        return;
+      }
 
-        var statusSelect =
-          '<select class="form-control order-status-select" style="min-width:140px;" data-order-id="' + Utils.escape(String(id)) + '">' +
-          '<option value="processing"' + (status === 'processing' ? ' selected' : '') + '>Processing</option>' +
-          '<option value="shipped"' + (status === 'shipped' ? ' selected' : '') + '>Shipped</option>' +
-          '<option value="delivered"' + (status === 'delivered' ? ' selected' : '') + '>Delivered</option>' +
-          '<option value="cancelled"' + (status === 'cancelled' ? ' selected' : '') + '>Cancelled</option>' +
-          '</select>';
-
-        return (
-          '<tr>' +
-          '<td><strong>#' + Utils.escape(String(id)) + '</strong></td>' +
-          '<td>' + Utils.escape(String(customer)) + '</td>' +
-          '<td style="color: var(--accent); font-weight: 700;">₹' + Number(total || 0).toLocaleString() + '</td>' +
-          '<td>' + getStatusBadgeHtml(status) + '<div style="margin-top:0.5rem;">' + statusSelect + '</div></td>' +
-          '<td>' + Utils.escape(String(date)) + '</td>' +
-          '<td><button class="btn btn-sm btn-view-order view-order-btn" data-order-id="' + Utils.escape(String(id)) + '">View</button></td>' +
-          '</tr>'
-        );
+      tbody.innerHTML = filtered.map(function (o) {
+        return orderRowMainHtml(o) + (ADMIN_EXPANDED_ORDERS.has(o.id) ? orderRowDetailHtml(o) : '');
       }).join('');
 
-      // Bind events after render (avoid inline JS / escaping issues)
       Array.from(tbody.querySelectorAll('.order-status-select')).forEach(function (sel) {
         sel.addEventListener('change', function () {
-          var orderId = sel.getAttribute('data-order-id');
-          updateOrderStatus(orderId, sel.value);
-        });
-      });
-      Array.from(tbody.querySelectorAll('.view-order-btn')).forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          var orderId = btn.getAttribute('data-order-id');
-          viewOrder(orderId);
+          updateOrderStatus(sel.getAttribute('data-order-id'), sel.value);
         });
       });
     }
 
+    function orderRowMainHtml(o) {
+      var id = o.id || '';
+      var customer = getOrderCustomer(o);
+      var total = Number(o.total || 0);
+      var status = normalizeOrderStatus(o.status);
+      var date = formatOrderDate(o);
+      var expanded = ADMIN_EXPANDED_ORDERS.has(id);
+      var items = Array.isArray(o.items) ? o.items : [];
+      var summary = items.length === 0 ? '—'
+        : items.length === 1
+          ? (Number(items[0].qty || 1) + '× ' + Utils.escape(String(items[0].name || items[0].title || 'Item')))
+          : items.length + ' items';
+
+      var statusSelect = '<select class="form-control order-status-select order-row-status" data-order-id="' + escapeAttr(id) + '">' +
+        ORDER_STATUSES.map(function (s) {
+          return '<option value="' + s + '"' + (status === s ? ' selected' : '') + '>' + ORDER_STATUS_LABELS[s] + '</option>';
+        }).join('') + '</select>';
+
+      return '<tr class="' + (expanded ? 'is-expanded' : '') + '">' +
+        '<td><button class="chevron-btn" type="button" onclick="toggleOrderExpand(\'' + escapeAttr(id) + '\')"><i class="fas fa-chevron-' + (expanded ? 'up' : 'down') + '"></i></button></td>' +
+        '<td><strong style="color: var(--secondary);">' + Utils.escape(String(id)) + '</strong></td>' +
+        '<td style="white-space:nowrap;font-size:0.85rem;">' + Utils.escape(String(date || '')) + '</td>' +
+        '<td>' +
+          '<div style="font-weight:600;font-size:0.85rem;">' + Utils.escape(String(customer.name || '—')) + '</div>' +
+          (customer.email ? '<div style="font-size:0.75rem;color:var(--text-muted);">' + Utils.escape(String(customer.email)) + '</div>' : '') +
+        '</td>' +
+        '<td style="font-size:0.85rem;color:var(--text-muted);">' + summary + '</td>' +
+        '<td style="color: var(--accent); font-weight: 700;white-space:nowrap;">₹' + total.toLocaleString() + '</td>' +
+        '<td>' + statusSelect + '</td>' +
+        '<td style="text-align:right;">' +
+          '<button class="order-row-delete" type="button" onclick="confirmDeleteOrder(\'' + escapeAttr(id) + '\')" title="Delete order"><i class="fas fa-trash"></i></button>' +
+        '</td>' +
+        '</tr>';
+    }
+
+    function orderRowDetailHtml(o) {
+      var id = o.id || '';
+      var customer = getOrderCustomer(o);
+      var items = Array.isArray(o.items) ? o.items : [];
+      var ship = o.shippingAddress || null;
+      var history = Array.isArray(o.statusHistory) ? o.statusHistory.slice().reverse() : [];
+
+      // Order Items
+      var itemsHtml = items.length ? items.map(function (it) {
+        var name = Utils.escape(String(it.name || it.title || 'Item'));
+        var qty = Number(it.qty) || 1;
+        var price = Number(it.price || 0);
+        var line = price * qty;
+        return '<div class="order-detail-item">' +
+          '<span>' + qty + '× ' + name + '</span>' +
+          '<span>₹' + (isFinite(line) ? line.toLocaleString() : '—') + '</span>' +
+          '</div>';
+      }).join('') : '<div style="color:var(--text-muted);font-size:0.85rem;">No items recorded.</div>';
+      var totalLine = '<div class="order-detail-total"><span>Total</span><span>₹' + Number(o.total || 0).toLocaleString() + '</span></div>';
+
+      // Shipping
+      var shippingHtml;
+      if (ship && typeof ship === 'object') {
+        var parts = [ship.line1, ship.line2, ship.landmark, ship.city, ship.state, ship.postalCode, ship.country || ship.countryCode]
+          .filter(Boolean).map(function (s) { return Utils.escape(String(s)); }).join(', ');
+        shippingHtml =
+          '<div style="font-weight:600;font-size:0.9rem;">' + Utils.escape(String(ship.fullName || customer.name || '—')) + '</div>' +
+          (parts ? '<div style="font-size:0.8rem;color:var(--text-muted);margin-top:0.3rem;line-height:1.4;">' + parts + '</div>' : '') +
+          (ship.phone ? '<div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.25rem;">📞 ' + Utils.escape(String(ship.phone)) + '</div>' : '') +
+          (customer.email ? '<div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.2rem;">✉ ' + Utils.escape(String(customer.email)) + '</div>' : '');
+      } else {
+        shippingHtml =
+          '<div style="font-weight:600;font-size:0.9rem;">' + Utils.escape(String(customer.name || '—')) + '</div>' +
+          (customer.email ? '<div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.3rem;">✉ ' + Utils.escape(String(customer.email)) + '</div>' : '') +
+          (customer.phone ? '<div style="font-size:0.78rem;color:var(--text-muted);margin-top:0.2rem;">📞 ' + Utils.escape(String(customer.phone)) + '</div>' : '');
+      }
+
+      // History
+      var historyHtml = history.length ? history.map(function (h) {
+        var s = normalizeOrderStatus(h.status || 'pending');
+        var when = h.at ? new Date(String(h.at).replace(' ', 'T') + 'Z').toLocaleString() : '';
+        return '<div class="order-detail-item" style="gap:0.6rem;">' +
+          getStatusBadgeHtml(s) +
+          '<span style="font-size:0.75rem;color:var(--text-muted);white-space:nowrap;">' + Utils.escape(when) + '</span>' +
+          '</div>';
+      }).join('') : '<div style="color:var(--text-muted);font-size:0.85rem;">No history yet.</div>';
+
+      var tracking = Utils.escape(String(o.trackingNumber || ''));
+      var adminNote = Utils.escape(String(o.adminNote || ''));
+
+      return '<tr class="order-detail-row" data-detail-for="' + escapeAttr(id) + '">' +
+        '<td colspan="8" class="order-detail-cell">' +
+          '<div class="order-detail-grid">' +
+            '<div class="order-detail-panel">' +
+              '<h4>🛒 Order Items</h4>' + itemsHtml + totalLine +
+            '</div>' +
+            '<div class="order-detail-panel">' +
+              '<h4>📍 Shipping Details</h4>' + shippingHtml +
+              '<h4 style="margin-top:1rem;">🚚 Tracking Number</h4>' +
+              '<div class="tracking-input-row">' +
+                '<input type="text" id="trk-' + escapeAttr(id) + '" value="' + tracking + '" placeholder="e.g. DH123456789" maxlength="100">' +
+                '<button class="tracking-save-btn" type="button" onclick="saveTrackingForOrder(\'' + escapeAttr(id) + '\')" title="Save"><i class="fas fa-save"></i></button>' +
+              '</div>' +
+            '</div>' +
+            '<div class="order-detail-panel">' +
+              '<h4>🕓 Status History</h4>' + historyHtml +
+              '<h4 style="margin-top:1rem;">📝 Admin Note (Visible to Customer)</h4>' +
+              '<textarea class="admin-note-textarea" id="adm-' + escapeAttr(id) + '" placeholder="e.g. Dispatched via DTDC, expect delivery in 3-5 days">' + adminNote + '</textarea>' +
+              '<div style="display:flex;justify-content:flex-end;margin-top:0.5rem;">' +
+                '<button class="btn btn-secondary btn-sm" type="button" onclick="saveAdminNoteForOrder(\'' + escapeAttr(id) + '\')" style="width:auto;"><i class="fas fa-save"></i> Save Note</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</td>' +
+      '</tr>';
+    }
+
+    function toggleOrderExpand(id) {
+      if (ADMIN_EXPANDED_ORDERS.has(id)) ADMIN_EXPANDED_ORDERS.delete(id);
+      else ADMIN_EXPANDED_ORDERS.add(id);
+      renderOrdersTable();
+    }
+
+    function saveTrackingForOrder(orderId) {
+      var inp = document.getElementById('trk-' + orderId);
+      if (!inp) return;
+      var val = inp.value.trim();
+      patchOrder(orderId, { trackingNumber: val || null })
+        .then(function () { showToast('✅ Tracking saved', 'success'); })
+        .catch(function (e) { showToast('❌ ' + (e.message || 'Save failed'), 'danger'); });
+    }
+
+    function saveAdminNoteForOrder(orderId) {
+      var t = document.getElementById('adm-' + orderId);
+      if (!t) return;
+      var val = t.value.trim();
+      patchOrder(orderId, { adminNote: val || null })
+        .then(function () { showToast('✅ Note saved', 'success'); })
+        .catch(function (e) { showToast('❌ ' + (e.message || 'Save failed'), 'danger'); });
+    }
+
+    async function confirmDeleteOrder(orderId) {
+      if (!confirm('Delete order ' + orderId + '? This permanently removes it from the database.')) return;
+      try {
+        var pass = sessionStorage.getItem('admin_pass') || '';
+        var res = await fetch(API_BASE + '/orders.php?id=' + encodeURIComponent(orderId), {
+          method: 'DELETE',
+          headers: { 'X-Admin-Pass': pass },
+        });
+        var json = await res.json().catch(function () { return {}; });
+        if (!res.ok) throw new Error(json.error || ('HTTP ' + res.status));
+        var list = Storage.getOrders().filter(function (o) { return o.id !== orderId; });
+        Storage.saveOrders(list);
+        ADMIN_EXPANDED_ORDERS.delete(orderId);
+        renderOrdersTable();
+        showToast('🗑 Order deleted', 'success');
+      } catch (e) {
+        showToast('❌ ' + (e.message || 'Delete failed'), 'danger');
+      }
+    }
+
     function updateOrderStatus(orderId, nextStatus) {
+      patchOrder(orderId, { status: normalizeOrderStatus(nextStatus) })
+        .then(function () { showToast('✅ Order status updated', 'success'); })
+        .catch(function (e) { showToast('❌ ' + (e.message || 'Update failed'), 'danger'); renderOrdersTable(); });
+    }
+
+    // Sends a PATCH to /api/orders.php?id=... with admin auth, updates the local
+    // cache row in place, and re-renders the table. The returned order JSON is
+    // the authoritative version. Throws on non-2xx so callers can show errors.
+    async function patchOrder(orderId, patch) {
+      var pass = sessionStorage.getItem('admin_pass') || '';
+      var res = await fetch(API_BASE + '/orders.php?id=' + encodeURIComponent(orderId), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Pass': pass },
+        body: JSON.stringify(patch),
+        cache: 'no-store'
+      });
+      var json = await res.json().catch(function () { return {}; });
+      if (!res.ok) throw new Error(json.error || ('HTTP ' + res.status));
       var orders = Storage.getOrders();
       var idx = orders.findIndex(function (o) { return String(o.id) === String(orderId); });
-      if (idx === -1) return;
-      orders[idx].status = normalizeOrderStatus(nextStatus);
+      if (idx === -1) orders.push(json.order); else orders[idx] = json.order;
       Storage.saveOrders(orders);
-      showToast('✅ Order status updated', 'success');
       renderOrdersTable();
+      return json.order;
     }
 
     function viewOrder(orderId) {
@@ -2716,15 +3159,115 @@
       if (!modal || !body) return;
 
       var id = order.id || '';
-      var status = normalizeOrderStatus(order.status);
       if (title) title.textContent = 'Order #' + id;
 
-      // Remember current order for print
+      // Remember current order for print + shipment form binding
       window._currentOrderIdForPrint = id;
 
-      body.innerHTML = buildOrderDetailsHtml(order);
+      // Details (printed) + shipment editor + history timeline (admin-only, not printed).
+      body.innerHTML = buildOrderDetailsHtml(order)
+        + buildOrderShipmentHtml(order)
+        + buildOrderHistoryHtml(order);
 
       modal.style.display = 'flex';
+    }
+
+    function buildOrderShipmentHtml(order) {
+      var id = order.id || '';
+      var status = normalizeOrderStatus(order.status);
+      var carrier = (order.carrier || '').toLowerCase();
+      var awb = order.trackingNumber || '';
+      var url = order.trackingUrl || '';
+
+      var statusOpts = ORDER_STATUSES.map(function (s) {
+        return '<option value="' + s + '"' + (status === s ? ' selected' : '') + '>' + ORDER_STATUS_LABELS[s] + '</option>';
+      }).join('');
+
+      var carrierOpts = '<option value="">— Select carrier —</option>' + CARRIERS.map(function (c) {
+        return '<option value="' + c[0] + '"' + (carrier === c[0] ? ' selected' : '') + '>' + c[1] + '</option>';
+      }).join('');
+
+      var otherStyle = carrier === 'other' ? '' : 'display:none;';
+
+      return (
+        '<div class="card" style="margin-top:1rem;">' +
+        '<h3 style="font-family:var(--font-display);margin-bottom:0.75rem;">Shipment & Status</h3>' +
+        '<div class="order-details-grid">' +
+          '<div class="order-details-card">' +
+            '<div class="order-details-label">Status</div>' +
+            '<select id="shipment-status" class="form-control" style="margin-top:0.4rem;">' + statusOpts + '</select>' +
+          '</div>' +
+          '<div class="order-details-card">' +
+            '<div class="order-details-label">Carrier</div>' +
+            '<select id="shipment-carrier" class="form-control" style="margin-top:0.4rem;" onchange="onShipmentCarrierChange()">' + carrierOpts + '</select>' +
+          '</div>' +
+        '</div>' +
+        '<div class="order-details-grid" style="margin-top:0.5rem;">' +
+          '<div class="order-details-card">' +
+            '<div class="order-details-label">Tracking Number (AWB)</div>' +
+            '<input id="shipment-awb" class="form-control" type="text" maxlength="100" value="' + Utils.escape(String(awb)) + '" placeholder="e.g. ABC123456789" style="margin-top:0.4rem;">' +
+          '</div>' +
+          '<div class="order-details-card" id="shipment-url-card" style="' + otherStyle + '">' +
+            '<div class="order-details-label">Custom Tracking URL</div>' +
+            '<input id="shipment-url" class="form-control" type="url" maxlength="500" value="' + Utils.escape(String(url)) + '" placeholder="https://carrier.com/track?n=…" style="margin-top:0.4rem;">' +
+          '</div>' +
+        '</div>' +
+        '<div style="margin-top:0.5rem;">' +
+          '<div class="order-details-label" style="margin-bottom:0.4rem;">Note (optional)</div>' +
+          '<textarea id="shipment-note" class="form-control" rows="2" placeholder="Visible to customer in the timeline"></textarea>' +
+        '</div>' +
+        '<div style="margin-top:0.75rem;display:flex;justify-content:flex-end;">' +
+          '<button type="button" class="btn btn-primary" style="width:auto;" onclick="saveShipmentForm(\'' + Utils.escape(String(id)) + '\')">💾 Save Shipment</button>' +
+        '</div>' +
+        '</div>'
+      );
+    }
+
+    function buildOrderHistoryHtml(order) {
+      var hist = Array.isArray(order.statusHistory) ? order.statusHistory : [];
+      if (!hist.length) return '';
+      var rows = hist.slice().reverse().map(function (h) {
+        var s = normalizeOrderStatus(h.status);
+        var when = h.at ? new Date(h.at.replace(' ', 'T') + 'Z').toLocaleString() : '';
+        var note = h.note ? '<div style="color:var(--text-muted);font-size:0.85rem;margin-top:0.25rem;">' + Utils.escape(String(h.note)) + '</div>' : '';
+        return '<div style="display:flex;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid var(--border);">' +
+          '<div style="min-width:160px;font-size:0.85rem;color:var(--text-muted);">' + Utils.escape(when) + '</div>' +
+          '<div style="flex:1;">' + getStatusBadgeHtml(s) +
+          '<span style="margin-left:0.5rem;font-size:0.8rem;color:var(--text-muted);">by ' + Utils.escape(String(h.by || 'system')) + '</span>' +
+          note + '</div></div>';
+      }).join('');
+      return (
+        '<div class="card" style="margin-top:1rem;">' +
+        '<h3 style="font-family:var(--font-display);margin-bottom:0.5rem;">Status History</h3>' +
+        rows +
+        '</div>'
+      );
+    }
+
+    function onShipmentCarrierChange() {
+      var sel = document.getElementById('shipment-carrier');
+      var card = document.getElementById('shipment-url-card');
+      if (!sel || !card) return;
+      card.style.display = sel.value === 'other' ? '' : 'none';
+    }
+
+    function saveShipmentForm(orderId) {
+      var statusEl = document.getElementById('shipment-status');
+      var carrierEl = document.getElementById('shipment-carrier');
+      var awbEl = document.getElementById('shipment-awb');
+      var urlEl = document.getElementById('shipment-url');
+      var noteEl = document.getElementById('shipment-note');
+      if (!statusEl || !carrierEl) return;
+      var payload = {
+        status: statusEl.value,
+        carrier: carrierEl.value || null,
+        trackingNumber: (awbEl && awbEl.value.trim()) || null,
+        trackingUrl: carrierEl.value === 'other' ? ((urlEl && urlEl.value.trim()) || null) : null,
+        note: (noteEl && noteEl.value.trim()) || ''
+      };
+      patchOrder(orderId, payload)
+        .then(function () { showToast('✅ Shipment updated', 'success'); })
+        .catch(function (e) { showToast('❌ ' + (e.message || 'Update failed'), 'danger'); });
     }
 
     // =============================================
@@ -2732,6 +3275,7 @@
     // =============================================
     function initDashboard() {
       renderCategorySelectors();
+      renderLastSaveBadge();
       const products = Storage.getProducts();
       const totalEl = document.getElementById('stat-total-products');
       if (totalEl) totalEl.textContent = products.length;
@@ -3188,7 +3732,7 @@
       if (dEl) dEl.value = (sides && (sides.D || sides.d || sides.sideD)) || '';
     }
 
-    function handleProductSubmit(e) {
+    async function handleProductSubmit(e) {
       e.preventDefault();
       const products = Storage.getProducts();
       const rawEditId = (window.currentEditId != null && window.currentEditId !== '')
@@ -3232,23 +3776,28 @@
 
       // Match by id so an edit always updates the same row, never duplicates.
       const existingIdx = products.findIndex(p => p.id === productData.id);
-      if (existingIdx >= 0) {
-        products[existingIdx] = { ...products[existingIdx], ...productData };
-        showToast('<i class="fas fa-circle-check"></i> Product Updated Successfully');
-      } else {
-        products.push(productData);
-        showToast('<i class="fas fa-rocket"></i> New Release Added to Catalog');
-      }
+      const isUpdate = existingIdx >= 0;
+      const mergedProduct = isUpdate
+        ? { ...products[existingIdx], ...productData }
+        : productData;
 
-      window.currentEditId = null;
-      Storage.saveProducts(products);
-      closeProductModal();
-      renderProductsTable();
+      try {
+        await Storage.upsertProduct(mergedProduct);
+        window.currentEditId = null;
+        showToast(isUpdate
+          ? '<i class="fas fa-circle-check"></i> Product Updated Successfully'
+          : '<i class="fas fa-rocket"></i> New Release Added to Catalog');
+        closeProductModal();
+        renderProductsTable();
+      } catch (err) {
+        recordSaveResult({ status: 'error', op: isUpdate ? 'update' : 'add', error: err.message });
+        showToast('❌ Save failed: ' + err.message, 'danger');
+      }
     }
 
     // editProduct now opens a dedicated Edit Release modal (not the Add modal).
     // The modal pre-fills with the product's current saved values; submitting
-    // sends the merged changes through the same Storage.saveProducts pipeline.
+    // sends the merged record through Storage.upsertProduct (single-item POST).
     function editProduct(id) {
       openProductEditModal(id);
     }
@@ -3515,7 +4064,7 @@
       sell.addEventListener('input', calculateEditDiscount);
     }
 
-    function handleProductEditSubmit(e) {
+    async function handleProductEditSubmit(e) {
       e.preventDefault();
       const products = Storage.getProducts();
       const editId = parseInt(document.getElementById('e-id').value);
@@ -3566,20 +4115,27 @@
         specs: getEditSpecificationsData(),
       };
 
-      products[existingIdx] = { ...products[existingIdx], ...updates };
-      Storage.saveProducts(products);
-      closeProductEditModal();
-      renderProductsTable();
-      showToast('<i class="fas fa-circle-check"></i> Product Updated Successfully');
+      const merged = { ...products[existingIdx], ...updates };
+      try {
+        await Storage.upsertProduct(merged);
+        closeProductEditModal();
+        renderProductsTable();
+        showToast('<i class="fas fa-circle-check"></i> Product Updated Successfully');
+      } catch (err) {
+        recordSaveResult({ status: 'error', op: 'update', error: err.message });
+        showToast('❌ Save failed: ' + err.message, 'danger');
+      }
     }
 
-    function deleteProduct(id) {
-      if (confirm('Are you sure you want to delete this title?')) {
-        let products = Storage.getProducts();
-        products = products.filter(p => p.id !== id);
-        Storage.saveProducts(products);
+    async function deleteProduct(id) {
+      if (!confirm('Are you sure you want to delete this title?')) return;
+      try {
+        await Storage.deleteProduct(id);
         renderProductsTable();
         showToast('🗑 Product Removed from Catalog');
+      } catch (err) {
+        recordSaveResult({ status: 'error', op: 'delete', error: err.message });
+        showToast('❌ Delete failed: ' + err.message, 'danger');
       }
     }
 
