@@ -234,6 +234,7 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 | Method | Path | Body | Returns |
 |---|---|---|---|
 | POST | `/api/products.php` | `{ products: Product[] }` (full list) | `{ ok, count }` — transactional replace |
+| POST | `/api/products-bulk-upsert.php` | `{ products: Product[] }` (partial list) | `{ ok, inserted, updated, errors[], products[] }` — **additive** upsert; does NOT wipe untouched rows. Rows without an `id` get auto-assigned `MAX(id)+1`. Used by the admin Bulk Upload CSV flow. |
 | DELETE | `/api/products.php?id=N` | — | `{ ok }` |
 | POST | `/api/categories.php` | `{ categories: string[] }` (full list) | `{ ok, count }` — transactional replace |
 | GET | `/api/orders.php` | — | `Order[]` (all orders, joined with user info) |
@@ -651,6 +652,26 @@ The Hostinger MySQL username gets prefixed with `u286479481_`. Anything you type
 3. Update `admin.html` form to capture the new field
 4. Update `index.html` if customers should see it
 5. Update [§5](#5-database-schema) in this doc with the new column
+
+### Bulk-uploading products via CSV
+
+Admin panel → **Products** → click **Bulk Upload** (next to **New Product**).
+
+1. Click **Download CSV Template** to grab a starter file with all supported columns and one example row.
+2. Edit the CSV in Excel/Sheets. **Required columns:** `title`, `artist`, `category`, `price`. **Optional:** `id`, `language`, `original_price`, `stock`, `badge` (hot/new/upcoming), `description`, `music_director`, `track_listing`, `people` (pipe-separated, e.g. `rd-burman|amitabh-bachchan`), and the `specs_*` columns (`specs_format`, `specs_speed`, `specs_label`, `specs_year`, `specs_tracks`, `specs_genre`, `specs_theme`).
+3. Drop the file on the dropzone (or click to pick). The client parses + validates locally and shows a preview table: how many rows are valid, how many have errors, and *which* error each invalid row has.
+4. Click **Import N rows** to commit only the valid rows. Invalid rows are skipped — fix them and re-upload.
+
+**ID semantics:** blank `id` → server auto-assigns the next available id (`MAX(id)+1`). `id` matching an existing product → that product is updated. `id` not yet in the table → inserted with that exact id.
+
+**What bulk upload won't do:**
+- It will not upload images. Add them per-product via the existing edit modal after the import. (Decided at design time — CSVs with embedded base64 images get huge and slow to parse.)
+- It will not delete products. The endpoint is purely additive/update — anything not in your CSV stays untouched. To remove products, use the per-row delete button.
+
+**Implementation:**
+- Endpoint: [api/products-bulk-upsert.php](api/products-bulk-upsert.php) — admin-only (`X-Admin-Pass`), runs in a single transaction. Returns `{ ok, inserted, updated, errors[], products[] }`.
+- Shared persistence: [api/_products_helpers.php](api/_products_helpers.php) holds `upsert_product()` / `row_to_product()` / `products_has_images_column()` so both `products.php` and `products-bulk-upsert.php` write rows identically.
+- Frontend: `openBulkUploadModal()` / `parseCsv()` / `bulkValidate()` / `confirmBulkImport()` in [admin.html](admin.html), plus `Storage.bulkUpsertProducts()` which merges the server-returned canonical rows back into the local cache.
 
 ### Resetting a customer's password (support flow)
 

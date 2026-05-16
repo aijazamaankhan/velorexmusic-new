@@ -1449,6 +1449,67 @@
       color: var(--text-muted);
     }
 
+    /* Bulk Upload */
+    .bulk-dropzone {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2.5rem 1.5rem;
+      border: 2px dashed var(--border);
+      border-radius: 14px;
+      cursor: pointer;
+      transition: var(--transition);
+      background: var(--surface);
+    }
+
+    .bulk-dropzone:hover,
+    .bulk-dropzone.dragover {
+      border-color: var(--secondary);
+      background: rgba(255, 107, 53, 0.05);
+    }
+
+    .bulk-summary {
+      padding: 1rem 1.25rem;
+      border-radius: 10px;
+      background: var(--surface);
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    .bulk-summary .ok { color: #4ade80; font-weight: 700; }
+    .bulk-summary .err { color: #f87171; font-weight: 700; }
+
+    .bulk-preview-wrap {
+      max-height: 50vh;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .bulk-preview-table {
+      border-collapse: collapse;
+      border-spacing: 0;
+      margin: 0;
+      width: 100%;
+    }
+
+    .bulk-preview-table th,
+    .bulk-preview-table td {
+      padding: 0.6rem 0.8rem;
+      font-size: 0.85rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .bulk-preview-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .bulk-row-ok { color: #4ade80; }
+    .bulk-row-err { color: #f87171; }
+    .bulk-row-err td { background: rgba(248, 113, 113, 0.05); }
+
     /* Toast */
     .toast {
       position: fixed;
@@ -1629,6 +1690,9 @@
               </select>
               <button class="btn-export">
                 <i class="fas fa-download"></i> Export
+              </button>
+              <button class="btn-export" onclick="openBulkUploadModal()">
+                <i class="fas fa-file-csv"></i> Bulk Upload
               </button>
               <button class="btn-new-product" onclick="openProductModal()">
                 <i class="fas fa-plus"></i> New Product
@@ -2086,6 +2150,78 @@
     </div>
   </div>
 
+  <!-- Bulk Upload Modal: CSV-only, validate-then-confirm flow.
+       Step 1 (#bulk-step-pick) — user picks a CSV file (or downloads the template).
+       Step 2 (#bulk-step-preview) — client-parsed preview with per-row errors. -->
+  <div class="modal-overlay" id="bulk-upload-modal" onclick="if(event.target===this)closeBulkUploadModal()">
+    <div class="modal-content" style="max-width: 1000px;">
+      <div class="modal-header">
+        <h2 class="modal-title">Bulk Upload Products</h2>
+        <div class="modal-close" onclick="closeBulkUploadModal()">✕</div>
+      </div>
+
+      <div id="bulk-step-pick">
+        <p style="color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.6;">
+          Upload a CSV file to add or update products in bulk. Rows with a blank
+          <code>id</code> are added as new products (auto-assigned ID); rows with an
+          existing <code>id</code> update that product. Images aren't supported in
+          bulk &mdash; add them per-product after the import.
+        </p>
+
+        <div style="margin-bottom: 1.25rem;">
+          <button type="button" class="btn-export" onclick="downloadBulkTemplate()">
+            <i class="fas fa-download"></i> Download CSV Template
+          </button>
+        </div>
+
+        <label for="bulk-file-input" class="bulk-dropzone" id="bulk-dropzone">
+          <i class="fas fa-file-csv" style="font-size: 2.5rem; color: var(--text-muted);"></i>
+          <div style="margin-top: 0.75rem; font-weight: 600;">Click to choose a CSV file</div>
+          <div style="margin-top: 0.25rem; color: var(--text-muted); font-size: 0.85rem;">
+            or drag and drop here
+          </div>
+          <input type="file" id="bulk-file-input" accept=".csv,text/csv" style="display: none;"
+            onchange="handleBulkFileSelect(event)">
+        </label>
+
+        <div style="margin-top: 1.5rem; padding: 1rem 1.25rem; background: var(--surface); border-radius: 10px; font-size: 0.85rem; line-height: 1.7;">
+          <strong>Required columns:</strong> <code>title</code>, <code>artist</code>, <code>category</code>, <code>price</code><br>
+          <strong>Optional:</strong> <code>id</code>, <code>language</code>, <code>original_price</code>, <code>stock</code>,
+          <code>badge</code> (hot/new/upcoming), <code>description</code>, <code>music_director</code>, <code>track_listing</code>,
+          <code>people</code> (pipe-separated, e.g. <code>rd-burman|amitabh-bachchan</code>),
+          <code>specs_format</code>, <code>specs_speed</code>, <code>specs_label</code>, <code>specs_year</code>,
+          <code>specs_tracks</code>, <code>specs_genre</code>, <code>specs_theme</code>
+        </div>
+      </div>
+
+      <div id="bulk-step-preview" style="display: none;">
+        <div id="bulk-preview-summary" class="bulk-summary"></div>
+        <div class="bulk-preview-wrap">
+          <table class="admin-table bulk-preview-table">
+            <thead>
+              <tr>
+                <th style="width: 50px;">Row</th>
+                <th style="width: 70px;">ID</th>
+                <th>Title</th>
+                <th>Artist</th>
+                <th>Category</th>
+                <th>Price</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="bulk-preview-body"></tbody>
+          </table>
+        </div>
+        <div style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: flex-end; flex-wrap: wrap;">
+          <button type="button" class="btn" style="background: var(--surface); border: 1px solid var(--border); width: auto;"
+            onclick="resetBulkUpload()">← Back</button>
+          <button type="button" class="btn btn-primary" id="bulk-confirm-btn" style="width: auto;"
+            onclick="confirmBulkImport()">Import valid rows</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script>
@@ -2292,6 +2428,37 @@
         localStorage.setItem('vv_products', JSON.stringify(list));
         recordSaveResult({ status: 'ok', op: 'delete', detail: 'Deleted product #' + id });
         return res.json();
+      },
+
+      // Bulk CSV import. Sends the rows the user already validated client-side
+      // to /api/products-bulk-upsert.php (additive — does NOT wipe the catalog).
+      // The server echoes back the canonical saved rows; we merge those into
+      // the local cache rather than trusting our send payload, so server-side
+      // normalization (default rating, etc.) shows up immediately in the table.
+      async bulkUpsertProducts(products) {
+        const res = await fetch(API_BASE + '/products-bulk-upsert.php', {
+          method: 'POST',
+          headers: adminAuthHeaders(),
+          body: JSON.stringify({ products }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || ('HTTP ' + res.status));
+        }
+        if (Array.isArray(data.products) && data.products.length) {
+          const list = Storage.getProducts();
+          const byId = new Map(list.map(p => [p.id, p]));
+          for (const p of data.products) byId.set(p.id, p);
+          const merged = Array.from(byId.values()).sort((a, b) => a.id - b.id);
+          localStorage.setItem('vv_products', JSON.stringify(merged));
+        }
+        recordSaveResult({
+          status: 'ok',
+          op: 'bulk',
+          detail: 'Bulk: ' + data.inserted + ' added, ' + data.updated + ' updated'
+            + (data.errors && data.errors.length ? ', ' + data.errors.length + ' skipped' : ''),
+        });
+        return data;
       },
 
       // Legacy bulk-replace path. Kept only for explicit "import the full catalog"
@@ -3400,6 +3567,318 @@
       // Reset image upload
       resetImageGallery();
     }
+
+    // =============================================
+    // BULK UPLOAD (CSV → Validate → Confirm → Import)
+    // =============================================
+    // CSV columns (header row required, case-insensitive):
+    //   Required: title, artist, category, price
+    //   Optional: id, language, original_price, stock, badge, description,
+    //             music_director, track_listing, people (pipe-separated),
+    //             specs_format, specs_speed, specs_label, specs_year,
+    //             specs_tracks, specs_genre, specs_theme
+    // Images are NOT supported in bulk by design — add per-product afterward.
+
+    const BULK_REQUIRED_COLS = ['title', 'artist', 'category', 'price'];
+    const BULK_VALID_BADGES = ['hot', 'new', 'upcoming'];
+
+    // Holds the validated, ready-to-import payload between the preview step
+    // and the confirm button. Reset on modal open/close.
+    let bulkParsedRows = [];
+
+    function openBulkUploadModal() {
+      resetBulkUpload();
+      document.getElementById('bulk-upload-modal').style.display = 'flex';
+    }
+
+    function closeBulkUploadModal() {
+      document.getElementById('bulk-upload-modal').style.display = 'none';
+      resetBulkUpload();
+    }
+
+    function resetBulkUpload() {
+      bulkParsedRows = [];
+      document.getElementById('bulk-step-pick').style.display = '';
+      document.getElementById('bulk-step-preview').style.display = 'none';
+      document.getElementById('bulk-preview-body').innerHTML = '';
+      document.getElementById('bulk-preview-summary').innerHTML = '';
+      const input = document.getElementById('bulk-file-input');
+      if (input) input.value = '';
+    }
+
+    function downloadBulkTemplate() {
+      const headers = [
+        'id', 'title', 'artist', 'category', 'price',
+        'language', 'original_price', 'stock', 'badge', 'description',
+        'music_director', 'track_listing', 'people',
+        'specs_format', 'specs_speed', 'specs_label', 'specs_year',
+        'specs_tracks', 'specs_genre', 'specs_theme',
+      ];
+      const example = [
+        '', 'Sholay', 'R. D. Burman', 'vinyl', '1499',
+        'Hindi', '1999', '5', 'hot',
+        'Original soundtrack from the 1975 Bollywood classic.',
+        'R. D. Burman', 'Title Music|Mehbooba Mehbooba|Yeh Dosti',
+        'rd-burman|amitabh-bachchan',
+        'LP', '33 RPM', 'EMI', '1975', '8', 'Bollywood', 'Soundtrack',
+      ];
+      const csv = bulkRowToCsv(headers) + '\n' + bulkRowToCsv(example) + '\n';
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'velorex-products-template.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function bulkRowToCsv(row) {
+      return row.map(cell => {
+        const s = cell == null ? '' : String(cell);
+        if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+        return s;
+      }).join(',');
+    }
+
+    // Minimal RFC-4180-ish CSV parser. Handles quoted cells, escaped quotes
+    // ("" → "), commas and newlines inside quotes. Returns array of arrays.
+    function parseCsv(text) {
+      const rows = [];
+      let cur = [];
+      let field = '';
+      let inQuotes = false;
+      // Strip UTF-8 BOM so Excel-saved CSVs don't poison the first header cell.
+      if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+      for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        if (inQuotes) {
+          if (c === '"') {
+            if (text[i + 1] === '"') { field += '"'; i++; continue; }
+            inQuotes = false; continue;
+          }
+          field += c; continue;
+        }
+        if (c === '"') { inQuotes = true; continue; }
+        if (c === ',') { cur.push(field); field = ''; continue; }
+        if (c === '\r') continue; // swallow CR; \n handles the line break
+        if (c === '\n') { cur.push(field); field = ''; rows.push(cur); cur = []; continue; }
+        field += c;
+      }
+      if (field.length || cur.length) { cur.push(field); rows.push(cur); }
+      return rows;
+    }
+
+    function handleBulkFileSelect(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      // 5MB cap — well above any plausible CSV (no embedded images supported).
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('File too large (>5MB). CSV-only — no embedded images.', 'danger');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const rows = parseCsv(String(e.target.result));
+          processBulkRows(rows);
+        } catch (err) {
+          console.error('[Bulk] CSV parse failed:', err);
+          showToast('Failed to read CSV: ' + err.message, 'danger');
+        }
+      };
+      reader.onerror = function () { showToast('Could not read file', 'danger'); };
+      reader.readAsText(file);
+    }
+
+    function processBulkRows(rows) {
+      if (!rows.length) { showToast('CSV is empty', 'danger'); return; }
+      const header = rows[0].map(h => String(h || '').trim().toLowerCase());
+      // Drop entirely-blank rows so a trailing newline in Excel doesn't show up as an error.
+      const dataRows = rows.slice(1).filter(r => r.some(cell => String(cell || '').trim() !== ''));
+
+      const missing = BULK_REQUIRED_COLS.filter(c => header.indexOf(c) === -1);
+      if (missing.length) {
+        showToast('Missing required columns: ' + missing.join(', '), 'danger');
+        return;
+      }
+      if (!dataRows.length) {
+        showToast('No data rows found (only a header).', 'danger');
+        return;
+      }
+
+      const validCategories = Storage.getCategories();
+      const previewRows = dataRows.map((cells, i) => {
+        const obj = {};
+        header.forEach((h, j) => { obj[h] = j < cells.length ? cells[j] : ''; });
+        const item = bulkBuildProduct(obj);
+        const errors = bulkValidate(item, obj, validCategories);
+        return { rowNum: i + 2, item, errors }; // +2 — header occupies row 1, data is 1-indexed
+      });
+
+      bulkParsedRows = previewRows.filter(r => !r.errors.length).map(r => r.item);
+      renderBulkPreview(previewRows);
+    }
+
+    function bulkBuildProduct(obj) {
+      const trim = v => (v == null ? '' : String(v).trim());
+      const num = v => {
+        const t = trim(v);
+        if (t === '') return null;
+        const n = Number(t);
+        return Number.isFinite(n) ? n : NaN;
+      };
+      const pipeList = v => trim(v).split('|').map(s => s.trim()).filter(Boolean);
+
+      const specs = {};
+      ['format', 'speed', 'label', 'year', 'tracks', 'genre', 'theme'].forEach(k => {
+        const v = trim(obj['specs_' + k]);
+        if (v === '') return;
+        if (k === 'year' || k === 'tracks') {
+          const n = Number(v);
+          specs[k] = Number.isFinite(n) ? n : v;
+        } else {
+          specs[k] = v;
+        }
+      });
+
+      const p = {
+        title: trim(obj.title),
+        artist: trim(obj.artist),
+        category: trim(obj.category).toLowerCase(),
+        price: num(obj.price),
+      };
+      const idVal = trim(obj.id);
+      if (idVal !== '') p.id = Number(idVal);
+
+      const lang = trim(obj.language); if (lang) p.language = lang;
+      const op = num(obj.original_price); if (op !== null && Number.isFinite(op)) p.originalPrice = op;
+      const stock = num(obj.stock); if (stock !== null && Number.isFinite(stock)) p.stock = stock;
+      const badge = trim(obj.badge).toLowerCase(); if (badge) p.badge = badge;
+      const desc = trim(obj.description); if (desc) p.description = desc;
+      const md = trim(obj.music_director); if (md) p.musicDirector = md;
+      const tl = trim(obj.track_listing); if (tl) p.trackListing = tl;
+      const people = pipeList(obj.people); if (people.length) p.people = people;
+      if (Object.keys(specs).length) p.specs = specs;
+      return p;
+    }
+
+    function bulkValidate(p, raw, validCategories) {
+      const errs = [];
+      if (!p.title) errs.push('title is required');
+      if (!p.artist) errs.push('artist is required');
+      if (!p.category) errs.push('category is required');
+      else if (validCategories.length && validCategories.indexOf(p.category) === -1) {
+        errs.push("unknown category '" + p.category + "' (expected: " + validCategories.join(', ') + ')');
+      }
+      if (p.price === null || p.price === undefined) errs.push('price is required');
+      else if (!Number.isFinite(p.price) || p.price < 0 || !Number.isInteger(p.price)) errs.push('price must be a non-negative integer');
+      const idRaw = String(raw.id == null ? '' : raw.id).trim();
+      if (idRaw !== '' && (!Number.isFinite(p.id) || !Number.isInteger(p.id) || p.id <= 0)) {
+        errs.push('id must be a positive integer');
+      }
+      if (p.originalPrice !== undefined && (!Number.isFinite(p.originalPrice) || p.originalPrice < 0 || !Number.isInteger(p.originalPrice))) {
+        errs.push('original_price must be a non-negative integer');
+      }
+      if (p.stock !== undefined && (!Number.isFinite(p.stock) || p.stock < 0 || !Number.isInteger(p.stock))) {
+        errs.push('stock must be a non-negative integer');
+      }
+      if (p.badge && BULK_VALID_BADGES.indexOf(p.badge) === -1) {
+        errs.push('badge must be one of: ' + BULK_VALID_BADGES.join(', '));
+      }
+      return errs;
+    }
+
+    function renderBulkPreview(previewRows) {
+      const validCount = previewRows.filter(r => !r.errors.length).length;
+      const errCount = previewRows.length - validCount;
+
+      const summary = document.getElementById('bulk-preview-summary');
+      summary.innerHTML =
+        '<span class="ok">' + validCount + ' valid</span>'
+        + (errCount ? ' &middot; <span class="err">' + errCount + ' with errors (will be skipped)</span>' : '')
+        + ' &middot; ' + previewRows.length + ' total rows';
+
+      const body = document.getElementById('bulk-preview-body');
+      body.innerHTML = previewRows.map(r => {
+        const ok = !r.errors.length;
+        const cls = ok ? 'bulk-row-ok' : 'bulk-row-err';
+        const status = ok
+          ? '<span class="' + cls + '">✓ ready</span>'
+          : '<span class="' + cls + '">✕ ' + Utils.escape(r.errors.join('; ')) + '</span>';
+        const idCell = r.item.id != null
+          ? Utils.escape(String(r.item.id))
+          : '<em style="color:var(--text-muted)">auto</em>';
+        const priceCell = r.item.price != null ? Utils.escape(String(r.item.price)) : '';
+        return '<tr>'
+          + '<td>' + r.rowNum + '</td>'
+          + '<td>' + idCell + '</td>'
+          + '<td>' + Utils.escape(r.item.title || '') + '</td>'
+          + '<td>' + Utils.escape(r.item.artist || '') + '</td>'
+          + '<td>' + Utils.escape(r.item.category || '') + '</td>'
+          + '<td>' + priceCell + '</td>'
+          + '<td>' + status + '</td>'
+          + '</tr>';
+      }).join('');
+
+      document.getElementById('bulk-step-pick').style.display = 'none';
+      document.getElementById('bulk-step-preview').style.display = '';
+
+      const btn = document.getElementById('bulk-confirm-btn');
+      btn.disabled = validCount === 0;
+      btn.textContent = validCount === 0
+        ? 'Nothing valid to import'
+        : 'Import ' + validCount + ' row' + (validCount === 1 ? '' : 's');
+    }
+
+    async function confirmBulkImport() {
+      if (!bulkParsedRows.length) return;
+      const btn = document.getElementById('bulk-confirm-btn');
+      const originalLabel = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Importing…';
+      try {
+        const result = await Storage.bulkUpsertProducts(bulkParsedRows);
+        const errCount = (result.errors && result.errors.length) || 0;
+        showToast(
+          'Imported ' + result.inserted + ' new, ' + result.updated + ' updated'
+            + (errCount ? ' (' + errCount + ' server-side issue' + (errCount === 1 ? '' : 's') + ')' : ''),
+          'success'
+        );
+        closeBulkUploadModal();
+        if (typeof renderProductsTable === 'function') renderProductsTable();
+        renderLastSaveBadge();
+      } catch (e) {
+        console.error('[Bulk] import failed:', e);
+        recordSaveResult({ status: 'error', op: 'bulk', error: e.message });
+        renderLastSaveBadge();
+        showToast('Bulk import failed: ' + e.message, 'danger');
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+      }
+    }
+
+    // Drag-and-drop support for the dropzone. Runs once at script load —
+    // safe because the modal markup is above this <script>.
+    (function setupBulkDropzone() {
+      const dz = document.getElementById('bulk-dropzone');
+      if (!dz) return;
+      ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => {
+        e.preventDefault(); e.stopPropagation();
+        dz.classList.add('dragover');
+      }));
+      ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => {
+        e.preventDefault(); e.stopPropagation();
+        dz.classList.remove('dragover');
+      }));
+      dz.addEventListener('drop', e => {
+        const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (!file) return;
+        document.getElementById('bulk-file-input').files = e.dataTransfer.files;
+        handleBulkFileSelect({ target: { files: [file] } });
+      });
+    })();
 
     // =============================================
     // MULTI IMAGE URL + UPLOAD (Product Gallery)
