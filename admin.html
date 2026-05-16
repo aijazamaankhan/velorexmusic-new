@@ -331,6 +331,17 @@
     .tracking-input-row input { flex: 1; padding: 0.55rem 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: monospace; }
     .tracking-save-btn { background: var(--secondary); border: none; color: #fff; padding: 0.55rem 0.7rem; border-radius: 8px; cursor: pointer; }
     .tracking-save-btn:hover { background: #ff5722; }
+
+    /* Inline shipment editor (admin orders → expanded row) */
+    .shipment-form { display: flex; flex-direction: column; gap: 0.35rem; }
+    .shipment-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600; margin-top: 0.5rem; }
+    .shipment-select,
+    .shipment-input { width: 100%; padding: 0.55rem 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.9rem; }
+    .shipment-input { font-family: monospace; }
+    .shipment-row { display: flex; gap: 0.5rem; align-items: center; }
+    .shipment-row .shipment-input { flex: 1; }
+    .shipment-save-btn { background: var(--secondary); border: none; color: #fff; padding: 0.55rem 0.85rem; border-radius: 8px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap; }
+    .shipment-save-btn:hover { background: #ff5722; }
     .admin-note-textarea { width: 100%; min-height: 70px; padding: 0.6rem 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; resize: vertical; font-size: 0.85rem; box-sizing: border-box; }
 
     .last-save-badge {
@@ -3059,6 +3070,15 @@
 
       var tracking = Utils.escape(String(o.trackingNumber || ''));
       var adminNote = Utils.escape(String(o.adminNote || ''));
+      var shipCarrier = (o.carrier || '').toLowerCase();
+      var shipUrl = Utils.escape(String(o.trackingUrl || ''));
+      // Build the carrier <select> with the current value pre-selected.
+      var inlineCarrierOpts = '<option value="">— Select carrier —</option>' + CARRIERS.map(function (c) {
+        return '<option value="' + c[0] + '"' + (shipCarrier === c[0] ? ' selected' : '') + '>' + c[1] + '</option>';
+      }).join('');
+      // URL field is meaningful only for 'other' (known carriers have a URL template
+      // baked into the customer tracker). Hide it otherwise to keep the form tight.
+      var inlineUrlRowStyle = shipCarrier === 'other' ? '' : 'display:none;';
 
       return '<tr class="order-detail-row" data-detail-for="' + escapeAttr(id) + '">' +
         '<td colspan="8" class="order-detail-cell">' +
@@ -3068,10 +3088,19 @@
             '</div>' +
             '<div class="order-detail-panel">' +
               '<h4>📍 Shipping Details</h4>' + shippingHtml +
-              '<h4 style="margin-top:1rem;">🚚 Tracking Number</h4>' +
-              '<div class="tracking-input-row">' +
-                '<input type="text" id="trk-' + escapeAttr(id) + '" value="' + tracking + '" placeholder="e.g. DH123456789" maxlength="100">' +
-                '<button class="tracking-save-btn" type="button" onclick="saveTrackingForOrder(\'' + escapeAttr(id) + '\')" title="Save"><i class="fas fa-save"></i></button>' +
+              '<h4 style="margin-top:1rem;">🚚 Shipment</h4>' +
+              '<div class="shipment-form">' +
+                '<label class="shipment-label">Carrier</label>' +
+                '<select class="shipment-select" id="ship-car-' + escapeAttr(id) + '" onchange="onInlineCarrierChange(\'' + escapeAttr(id) + '\')">' + inlineCarrierOpts + '</select>' +
+                '<label class="shipment-label">Tracking Number</label>' +
+                '<div class="shipment-row">' +
+                  '<input type="text" class="shipment-input" id="ship-trk-' + escapeAttr(id) + '" value="' + tracking + '" placeholder="e.g. DH123456789" maxlength="100">' +
+                  '<button class="shipment-save-btn" type="button" onclick="saveShipmentInline(\'' + escapeAttr(id) + '\')" title="Save"><i class="fas fa-save"></i> Save</button>' +
+                '</div>' +
+                '<div class="shipment-url-row" id="ship-url-row-' + escapeAttr(id) + '" style="' + inlineUrlRowStyle + '">' +
+                  '<label class="shipment-label">Tracking URL <span style="color:var(--text-muted);font-weight:400;">(for "Other" carrier)</span></label>' +
+                  '<input type="url" class="shipment-input" id="ship-url-' + escapeAttr(id) + '" value="' + shipUrl + '" placeholder="https://carrier.com/track?n=…" maxlength="500">' +
+                '</div>' +
               '</div>' +
             '</div>' +
             '<div class="order-detail-panel">' +
@@ -3093,12 +3122,38 @@
       renderOrdersTable();
     }
 
-    function saveTrackingForOrder(orderId) {
-      var inp = document.getElementById('trk-' + orderId);
-      if (!inp) return;
-      var val = inp.value.trim();
-      patchOrder(orderId, { trackingNumber: val || null })
-        .then(function () { showToast('✅ Tracking saved', 'success'); })
+    // Show / hide the "Tracking URL" field when carrier is set to "Other".
+    // Known carriers have a URL template in the customer tracker (track-order.html);
+    // only "Other" needs a manually-pasted URL.
+    function onInlineCarrierChange(orderId) {
+      var sel = document.getElementById('ship-car-' + orderId);
+      var urlRow = document.getElementById('ship-url-row-' + orderId);
+      if (!sel || !urlRow) return;
+      urlRow.style.display = sel.value === 'other' ? '' : 'none';
+    }
+
+    // Save carrier + tracking number (+ URL when carrier='other') in a single PATCH.
+    // Replaces the old saveTrackingForOrder which only saved the number.
+    function saveShipmentInline(orderId) {
+      var carrierEl = document.getElementById('ship-car-' + orderId);
+      var trkEl     = document.getElementById('ship-trk-' + orderId);
+      var urlEl     = document.getElementById('ship-url-' + orderId);
+      if (!carrierEl || !trkEl) return;
+      var carrier  = carrierEl.value || null;
+      var tracking = trkEl.value.trim() || null;
+      var url      = (carrier === 'other' && urlEl) ? (urlEl.value.trim() || null) : null;
+      // Guard against a typo'd save where the admin entered a tracking number
+      // but forgot to pick a carrier — the customer would see an AWB they can't click.
+      if (tracking && !carrier) {
+        showToast('Pick a carrier before saving', 'error');
+        return;
+      }
+      patchOrder(orderId, {
+        carrier: carrier,
+        trackingNumber: tracking,
+        trackingUrl: url,
+      })
+        .then(function () { showToast('✅ Shipment saved', 'success'); })
         .catch(function (e) { showToast('❌ ' + (e.message || 'Save failed'), 'danger'); });
     }
 

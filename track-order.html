@@ -47,6 +47,55 @@
     [data-theme="light"] .info-card { background: rgba(0,0,0,0.02); }
     .info-card .lbl { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 0.35rem; }
     .info-card .val { font-weight: 600; }
+    .info-card .carrier-cell { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+    .carrier-cell-label { font-weight: 600; }
+
+    /* Carrier badge — small white pill with the Clearbit logo inside.
+       Hover on desktop OR focus (via tap on mobile, since tabindex=0) shows the
+       tooltip. The badge isn't a link, so tapping doesn't navigate — it only
+       reveals the carrier name. The actual tracking link is the separate button
+       in #result-tracking-cta. */
+    .carrier-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 28px;
+      min-width: 36px;
+      padding: 3px 6px;
+      background: #fff;
+      border-radius: 6px;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.08);
+      cursor: help;
+      position: relative;
+      outline: none;
+      vertical-align: middle;
+    }
+    .carrier-badge:focus { box-shadow: 0 0 0 2px var(--secondary, #ff6b35); }
+    .carrier-badge img { height: 20px; width: auto; max-width: 80px; display: block; object-fit: contain; }
+    .carrier-fallback { font-size: 0.72rem; font-weight: 700; color: #333; letter-spacing: 0.02em; padding: 0 2px; }
+    .carrier-badge::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #111;
+      color: #fff;
+      padding: 0.3rem 0.55rem;
+      border-radius: 5px;
+      font-size: 0.72rem;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s;
+      z-index: 10;
+    }
+    .carrier-badge:hover::after,
+    .carrier-badge:focus::after { opacity: 1; }
+    @media (max-width: 600px) {
+      .carrier-badge { height: 32px; min-width: 42px; }
+      .carrier-badge img { height: 24px; max-width: 90px; }
+    }
     .timeline { margin-top: 2rem; }
     .timeline-row { position: relative; padding: 0.5rem 0 0.5rem 2.25rem; }
     .timeline-row::before { content: ''; position: absolute; left: 0.65rem; top: 0; bottom: 0; width: 2px; background: var(--border); }
@@ -106,7 +155,10 @@
       <div class="info-grid">
         <div class="info-card"><div class="lbl">Order Date</div><div class="val" id="result-date">—</div></div>
         <div class="info-card"><div class="lbl">Order Total</div><div class="val" id="result-total">—</div></div>
-        <div class="info-card"><div class="lbl">Carrier</div><div class="val" id="result-carrier">—</div></div>
+        <div class="info-card">
+          <div class="lbl">Carrier</div>
+          <div class="val carrier-cell" id="result-carrier">—</div>
+        </div>
         <div class="info-card"><div class="lbl">Tracking Number</div><div class="val" id="result-awb">—</div></div>
       </div>
 
@@ -140,18 +192,49 @@
       cancelled: '✖', returned: '↩', refunded: '💸'
     };
 
-    const CARRIER_LABELS = {
-      delhivery: 'Delhivery', bluedart: 'Bluedart', dtdc: 'DTDC',
-      indiapost: 'India Post', fedex: 'FedEx', dhl: 'DHL', other: 'Carrier'
+    // Carrier metadata. `domain` feeds Clearbit's logo CDN; if Clearbit doesn't
+    // have one (or it 404s), the <img> falls back to a styled text badge via
+    // onerror. `url` is the live-tracking page template — {awb} gets the
+    // customer's tracking number.
+    const CARRIERS_META = {
+      delhivery: { label: 'Delhivery',  domain: 'delhivery.com',    url: 'https://www.delhivery.com/track-v2/package/{awb}' },
+      bluedart:  { label: 'Bluedart',   domain: 'bluedart.com',     url: 'https://www.bluedart.com/web/guest/trackdartresult?trackFor=0&trackNo={awb}' },
+      dtdc:      { label: 'DTDC',       domain: 'dtdc.in',          url: 'https://www.dtdc.in/tracking/tracking_results.asp?strCnno={awb}&TrkType=cnno' },
+      indiapost: { label: 'India Post', domain: 'indiapost.gov.in', url: 'https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx' },
+      fedex:     { label: 'FedEx',      domain: 'fedex.com',        url: 'https://www.fedex.com/fedextrack/?tracknumbers={awb}' },
+      dhl:       { label: 'DHL',        domain: 'dhl.com',          url: 'https://www.dhl.com/in-en/home/tracking/tracking-express.html?tracking-id={awb}' },
+      other:     { label: 'Carrier',    domain: null,                url: null }
     };
-    const CARRIER_URLS = {
-      delhivery: 'https://www.delhivery.com/track-v2/package/{awb}',
-      bluedart:  'https://www.bluedart.com/web/guest/trackdartresult?trackFor=0&trackNo={awb}',
-      dtdc:      'https://www.dtdc.in/tracking/tracking_results.asp?strCnno={awb}&TrkType=cnno',
-      indiapost: 'https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx',
-      fedex:     'https://www.fedex.com/fedextrack/?tracknumbers={awb}',
-      dhl:       'https://www.dhl.com/in-en/home/tracking/tracking-express.html?tracking-id={awb}'
-    };
+
+    function carrierMeta(id) {
+      return CARRIERS_META[String(id || '').toLowerCase()] || null;
+    }
+
+    function carrierLogoUrl(id) {
+      var m = carrierMeta(id);
+      if (!m || !m.domain) return null;
+      // size=80 keeps the request small while leaving headroom for retina/2x.
+      return 'https://logo.clearbit.com/' + m.domain + '?size=80';
+    }
+
+    // Inline-flex chip with the Clearbit logo, tooltip (hover desktop, focus mobile),
+    // and a text-fallback if Clearbit doesn't return a logo. tabindex=0 makes the
+    // chip focusable so mobile tap triggers the :focus tooltip.
+    function carrierBadgeHtml(id) {
+      var m = carrierMeta(id);
+      if (!m) return '';
+      var label = escape(m.label);
+      var url = carrierLogoUrl(id);
+      var fallback = '<span class="carrier-fallback">' + label + '</span>';
+      if (!url) {
+        return '<span class="carrier-badge" tabindex="0" data-tooltip="' + label + '" aria-label="' + label + '">' + fallback + '</span>';
+      }
+      // onerror swaps the broken <img> for the text fallback. The replacement
+      // keeps the same chip so the tooltip still works.
+      return '<span class="carrier-badge" tabindex="0" data-tooltip="' + label + '" aria-label="' + label + '">' +
+        '<img src="' + url + '" alt="' + label + '" loading="lazy" onerror="this.outerHTML=\'' + fallback.replace(/'/g, "\\'") + '\'">' +
+        '</span>';
+    }
 
     function escape(s) {
       return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -167,15 +250,15 @@
 
     function carrierTrackingUrl(order) {
       if (order.trackingUrl) return order.trackingUrl;
-      var code = (order.carrier || '').toLowerCase();
-      var tpl = CARRIER_URLS[code];
-      if (!tpl || !order.trackingNumber) return null;
-      return tpl.replace('{awb}', encodeURIComponent(order.trackingNumber));
+      var m = carrierMeta(order.carrier);
+      if (!m || !m.url || !order.trackingNumber) return null;
+      return m.url.replace('{awb}', encodeURIComponent(order.trackingNumber));
     }
 
     function carrierLabel(order) {
       if (!order.carrier) return null;
-      return CARRIER_LABELS[order.carrier.toLowerCase()] || order.carrier;
+      var m = carrierMeta(order.carrier);
+      return m ? m.label : order.carrier;
     }
 
     async function trackOrder(ev) {
@@ -270,7 +353,14 @@
       document.getElementById('result-total').textContent = order.total != null ? fmtMoney(order.total) : '—';
 
       var carrier = carrierLabel(order);
-      document.getElementById('result-carrier').textContent = carrier || '—';
+      var carrierCell = document.getElementById('result-carrier');
+      if (carrier) {
+        // innerHTML rather than textContent — the badge contains the <img>+tooltip wrapper.
+        // The badge values are escape()'d inside carrierBadgeHtml.
+        carrierCell.innerHTML = carrierBadgeHtml(order.carrier) + '<span class="carrier-cell-label">' + escape(carrier) + '</span>';
+      } else {
+        carrierCell.textContent = '—';
+      }
       document.getElementById('result-awb').textContent = order.trackingNumber || '—';
 
       var cta = document.getElementById('result-tracking-cta');

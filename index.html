@@ -382,6 +382,59 @@
     .o-cancelled-banner { margin-top: 1.25rem; padding: 0.75rem 1rem; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; color: var(--danger); font-weight: 600; font-size: 0.9rem; text-align: center; }
     .o-admin-note { margin-top: 1rem; padding: 0.75rem 1rem; background: rgba(255,107,53,0.07); border-left: 3px solid var(--secondary); border-radius: 6px; font-size: 0.85rem; color: var(--text); line-height: 1.45; }
     .o-admin-note .o-note-label { font-size: 0.7rem; font-weight: 700; color: var(--secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem; display: block; }
+
+    /* Tracking row inside the order card — carrier logo + AWB link. */
+    .o-tracking-row { display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 0.4rem; }
+    .o-awb-wrap { font-family: monospace; font-size: 0.8rem; }
+    .o-awb-link { color: var(--secondary); text-decoration: none; font-weight: 600; }
+    .o-awb-link:hover { text-decoration: underline; }
+    .o-awb-text { color: var(--secondary); font-weight: 600; }
+
+    /* Carrier badge — small white pill with the Clearbit logo inside.
+       Hover (desktop) and :focus (mobile tap, since tabindex=0) reveal the
+       tooltip with the full carrier name. Not a link — keeps tap-for-name
+       gesture separate from tap-to-track. */
+    .carrier-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 24px;
+      min-width: 32px;
+      padding: 2px 5px;
+      background: #fff;
+      border-radius: 5px;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.08);
+      cursor: help;
+      position: relative;
+      outline: none;
+      vertical-align: middle;
+    }
+    .carrier-badge:focus { box-shadow: 0 0 0 2px var(--secondary); }
+    .carrier-badge img { height: 18px; width: auto; max-width: 70px; display: block; object-fit: contain; }
+    .carrier-fallback { font-size: 0.68rem; font-weight: 700; color: #222; letter-spacing: 0.02em; padding: 0 2px; }
+    .carrier-badge::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #111;
+      color: #fff;
+      padding: 0.3rem 0.55rem;
+      border-radius: 5px;
+      font-size: 0.72rem;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s;
+      z-index: 10;
+    }
+    .carrier-badge:hover::after,
+    .carrier-badge:focus::after { opacity: 1; }
+    @media (max-width: 600px) {
+      .carrier-badge { height: 28px; min-width: 38px; }
+      .carrier-badge img { height: 22px; max-width: 80px; }
+    }
     .order-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
     .order-id { font-weight: 700; font-size: 0.875rem; }
     .order-date { font-size: 0.8rem; color: var(--text-muted); }
@@ -1205,6 +1258,46 @@
       'ashutosh-gowariker': 'Ashutosh Gowariker',
       'yash-chopra': 'Yash Chopra'
     };
+
+    // ---- Carrier metadata + logo badge helpers ----
+    // Mirrored from track-order.html — keep both in sync if you add a carrier.
+    // `domain` is what Clearbit's logo CDN looks up. `url` is the live tracking
+    // page template; {awb} is replaced by the tracking number. Customer order
+    // card and the standalone track-order page both consume these.
+    const CARRIERS_META = {
+      delhivery: { label: 'Delhivery',  domain: 'delhivery.com',    url: 'https://www.delhivery.com/track-v2/package/{awb}' },
+      bluedart:  { label: 'Bluedart',   domain: 'bluedart.com',     url: 'https://www.bluedart.com/web/guest/trackdartresult?trackFor=0&trackNo={awb}' },
+      dtdc:      { label: 'DTDC',       domain: 'dtdc.in',          url: 'https://www.dtdc.in/tracking/tracking_results.asp?strCnno={awb}&TrkType=cnno' },
+      indiapost: { label: 'India Post', domain: 'indiapost.gov.in', url: 'https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx' },
+      fedex:     { label: 'FedEx',      domain: 'fedex.com',        url: 'https://www.fedex.com/fedextrack/?tracknumbers={awb}' },
+      dhl:       { label: 'DHL',        domain: 'dhl.com',          url: 'https://www.dhl.com/in-en/home/tracking/tracking-express.html?tracking-id={awb}' },
+      other:     { label: 'Carrier',    domain: null,                url: null }
+    };
+    function carrierMeta(id) { return CARRIERS_META[String(id || '').toLowerCase()] || null; }
+    function carrierTrackingUrl(order) {
+      if (!order) return null;
+      if (order.trackingUrl) return order.trackingUrl;
+      var m = carrierMeta(order.carrier);
+      if (!m || !m.url || !order.trackingNumber) return null;
+      return m.url.replace('{awb}', encodeURIComponent(order.trackingNumber));
+    }
+    // Small white pill with the Clearbit logo, hover/focus tooltip showing the
+    // carrier's full name. tabindex=0 makes the pill keyboard- and tap-focusable
+    // so the :focus tooltip rule fires on mobile tap (no separate JS needed).
+    function carrierBadgeHtml(id) {
+      var m = carrierMeta(id);
+      if (!m) return '';
+      var label = Utils.escape(m.label);
+      var fallback = '<span class="carrier-fallback">' + label + '</span>';
+      if (!m.domain) {
+        return '<span class="carrier-badge" tabindex="0" data-tooltip="' + label + '" aria-label="' + label + '">' + fallback + '</span>';
+      }
+      var url = 'https://logo.clearbit.com/' + m.domain + '?size=80';
+      // onerror — Clearbit can 404 for some domains (rare); fall back to text.
+      return '<span class="carrier-badge" tabindex="0" data-tooltip="' + label + '" aria-label="' + label + '">' +
+        '<img src="' + url + '" alt="' + label + '" loading="lazy" onerror="this.outerHTML=\'' + fallback.replace(/'/g, "\\'") + '\'">' +
+        '</span>';
+    }
 
     // ---- Storage Helpers ----
     // Products are the server's responsibility. localStorage is only a render cache:
@@ -2877,9 +2970,23 @@
           ? new Date(String(order.createdAt).replace(' ', 'T') + 'Z').toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
           : (order.date || '');
 
-        var trackingLine = order.trackingNumber
-          ? '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.3rem;text-align:right;">Tracking: <strong style="color:var(--secondary);font-family:monospace;">' + Utils.escape(String(order.trackingNumber)) + '</strong></div>'
-          : '';
+        // Compact tracking display: carrier logo (with hover/focus tooltip) +
+        // tracking number, optionally wrapped in a link to the carrier's
+        // live tracker. The carrier badge is NOT the link — tapping it on
+        // mobile reveals the tooltip; the AWB text is the link target.
+        var trackingLine = '';
+        if (order.trackingNumber) {
+          var trkUrl = carrierTrackingUrl(order);
+          var carrierBadge = order.carrier ? carrierBadgeHtml(order.carrier) : '';
+          var awbHtml = trkUrl
+            ? '<a href="' + Utils.escape(trkUrl) + '" target="_blank" rel="noopener" class="o-awb-link">' + Utils.escape(String(order.trackingNumber)) + ' <i class="fas fa-external-link-alt" style="font-size:0.65em;opacity:0.7;"></i></a>'
+            : '<span class="o-awb-text">' + Utils.escape(String(order.trackingNumber)) + '</span>';
+          trackingLine =
+            '<div class="o-tracking-row">' +
+              carrierBadge +
+              '<span class="o-awb-wrap">' + awbHtml + '</span>' +
+            '</div>';
+        }
 
         var adminNoteHtml = order.adminNote
           ? '<div class="o-admin-note"><span class="o-note-label">📌 Update from seller</span>' + Utils.escape(String(order.adminNote)) + '</div>'

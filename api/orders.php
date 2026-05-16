@@ -201,6 +201,49 @@ try {
                 $params[':hist'] = json_encode($hist);
             }
 
+            // Stock restore on cancellation. Inverse of the decrement done at
+            // payment-finalization time. Guarded so cancel → uncancel → cancel
+            // doesn't double-restore: order_data carries a `stockRestored`
+            // flag once we've put the items back. The row is already locked
+            // FOR UPDATE above, so concurrent PATCHes serialize and only the
+            // first transition into 'cancelled' actually runs the restore.
+            $orderData = json_decode($row['order_data'] ?? '', true);
+            if (!is_array($orderData)) $orderData = [];
+            $alreadyRestored = !empty($orderData['stockRestored']);
+            $restoringStock = $statusChanged
+                && $newStatus === 'cancelled'
+                && $currentStatus !== 'cancelled'
+                && !$alreadyRestored;
+            if ($restoringStock) {
+                $additions = [];
+                $items = (isset($orderData['items']) && is_array($orderData['items']))
+                    ? $orderData['items']
+                    : [];
+                foreach ($items as $line) {
+                    if (!is_array($line)) continue;
+                    $pid = isset($line['id']) ? (int)$line['id'] : 0;
+                    $qty = isset($line['qty']) ? (int)$line['qty'] : 0;
+                    if ($pid <= 0 || $qty <= 0) continue;
+                    $additions[$pid] = ($additions[$pid] ?? 0) + $qty;
+                }
+                if ($additions) {
+                    // No SELECT needed: the UPDATE acquires a row lock at exec
+                    // time and is a no-op if the product was deleted since the
+                    // order was placed (rowCount() == 0, no error raised).
+                    $upd = $pdo->prepare('UPDATE products SET stock = stock + :q WHERE id = :id');
+                    foreach ($additions as $pid => $qty) {
+                        $upd->execute([':q' => $qty, ':id' => $pid]);
+                    }
+                }
+                // Mark the snapshot so a later un-cancel + re-cancel can't
+                // restore twice. We also persist the timestamp so it's
+                // auditable in the order detail view.
+                $orderData['stockRestored'] = true;
+                $orderData['stockRestoredAt'] = date('Y-m-d H:i:s');
+                $updates[] = 'order_data = :od';
+                $params[':od'] = json_encode($orderData);
+            }
+
             if (!$updates) {
                 $pdo->rollBack();
                 http_response_code(400);
