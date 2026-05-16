@@ -341,6 +341,44 @@ Same idea but writes go to the server via POST with `X-Admin-Pass: <password>`. 
 
 ## 8. Local development setup
 
+### 8.0 Fastest path: `npm run setup` (Linux / macOS / Windows)
+
+If you have Node.js installed, the project ships cross-platform scripts that handle the whole Docker-based setup in one command:
+
+```bash
+npm run setup    # installs Docker if missing, creates MySQL + PHP containers,
+                 # applies schema, prints URLs to access the site
+npm start        # resume after a stop (containers exist, just start them)
+npm stop         # stop both containers without losing data
+npm run logs     # tail PHP container logs
+```
+
+After `npm run setup` you'll see:
+- Storefront: `http://localhost:5500/`
+- Admin: `http://localhost:5500/admin.html` (login `owner` / `owner123`)
+- API health: `http://localhost:5500/api/categories.php`
+
+[scripts/schema.sql](scripts/schema.sql) is the authoritative schema dump applied to fresh databases. If you change the schema locally, re-dump with:
+```bash
+docker exec velorex-mysql mysqldump --no-data --skip-comments --skip-add-drop-table \
+  -u velorex_dev -p'Tftus@12345' velorex_local > scripts/schema.sql
+```
+and commit the result.
+
+**Docker install per platform:**
+
+| Platform | What `npm run setup` does |
+|---|---|
+| Linux | Auto-installs Docker via `get.docker.com` (needs `sudo`). Adds your user to the `docker` group — you may need to log out + back in (or `newgrp docker`) before re-running setup. |
+| macOS | Auto-installs Docker Desktop via Homebrew (`brew install --cask docker`). After install, launch Docker Desktop once from `/Applications` to start the daemon, then re-run setup. |
+| Windows | Prints instructions — Docker Desktop on Windows must be installed interactively (it needs admin rights + WSL2 setup). Install from [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop), launch it once, then run `npm run setup`. |
+
+**Networking:** containers run on a Docker bridge network (`velorex-net`). PHP reaches MySQL via the container DNS name `velorex-mysql:3306` — identical on all OSes. (Older container setups using `--network=host` continue to work; the script detects them and doesn't change anything.)
+
+---
+
+### Manual setup (if you don't want Docker)
+
 You need **PHP 8.x** and **MySQL 8.x or 9.x**. Three install paths below — pick whichever fits your OS. Skip to [§8.4 Common steps](#84-common-steps-all-platforms) once you have working `php` and `mysql` commands.
 
 ### 8.1 macOS (Homebrew)
