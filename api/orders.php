@@ -100,62 +100,21 @@ try {
     }
 
     if ($method === 'POST') {
-        $userId = require_user();
-        $body = read_json_body();
-        if (empty($body['id'])) {
-            http_response_code(400);
-            echo json_encode(['error' => 'Missing order id']);
-            exit;
-        }
-
-        // Decrement product stock atomically with the order insert.
-        $items = isset($body['items']) && is_array($body['items']) ? $body['items'] : [];
-        $deductions = [];
-        foreach ($items as $item) {
-            if (!is_array($item)) continue;
-            $pid = isset($item['id']) ? (int)$item['id'] : 0;
-            $qty = isset($item['qty']) ? (int)$item['qty'] : 0;
-            if ($pid <= 0 || $qty <= 0) continue;
-            $deductions[$pid] = ($deductions[$pid] ?? 0) + $qty;
-        }
-
-        $initialHistory = [[
-            'status' => 'pending',
-            'at' => date('Y-m-d H:i:s'),
-            'by' => 'system',
-            'note' => 'Order placed',
-        ]];
-
-        $pdo->beginTransaction();
-        try {
-            if ($deductions) {
-                $sel = $pdo->prepare('SELECT stock FROM products WHERE id = :id FOR UPDATE');
-                $upd = $pdo->prepare('UPDATE products SET stock = :s WHERE id = :id');
-                foreach ($deductions as $pid => $qty) {
-                    $sel->execute([':id' => $pid]);
-                    $row = $sel->fetch();
-                    if (!$row) continue;
-                    $current = (int)$row['stock'];
-                    $newStock = max(0, $current - $qty);
-                    $upd->execute([':s' => $newStock, ':id' => $pid]);
-                }
-            }
-            $stmt = $pdo->prepare('INSERT INTO orders
-                (id, user_id, status, order_data, status_history)
-                VALUES (:id, :u, :st, :data, :hist)');
-            $stmt->execute([
-                ':id' => $body['id'],
-                ':u' => $userId,
-                ':st' => 'pending',
-                ':data' => json_encode($body),
-                ':hist' => json_encode($initialHistory),
-            ]);
-            $pdo->commit();
-        } catch (Exception $txe) {
-            if ($pdo->inTransaction()) $pdo->rollBack();
-            throw $txe;
-        }
-        echo json_encode(['ok' => true]);
+        // Order creation is no longer accepted on this endpoint. The previous
+        // implementation took an arbitrary { id, items, total } payload from
+        // the client — which let anyone with a session POST an order at any
+        // price ("pay ₹0 for a ₹10,000 vinyl"). Orders are now created server-
+        // side only, by api/payments/verify.php after the Razorpay signature
+        // has been verified (and also by api/payments/webhook.php when the
+        // browser handshake doesn't complete).
+        //
+        // We return 410 Gone (rather than 405 Method Not Allowed) so anyone
+        // still hitting this with the old client gets a clear "this endpoint
+        // is intentionally retired" rather than a generic protocol error.
+        http_response_code(410);
+        echo json_encode([
+            'error' => 'Direct order creation is disabled. Use /api/payments/create-order.php + /api/payments/verify.php instead.',
+        ]);
         exit;
     }
 

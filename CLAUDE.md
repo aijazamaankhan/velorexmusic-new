@@ -21,7 +21,7 @@ Hosted on **Hostinger** shared hosting (`velorexmusic.com`). The local repo depl
 | Backend | PHP 8.x with PDO + prepared statements |
 | Database | MySQL 8.x / 9.x (Hostinger ships LiteSpeed + MySQL) |
 | Auth | Custom: server-side session tokens stored in `user_sessions`, sent as `Authorization: Bearer <token>` |
-| Payments | Razorpay test key (hardcoded in `index.html`) |
+| Payments | Razorpay (test or live, switchable via `RAZORPAY_MODE` in secrets). Server creates the order, browser opens Checkout, server verifies the HMAC signature. Webhook backstop in case the handshake fails. See [§10 Razorpay flow](#razorpay-payment-flow). |
 | Dev tooling | Playwright + an MCP server for admin-panel browser tests (optional, not required for normal dev) |
 
 No package bundler. No transpilation. What you see in `index.html`/`admin.html` is what runs in the browser. Edit, save, refresh.
@@ -192,6 +192,32 @@ CREATE TABLE addresses (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Razorpay payment orders. One row per attempted checkout. Lifecycle:
+--   created → paid (success path; internal_order_id is set; matching row exists in orders)
+--   created → failed (gateway reported failure via webhook)
+--   created → (no transition; expires silently after a day or two)
+-- The row is created BEFORE the user is sent to Razorpay Checkout — it binds
+-- the Razorpay order_id to the canonical amount + items + address, so the
+-- browser cannot tamper with what's actually charged.
+CREATE TABLE payment_orders (
+  razorpay_order_id VARCHAR(64) PRIMARY KEY,
+  user_id INT NOT NULL,
+  amount_paise BIGINT NOT NULL,                   -- canonical amount; never re-derive from anywhere else
+  currency CHAR(3) NOT NULL DEFAULT 'INR',
+  mode ENUM('test','live') NOT NULL,              -- which key set was active when the order was minted
+  status ENUM('created','paid','failed') NOT NULL DEFAULT 'created',
+  items JSON NOT NULL,                            -- item snapshot at order time (id, name, qty, price, lineTotal)
+  shipping_address JSON NOT NULL,                 -- frozen address snapshot at order time
+  internal_order_id VARCHAR(50) NULL,             -- set when paid → matches orders.id ('VD-XXXXXXXX')
+  razorpay_payment_id VARCHAR(64) NULL,           -- the Razorpay pay_… id, populated on capture
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_user (user_id),
+  INDEX idx_status (status),
+  INDEX idx_internal (internal_order_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 INSERT INTO categories (name, sort_order) VALUES
   ('vinyl', 1), ('cd', 2), ('cassette', 3), ('bluray', 4), ('dvd', 5);
 ```
@@ -214,6 +240,7 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 | GET | `/api/categories.php` | — | `string[]` (sorted by `sort_order`) |
 | POST | `/api/auth/signup.php` | `{ email, password, firstName, lastName? }` | `{ ok, token, user }` |
 | POST | `/api/auth/login.php` | `{ email, password }` | `{ ok, token, user }` |
+| POST | `/api/payments/webhook.php` | raw Razorpay event body; auth via `X-Razorpay-Signature` header | `{ ok }` — server-to-server backstop. Verifies HMAC against `RAZORPAY_*_WEBHOOK_SECRET`. Never call this directly. |
 
 ### Customer-authenticated endpoints (require `Authorization: Bearer <token>`)
 
@@ -224,7 +251,9 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 | POST | `/api/auth/update-profile.php` | `{ firstName?, lastName?, email?, phone?, dateOfBirth?, musicPreferences? }` | `{ ok, user }` |
 | POST | `/api/auth/change-password.php` | `{ currentPassword, newPassword }` | `{ ok }` (invalidates all OTHER sessions for this user) |
 | GET | `/api/orders.php` | — | `Order[]` (caller's orders) |
-| POST | `/api/orders.php` | `{ id, items[], total, shippingAddress, ... }` | `{ ok }` — `shippingAddress` is stored verbatim inside `order_data` as the historical snapshot |
+| ~~POST `/api/orders.php`~~ | — | — | **Disabled** — returns 410. Order creation runs through the verified payment flow below; direct POSTs were a security hole. |
+| POST | `/api/payments/create-order.php` | `{ items: [{id, qty}], addressId }` | `{ ok, keyId, razorpayOrderId, amount, currency, mode, subtotal, shipping, total }` — server recomputes the total from DB prices and mints a Razorpay order bound to that amount |
+| POST | `/api/payments/verify.php` | `{ razorpay_order_id, razorpay_payment_id, razorpay_signature }` | `{ ok, orderId, alreadyFinalized }` — verifies HMAC, decrements stock, creates the internal `orders` row. Idempotent. |
 | GET | `/api/addresses.php` | — | `Address[]` (caller's saved addresses, default first) |
 | POST | `/api/addresses.php` | `{ id?, fullName, phone, line1, line2?, landmark?, city, state?, postalCode?, countryCode, label?, gstin?, isDefault? }` | `{ ok, address }` — `id` present = update, absent = create. Max 10 per user. |
 | DELETE | `/api/addresses.php?id=N` | — | `{ ok }` — hard delete; promotes the next address to default if needed |
@@ -574,6 +603,45 @@ CREATE TABLE addresses (
 );
 ```
 
+**Pending migration — payment_orders table** (run once on Hostinger before the Razorpay integration can accept payments — without it, `/api/payments/create-order.php` will 500):
+
+```sql
+CREATE TABLE payment_orders (
+  razorpay_order_id VARCHAR(64) PRIMARY KEY,
+  user_id INT NOT NULL,
+  amount_paise BIGINT NOT NULL,
+  currency CHAR(3) NOT NULL DEFAULT 'INR',
+  mode ENUM('test','live') NOT NULL,
+  status ENUM('created','paid','failed') NOT NULL DEFAULT 'created',
+  items JSON NOT NULL,
+  shipping_address JSON NOT NULL,
+  internal_order_id VARCHAR(50) NULL,
+  razorpay_payment_id VARCHAR(64) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_user (user_id),
+  INDEX idx_status (status),
+  INDEX idx_internal (internal_order_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+```
+
+**Pending update — secrets file** (the Razorpay integration adds new constants):
+
+After deploying the new code, edit `/home/u286479481/private/velorex_secrets.php` on Hostinger and append the Razorpay block from [api/secrets.example.php](api/secrets.example.php). At minimum:
+
+```php
+define('RAZORPAY_MODE', 'test'); // flip to 'live' once tested
+define('RAZORPAY_TEST_KEY_ID',         'rzp_test_…');
+define('RAZORPAY_TEST_KEY_SECRET',     '…');
+define('RAZORPAY_TEST_WEBHOOK_SECRET', '');   // leave empty until you set up the webhook
+define('RAZORPAY_LIVE_KEY_ID',         '');
+define('RAZORPAY_LIVE_KEY_SECRET',     '');
+define('RAZORPAY_LIVE_WEBHOOK_SECRET', '');
+```
+
+Without these defines, `/api/payments/create-order.php` returns 502 with a clear "RAZORPAY_… is not configured" message — there's no fallback.
+
 ### Verifying a deploy
 
 After every deploy:
@@ -610,9 +678,48 @@ It's gitignored on purpose — real DB passwords don't belong in git. But that m
 
 There's a single `ADMIN_PASS` constant in `config.php`. The admin panel (admin.html) prompts for it at login and stores it in `sessionStorage` as `admin_pass`. Every admin-only write replays it as `X-Admin-Pass: <password>`. Same value protects both the UI login and the API endpoints. If you change `ADMIN_PASS`, admin.html still uses the old check (`if (user.toLowerCase() === 'owner' && pass === 'owner123')`) — keep them in sync.
 
-### Razorpay test key
+### Razorpay payment flow
 
-`rzp_test_TYeNqBfWpLdfxQ` is hardcoded in `index.html` near the `processPayment()` function. To go live, search-replace it with the production key. Test cards: `4111 1111 1111 1111`, any future expiry, CVV `123`.
+The payment flow is **server-orchestrated**. The browser never decides the price, never holds the Razorpay secret, and never tells the server "the payment succeeded" without proof. The shape:
+
+1. **`/api/payments/create-order.php`** (browser → server, user-authed)
+   - Receives `{ items: [{id, qty}], addressId }`.
+   - Recomputes the cart total from the **DB** product prices. The client-quoted prices are ignored.
+   - Calls Razorpay's `POST /v1/orders` API with that amount and gets back a `razorpay_order_id`.
+   - Persists a `payment_orders` row binding `(razorpay_order_id, amount, items, address, user_id)`.
+   - Returns the `keyId` (public) + `razorpay_order_id` to the browser. **Never** returns the secret.
+
+2. **Razorpay Checkout** (browser, opened with `new Razorpay({ order_id, key, ... })`). Razorpay collects card / UPI / netbanking / wallet inside their iframe — we never see card details. The bound amount on the Razorpay order cannot be tampered with from the browser.
+
+3. **`/api/payments/verify.php`** (browser → server, user-authed)
+   - Receives `{ razorpay_order_id, razorpay_payment_id, razorpay_signature }`.
+   - Verifies HMAC-SHA256 with `KEY_SECRET` using `hash_equals` (constant-time). If the signature doesn't match, the request is rejected — the payment-success message in the browser was forged.
+   - Verifies the `payment_orders` row exists and belongs to the logged-in user (ownership check).
+   - Calls `finalize_payment()` in [api/_payment_finalize.php](api/_payment_finalize.php): in a single transaction, decrements stock, creates the internal `orders` row, marks `payment_orders.status='paid'`.
+   - Idempotent — a duplicate verify (page refresh, double-click) returns the same `orderId` without re-decrementing stock.
+
+4. **`/api/payments/webhook.php`** (Razorpay → server, signature-authed) — server-to-server backstop in case step 3 doesn't reach the server (browser closed, network drop after payment was captured). Razorpay POSTs the event signed with `WEBHOOK_SECRET`; the handler verifies the signature and calls the same `finalize_payment()`. Because it's idempotent with the browser path, both can fire safely.
+
+**Where the credentials live:** [api/secrets.example.php](api/secrets.example.php) — `RAZORPAY_MODE`, plus two key sets (test + live). The active set is picked by `RAZORPAY_MODE`. Flip from test to live by changing only that one constant in the secrets file; no code change.
+
+**Going live checklist:**
+
+1. In Razorpay Dashboard → Settings → API Keys → generate live keys.
+2. Update `RAZORPAY_LIVE_KEY_ID` and `RAZORPAY_LIVE_KEY_SECRET` in the **server's** secrets file (`/home/u286479481/private/velorex_secrets.php` on Hostinger). Don't put live keys in `api/secrets.local.php`.
+3. In Razorpay Dashboard → Settings → Webhooks → "Add new webhook" → URL `https://velorexmusic.com/api/payments/webhook.php`. Subscribe to at least `payment.captured` and `payment.failed`. Copy the secret it gives you into `RAZORPAY_LIVE_WEBHOOK_SECRET`.
+4. Flip `define('RAZORPAY_MODE', 'live');`.
+5. Test with a real ₹1 charge before opening to customers.
+
+**Test cards** (test mode only): `4111 1111 1111 1111`, any future expiry, CVV `123`. See [Razorpay test cards](https://razorpay.com/docs/payments/payments/test-card-upi-details/) for the full list including success/failure variants.
+
+**SECURITY invariants — do not break these:**
+
+- `RAZORPAY_*_KEY_SECRET` and `RAZORPAY_*_WEBHOOK_SECRET` must NEVER appear in any response body, log line, or JS bundle. Only the *key id* (`rzp_test_…` / `rzp_live_…`) is safe to send to the browser.
+- Signature comparisons use `hash_equals()` (constant-time). Do not switch to `===` or `strcmp` — those leak timing information.
+- Webhook signature is computed over the **raw** request body bytes. `json_decode → json_encode → hash` produces a different byte sequence and will silently fail to verify.
+- If the webhook secret is unset, the webhook handler refuses to accept any request (returns 503). Don't add a fallback — an empty secret would let anyone forge events.
+- The `orders.php` POST endpoint returns 410 Gone by design. **Do not re-enable it.** Order creation must go through the verified payment flow.
+- Amounts crossing the wire are in **paise** (integer). Don't introduce floats — `0.1 + 0.2` style errors on money are unforgiving.
 
 ### "I deleted everything and it came back"
 
@@ -646,12 +753,21 @@ The Hostinger MySQL username gets prefixed with `u286479481_`. Anything you type
    ```sql
    ALTER TABLE products ADD COLUMN new_field VARCHAR(100);
    ```
-2. Update `api/products.php`:
+2. Update [api/_products_helpers.php](api/_products_helpers.php):
    - `row_to_product()` to read the new column
    - `upsert_product()` to write it
 3. Update `admin.html` form to capture the new field
 4. Update `index.html` if customers should see it
 5. Update [§5](#5-database-schema) in this doc with the new column
+
+### Switching Razorpay between test and live mode
+
+1. Edit the **server's** secrets file (`/home/u286479481/private/velorex_secrets.php` on Hostinger; `api/secrets.local.php` locally).
+2. Make sure the target mode's three constants are filled in (`RAZORPAY_LIVE_KEY_ID`, `…_KEY_SECRET`, `…_WEBHOOK_SECRET`). The webhook secret is the one Razorpay shows you when you create a webhook in the dashboard — it's not the same as the API secret.
+3. Change `define('RAZORPAY_MODE', 'test')` → `'live'` (or back). No deploy needed; the next request picks up the new mode.
+4. In Razorpay Dashboard, the webhook URL is the same for both modes: `https://velorexmusic.com/api/payments/webhook.php`. The dashboard has separate Test/Live tabs and each has its own webhook config — make sure the live tab's webhook is enabled before flipping the mode.
+
+If anything is misconfigured (missing constant, mode set to neither `test` nor `live`), `/api/payments/create-order.php` returns 502 with a specific error pointing at the missing constant — there's no silent fallback.
 
 ### Bulk-uploading products via CSV
 
@@ -702,7 +818,7 @@ See `PLAYWRIGHT_MCP_README.md` for the optional MCP server setup if you want bro
 | Address book CRUD | ✅ Shipped | India + international, multi-address per user, default flag, per-country state/postal rules. UI: profile tab + checkout picker. API: `api/addresses.php`. Orders snapshot `shippingAddress` into `orders.order_data` at place-order time. |
 | Wishlist persistence | Stub | The Wishlist tab in profile shows the first 3 products as filler. Would need a `wishlist` table or per-user JSON. |
 | Order status updates | Local-only | Admin can change an order's status in the UI but it only updates localStorage on the admin's browser. Needs a PATCH endpoint on `orders.php`. |
-| Razorpay live key | Test mode | Replace `rzp_test_TYeNqBfWpLdfxQ` with the live key when ready to accept real payments. |
+| Razorpay integration | ✅ Shipped | Server-side order creation + HMAC signature verification + webhook backstop. Both test and live keys live in the secrets file, switched via `RAZORPAY_MODE`. See [§10 Razorpay payment flow](#razorpay-payment-flow). |
 | Frontend test coverage | Minimal | Only `test-admin-login.js` exists. Worth expanding when there's time. |
 
 ## 13. Conventions for AI assistants editing this repo

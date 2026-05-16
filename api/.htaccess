@@ -1,5 +1,9 @@
-# Prevent direct access to config files
-<FilesMatch "^config(\.example)?\.php$">
+# Prevent direct access to config/secrets/helper files. Helpers (prefixed with
+# underscore — `_razorpay.php`, `_products_helpers.php`) only define functions
+# and aren't meant to be hit directly. Secrets files must never be served as
+# files even if Apache forgets to execute the PHP — they're locally readable
+# on dev machines but should not leak by URL.
+<FilesMatch "^(config(\.example)?|secrets(\.example|\.local)?|_.+)\.php$">
     Order allow,deny
     Deny from all
 </FilesMatch>
