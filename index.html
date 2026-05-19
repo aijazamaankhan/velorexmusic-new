@@ -558,9 +558,9 @@
     .no-products { text-align: center; padding: 4rem 2rem; color: var(--text-muted); }
     .no-products-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; }
 
-    .payment-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 2rem; }
+    .payment-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 1rem; overflow-y: auto; }
     .payment-modal.active { display: flex; }
-    .payment-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); width: 100%; max-width: 480px; overflow: hidden; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5); }
+    .payment-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5); margin: auto; }
     .payment-header { padding: 2rem; border-bottom: 1px solid var(--border); text-align: center; }
     .payment-header h2 { font-family: var(--font-display); font-size: 1.5rem; }
     .payment-body { padding: 2rem; }
@@ -606,11 +606,21 @@
       .product-actions-group { grid-template-columns: 1fr; }
       .form-grid { grid-template-columns: 1fr; }
     }
+    @media (max-width: 768px) {
+      .payment-modal { align-items: flex-start; justify-content: flex-start; padding: 0.5rem; }
+      .payment-card { max-height: calc(100vh - 1rem); margin-top: auto; margin-bottom: auto; }
+      .payment-header { padding: 1.5rem; }
+      .payment-body { padding: 1.5rem; }
+      .payment-footer { padding: 1rem 1.5rem; }
+    }
     @media (max-width: 480px) {
       .container { padding: 0 1rem; }
       .hero-title { font-size: 2rem; }
       .section { padding: 3rem 0; }
       .admin-stats { grid-template-columns: 1fr 1fr; }
+      .payment-header h2 { font-size: 1.25rem; }
+      .payment-amount { font-size: 1.75rem; margin-bottom: 1.25rem; }
+      .payment-body { padding: 1rem; }
     }
 
     .page-section { display: none; }
