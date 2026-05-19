@@ -50,9 +50,16 @@ velorexmusic-new/
 │   │   ├── me.php               # GET (Bearer) → { user (incl. stats) }
 │   │   ├── update-profile.php   # POST (Bearer)
 │   │   └── change-password.php  # POST (Bearer)
-│   └── admin/
-│       ├── users.php            # GET (list) / POST (reset-password / update-profile / force-logout / update-notes / delete-user)
-│       └── customer-detail.php  # GET ?userId=N → orders, addresses, sessions (batched for the admin drawer)
+│   ├── admin/
+│   │   ├── users.php            # GET (list) / POST (reset-password / update-profile / force-logout / update-notes / delete-user)
+│   │   └── customer-detail.php  # GET ?userId=N → orders, addresses, sessions (batched for the admin drawer)
+│   ├── _address_helpers.php     # Shared address validation + snapshot helpers (addresses.php + create-order.php)
+│   ├── _mailer.php              # PHPMailer wrapper: send_mail($to,$name,$subject,$html,$text). Never throws.
+│   ├── _email_templates.php     # order_receipt_email($orderData) → { subject, html, text }
+│   └── lib/PHPMailer/           # PHPMailer v6.9.1 — three vendored files, no Composer
+│       ├── PHPMailer.php
+│       ├── SMTP.php
+│       └── Exception.php
 ├── package.json                 # Just Playwright + MCP — no app dependencies
 ├── playwright-mcp-server.js     # MCP server (used optionally for admin-panel browser tests)
 ├── test-admin-login.js          # Sanity test for admin login
@@ -702,6 +709,10 @@ define('RAZORPAY_LIVE_WEBHOOK_SECRET', '');
 
 Without these defines, `/api/payments/create-order.php` returns 502 with a clear "RAZORPAY_… is not configured" message — there's no fallback.
 
+**Pending update — secrets file** (transactional email via Brevo SMTP):
+
+After deploying the new code, append the SMTP block from [api/secrets.example.php](api/secrets.example.php) to `/home/u286479481/private/velorex_secrets.php`. Step-by-step Brevo setup, DNS records and troubleshooting live in §10 → "Transactional email (Brevo SMTP + PHPMailer)". Until `SMTP_HOST` is non-empty, order-receipt emails are silently skipped (the order is still placed); a line is written to PHP's `error_log` so you can spot misconfiguration during the test phase.
+
 ### Verifying a deploy
 
 After every deploy:
@@ -780,6 +791,79 @@ The payment flow is **server-orchestrated**. The browser never decides the price
 - If the webhook secret is unset, the webhook handler refuses to accept any request (returns 503). Don't add a fallback — an empty secret would let anyone forge events.
 - The `orders.php` POST endpoint returns 410 Gone by design. **Do not re-enable it.** Order creation must go through the verified payment flow.
 - Amounts crossing the wire are in **paise** (integer). Don't introduce floats — `0.1 + 0.2` style errors on money are unforgiving.
+
+### Transactional email (Brevo SMTP + PHPMailer)
+
+Customers get an order-confirmation email after every successful payment. The pipeline is:
+
+```
+finalize_payment() (after the DB commit)
+  → order_receipt_email($orderData)   in api/_email_templates.php  →  { subject, html, text }
+  → send_mail($to, $name, $subject, $html, $text)  in api/_mailer.php
+  → PHPMailer (api/lib/PHPMailer/*) opens SMTP to SMTP_HOST:SMTP_PORT
+  → Brevo's relay accepts the message and delivers
+```
+
+**Why the email is sent from `finalize_payment()` and not from `verify.php`/`webhook.php`:** the verify path and the webhook can both fire for the same payment (browser handshake AND Razorpay's server-to-server callback). Putting the email send inside `finalize_payment()` after the commit means it fires exactly once — the idempotent fast-path (`alreadyFinalized: true`) short-circuits before the email send on the second call. This is *verified* with a `finalize_payment()` called twice in the smoke test; Mailpit receives one message.
+
+**Why after the commit, not inside the transaction:** SMTP can hang. If Brevo were down and we sent inside the transaction, we'd hold a long DB write lock + ultimately roll back the order even though the customer's money already moved. `send_mail()` never throws — it returns false and writes to `error_log` if delivery fails. The customer still has a valid order even if the email never lands.
+
+**`SMTP_*` secrets** live in the active secrets file (see [api/secrets.example.php](api/secrets.example.php) for the full list). The mailer auto-skips with an `error_log` warning when `SMTP_HOST` is blank, so the code is safe to deploy ahead of finishing the Brevo setup.
+
+**Going live with Brevo (one-time):**
+
+1. Sign up at [brevo.com](https://www.brevo.com) — free, 300 emails/day forever.
+2. Senders, Domains & IPs → **Domains** → add `velorexmusic.com`. Brevo prints three DNS records:
+   - SPF (TXT @): `v=spf1 include:spf.brevo.com mx ~all`
+   - DKIM (TXT `mail._domainkey`): the value Brevo gives you
+   - DMARC (TXT `_dmarc`, optional but recommended): `v=DMARC1; p=none; rua=mailto:orders@velorexmusic.com`
+
+   Paste them into Hostinger hPanel → Domains → DNS / Nameservers → DNS Zone Editor. Wait 5–60 min for propagation; Brevo's domain page shows ✓ green ticks when each record is verified.
+3. Senders, Domains & IPs → **Senders** → add `orders@velorexmusic.com`.
+4. Create the actual mailbox in hPanel → Emails → **Create email account** → `orders@velorexmusic.com` (or set a forwarder to your personal email). This is where replies land.
+5. SMTP & API → **SMTP** → "Generate a new SMTP key". You'll see:
+   - SMTP server: `smtp-relay.brevo.com`
+   - Port: `587` (STARTTLS)
+   - Login: an auto-generated address like `abcafc001@smtp-brevo.com` (NOT your Brevo account email — copy this verbatim into `SMTP_USER`)
+   - SMTP key: treat like a password. Brevo shows it once on creation; click the row to reveal/copy. Paste into `SMTP_PASS`.
+
+**⚠️ IP allowlist.** Brevo by default restricts SMTP to an IP allowlist (banner on the SMTP page). Hostinger shared hosting has a dynamic outbound IP, so you can't pin it. Click "Click here" in the banner → either disable the restriction entirely, or add `0.0.0.0/0` if Brevo accepts it. Without this, SMTP auth succeeds but every send is rejected.
+6. Edit `/home/u286479481/private/velorex_secrets.php` on Hostinger; set:
+   ```php
+   define('SMTP_HOST', 'smtp-relay.brevo.com');
+   define('SMTP_PORT', 587);
+   define('SMTP_USER', 'abcafc001@smtp-brevo.com');         // exact "Login" string from the Brevo SMTP panel
+   define('SMTP_PASS', 'paste-the-full-SMTP-key-here');     // value you copied at creation time
+   define('SMTP_FROM',      'orders@velorexmusic.com');
+   define('SMTP_FROM_NAME', 'Velorex Music');
+   define('SMTP_REPLY_TO',  'orders@velorexmusic.com');
+   ```
+   Leave `SMTP_SECURE` and `SMTP_AUTH` at their defaults (`tls` and true).
+7. Place a small test order. Watch Brevo's **Transactional → Email logs** — the message should appear in <5 seconds with status `delivered`.
+
+**Local development:** point at Mailpit (or MailHog) instead of Brevo by overriding three constants in `api/secrets.local.php`:
+```php
+define('SMTP_HOST', 'velorex-mailpit'); // or 'localhost' if not in docker
+define('SMTP_PORT', 1025);
+define('SMTP_SECURE', '');     // Mailpit speaks plain SMTP
+define('SMTP_AUTH',   false);  // and doesn't require credentials
+```
+Spin up Mailpit on the same Docker network as the PHP container:
+```
+docker run -d --name velorex-mailpit --network=velorex-net -p 8025:8025 -p 1025:1025 axllent/mailpit:latest
+```
+Web UI: `http://localhost:8025` — catches every outgoing email so you can verify rendering without touching the real provider.
+
+**Common failure modes:**
+
+| Symptom in `error_log` | Cause | Fix |
+|---|---|---|
+| `SMTP not configured — skipping send` | One of `SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` is empty in the secrets file | Set the missing constant on the server |
+| `SMTP Error: Could not authenticate.` | Wrong SMTP key, OR `SMTP_USER` is the Brevo account email instead of the `…@smtp-brevo.com` login from the SMTP panel | Copy the exact "Login" string from Brevo SMTP & API → SMTP. Generate a new key if needed |
+| Auth succeeds but mail never arrives in Brevo's Transactional logs | IP allowlist enabled in Brevo. Hostinger's outbound IP isn't on it | Brevo SMTP & API → SMTP → click the blue IP banner → disable the restriction (or wildcard it) |
+| `550 Sender not allowed` from Brevo | `SMTP_FROM` isn't a verified sender in Brevo | Add the address as a Sender in Brevo |
+| Email accepted but lands in spam | DKIM/SPF/DMARC not green in Brevo's domain view | Double-check the DNS records; hPanel sometimes adds quotes or merges TXT entries that break the value |
+| `STARTTLS command failed Command not implemented` | Pointed at a server that doesn't do STARTTLS (e.g. Mailpit) without flipping `SMTP_SECURE` | Set `SMTP_SECURE=''` and `SMTP_AUTH=false` for local catchers |
 
 ### "I deleted everything and it came back"
 

@@ -16,6 +16,8 @@
 // erroring.
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/_mailer.php';
+require_once __DIR__ . '/_email_templates.php';
 
 // Returns ['orderId' => 'VD-XXXXXXXX', 'alreadyFinalized' => bool, 'userId' => int]
 // or throws on:
@@ -177,6 +179,24 @@ function finalize_payment(PDO $pdo, string $razorpayOrderId, string $razorpayPay
         ]);
 
         $pdo->commit();
+
+        // Order-receipt email. Best-effort: sent AFTER the commit so an SMTP
+        // outage can never roll back a successful payment, and only on the
+        // first finalize (the idempotent early-return path skips it, so a
+        // verify+webhook double-fire doesn't double-mail). send_mail()
+        // never throws — it writes to error_log on failure.
+        $recipient = trim((string)($contact['email'] ?? ''));
+        if ($recipient !== '') {
+            try {
+                $tpl = order_receipt_email($orderData);
+                send_mail($recipient, (string)($contact['fullName'] ?? ''), $tpl['subject'], $tpl['html'], $tpl['text']);
+            } catch (Throwable $mailErr) {
+                error_log('[finalize] order receipt mail crashed for ' . $internalOrderId . ': ' . $mailErr->getMessage());
+            }
+        } else {
+            error_log('[finalize] order ' . $internalOrderId . ' has no contact email — receipt skipped');
+        }
+
         return [
             'orderId'          => $internalOrderId,
             'alreadyFinalized' => false,

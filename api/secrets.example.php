@@ -50,3 +50,53 @@ define('RAZORPAY_TEST_WEBHOOK_SECRET', 'REPLACE_ME'); // optional until you wire
 define('RAZORPAY_LIVE_KEY_ID',         'rzp_live_REPLACE_ME');
 define('RAZORPAY_LIVE_KEY_SECRET',     'REPLACE_ME');
 define('RAZORPAY_LIVE_WEBHOOK_SECRET', 'REPLACE_ME');
+
+// =============================================
+// Transactional email (Brevo SMTP)
+// =============================================
+// PHPMailer in api/_mailer.php talks to whatever SMTP server you put here.
+// Default expectation is Brevo (https://www.brevo.com) — free 300 emails/day
+// forever, no card required.
+//
+// Setup steps on Brevo:
+//   1. Sign up, verify your account email.
+//   2. Senders, Domains & IPs → Domains → add velorexmusic.com → copy the
+//      SPF/DKIM/DMARC DNS records into Hostinger's DNS Zone Editor.
+//   3. Senders, Domains & IPs → Senders → add orders@velorexmusic.com (or
+//      whatever SMTP_FROM you set below).
+//   4. SMTP & API → SMTP → "Generate a new SMTP key" → paste into SMTP_PASS.
+//      Your Brevo account email goes into SMTP_USER.
+//
+// If SMTP_HOST / SMTP_USER / SMTP_PASS are blank, send_mail() returns false
+// silently and the order still completes — so this file is safe to deploy
+// before you've finished the Brevo wizard.
+
+define('SMTP_HOST', '');                 // e.g. 'smtp-relay.brevo.com'
+define('SMTP_PORT', 587);                // 587 (STARTTLS) for Brevo; 465 for SMTPS elsewhere
+define('SMTP_USER', '');                 // your Brevo account email
+define('SMTP_PASS', '');                 // SMTP key from Brevo (NOT your dashboard password)
+
+// Default From header for transactional emails. Must be a sender Brevo has
+// verified — otherwise Brevo rejects with "550 Sender not allowed".
+define('SMTP_FROM',      'orders@velorexmusic.com');
+define('SMTP_FROM_NAME', 'Velorex Music');
+define('SMTP_REPLY_TO',  'orders@velorexmusic.com'); // shown when the customer hits "Reply"
+
+// Encryption + auth toggles — defaults are right for Brevo. Override only
+// when pointing at a local Mailpit/MailHog catcher for development:
+//   define('SMTP_SECURE', '');     // no TLS
+//   define('SMTP_AUTH',   false);  // no credentials
+// Acceptable values for SMTP_SECURE: 'tls' (Brevo default), 'ssl' (SMTPS on
+// 465), '' (no encryption — local dev only).
+// define('SMTP_SECURE', 'tls');
+// define('SMTP_AUTH',   true);
+
+// Optional: bump to 2 only when debugging SMTP delivery; routes wire-level
+// SMTP chatter to error_log. Leave at 0 in production.
+define('SMTP_DEBUG', 0);
+
+// Optional: overrides the base URL used in transactional emails (track links
+// etc.). Leave undefined in production — _vv_base_url() defaults to
+// https://velorexmusic.com. Set this in api/secrets.local.php to point at
+// http://localhost:5500 during development so test emails link locally.
+// define('SITE_BASE_URL', 'http://localhost:5500');
