@@ -21,7 +21,7 @@ npm run test:admin
 
 This will:
 1. Launch Chromium browser (visible for debugging)
-2. Navigate to `http://127.0.0.1:5500/admin.html`
+2. Navigate to `http://127.0.0.1:5500/vlx-admin-2026.html`
 3. Fill in credentials (`owner` / `owner123`)
 4. Click the login button
 5. Report success or failure
@@ -53,7 +53,7 @@ Parameters:
 Navigates to the admin panel
 ```javascript
 Parameters:
-- url (string): Admin URL (default: http://127.0.0.1:5500/admin.html)
+- url (string): Admin URL (default: http://127.0.0.1:5500/vlx-admin-2026.html)
 ```
 
 ### `login_admin`
@@ -85,8 +85,8 @@ Closes the browser
 ### Make sure you have:
 1. **Go Live Server running** on port 5500 with your website
    ```bash
-   # In VS Code, right-click admin.html and select "Open with Live Server"
-   # Or manually check that http://127.0.0.1:5500/admin.html is accessible
+   # In VS Code, right-click vlx-admin-2026.html and select "Open with Live Server"
+   # Or manually check that http://127.0.0.1:5500/vlx-admin-2026.html is accessible
    ```
 
 2. **Node modules installed**
@@ -104,7 +104,7 @@ Closes the browser
 ### "Login still fails after correct credentials"
 - Check browser console for JavaScript errors (the test script will show them)
 - Verify `sessionStorage` is available (not blocked by security policies)
-- Check Content Security Policy (CSP) headers in admin.html
+- Check Content Security Policy (CSP) headers in vlx-admin-2026.html
 - Review the debug logs for any error messages
 
 ### "Browser won't stay open for inspection"
@@ -116,7 +116,7 @@ Closes the browser
 
 1. Start Go Live Server:
    ```
-   Right-click admin.html → Open with Live Server
+   Right-click vlx-admin-2026.html → Open with Live Server
    ```
 
 2. Run the test:

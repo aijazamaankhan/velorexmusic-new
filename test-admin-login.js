@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Admin Panel Login Test Script
- * Tests the admin login on http://127.0.0.1:5500/admin.html
+ * Tests the admin login on http://127.0.0.1:5500/vlx-admin-2026.html
  */
 
 const { chromium } = require('playwright');
@@ -34,7 +34,7 @@ async function testAdminLogin() {
     });
 
     // Navigate to admin panel
-    const adminUrl = 'http://127.0.0.1:5500/admin.html';
+    const adminUrl = 'http://127.0.0.1:5500/vlx-admin-2026.html';
     console.log(`\n📍 Navigating to ${adminUrl}...`);
     await page.goto(adminUrl, { waitUntil: 'domcontentloaded' });
     console.log('✅ Page loaded\n');

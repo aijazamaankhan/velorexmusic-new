@@ -573,10 +573,10 @@
     .payment-spinner { width: 50px; height: 50px; border: 4px solid rgba(255, 107, 53, 0.1); border-top-color: var(--secondary); border-radius: 50%; animation: spin 1s linear infinite; }
 
     @media (max-width: 1024px) {
-      .hero-container { grid-template-columns: 1fr; text-align: center; }
+      .hero-container { grid-template-columns: 1fr; text-align: center; padding: 3rem 1.5rem; gap: 2rem; }
       .hero-visual { display: none; }
-      .hero-cta { justify-content: center; }
-      .hero-stats { justify-content: center; }
+      .hero-cta { justify-content: center; flex-wrap: wrap; }
+      .hero-stats { justify-content: center; flex-wrap: wrap; }
       .categories-grid { grid-template-columns: 1fr 1fr; }
       .footer-grid { grid-template-columns: 1fr 1fr; gap: 2rem; }
       .admin-stats { grid-template-columns: 1fr 1fr; }
@@ -584,6 +584,8 @@
       .product-detail-gallery { position: static; }
     }
     @media (max-width: 768px) {
+      /* Navigation: hamburger swap */
+      .navbar { padding: 0 1rem; gap: 0.75rem; }
       .navbar-nav { display: none; }
       .navbar-search { display: none; }
       .hamburger { display: flex; }
@@ -591,11 +593,15 @@
       .nav-item { width: 100%; }
       .nav-link { width: 100%; font-size: 1rem; padding: 0.75rem 1rem; }
       .dropdown-menu { position: static; opacity: 1; visibility: visible; transform: none; box-shadow: none; background: var(--surface2); margin-top: 0.25rem; }
+      .navbar-brand .brand-name { font-size: 1.15rem; }
+      .navbar-brand .logo-icon { width: 36px; height: 36px; font-size: 1rem; }
+
+      /* Page layout collapses */
       .products-layout { grid-template-columns: 1fr; }
       .filters-sidebar { position: static; }
       .cart-layout { grid-template-columns: 1fr; }
       .cart-item { grid-template-columns: 80px 1fr; }
-      .cart-item-price { grid-column: 2; }
+      .cart-item-price { grid-column: 2; text-align: left; min-width: 0; }
       .profile-layout { grid-template-columns: 1fr; }
       .profile-sidebar-card { position: static; }
       .admin-layout { grid-template-columns: 1fr; }
@@ -605,22 +611,70 @@
       .products-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
       .product-actions-group { grid-template-columns: 1fr; }
       .form-grid { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 768px) {
-      .payment-modal { align-items: flex-start; justify-content: flex-start; padding: 0.5rem; }
-      .payment-card { max-height: calc(100vh - 1rem); margin-top: auto; margin-bottom: auto; }
-      .payment-header { padding: 1.5rem; }
-      .payment-body { padding: 1.5rem; }
-      .payment-footer { padding: 1rem 1.5rem; }
+      .section { padding: 3rem 0; }
+      .page-hero { padding: 2rem 0; margin-bottom: 2rem; }
+      .page-hero-title { font-size: 1.75rem; }
+
+      /* Modals: scroll the OVERLAY (page-scroll) instead of trapping scroll
+         inside .modal/.payment-card. Trapping scroll breaks on iOS Safari
+         when the on-screen keyboard opens — the bottom of the form ends up
+         hidden behind the keyboard with no way to scroll to it. Letting the
+         overlay scroll means the form behaves like a regular page form. */
+      .modal-overlay { align-items: flex-start; padding: 0.5rem; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+      .modal {
+        max-height: none;
+        overflow-y: visible;
+        margin: 0.5rem auto;
+        max-width: 100%;
+      }
+      .modal-header { padding: 1rem 1.25rem; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+      .modal-body { padding: 1.25rem; }
+      .modal-footer { padding: 1rem 1.25rem; flex-direction: column-reverse; gap: 0.6rem; }
+      .modal-footer .btn { width: 100%; }
+
+      /* Payment modal — same scroll-the-overlay treatment for the same iOS reason */
+      .payment-modal { align-items: flex-start; justify-content: center; padding: 0.5rem; -webkit-overflow-scrolling: touch; }
+      .payment-card {
+        max-height: none;
+        overflow-y: visible;
+        margin: 0.5rem auto;
+        max-width: 100%;
+      }
+      .payment-header { padding: 1.25rem; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+      .payment-body { padding: 1.25rem; }
+      .payment-footer { padding: 1rem 1.25rem; flex-direction: column; gap: 0.6rem; }
+      .payment-footer .btn { width: 100%; }
+
+      /* Toast — don't dock to corner on mobile, span the bottom edge instead */
+      .toast-container { left: 0.75rem; right: 0.75rem; bottom: 0.75rem; align-items: stretch; }
+      .toast { min-width: 0; }
     }
     @media (max-width: 480px) {
       .container { padding: 0 1rem; }
       .hero-title { font-size: 2rem; }
-      .section { padding: 3rem 0; }
+      .hero-desc { font-size: 0.95rem; }
+      .section { padding: 2.5rem 0; }
       .admin-stats { grid-template-columns: 1fr 1fr; }
-      .payment-header h2 { font-size: 1.25rem; }
+      .payment-header h2 { font-size: 1.2rem; }
       .payment-amount { font-size: 1.75rem; margin-bottom: 1.25rem; }
       .payment-body { padding: 1rem; }
+      .modal-body { padding: 1rem; }
+      .modal-header { padding: 0.9rem 1rem; }
+      .modal-footer { padding: 0.9rem 1rem; }
+      .modal-title { font-size: 1.05rem; }
+      .footer { padding: 2.5rem 0 1.5rem; }
+      .products-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; }
+      .page-hero-title { font-size: 1.5rem; }
+      /* Touch targets — 44px min for buttons/icons on phone */
+      .btn { min-height: 44px; }
+      .btn-sm { min-height: 38px; }
+    }
+    /* iOS Safari: form inputs <16px auto-zoom on focus. Force 16px on all
+       form controls below tablet width to prevent the unwanted zoom. */
+    @media (max-width: 1024px) {
+      input, select, textarea, .form-control {
+        font-size: 16px;
+      }
     }
 
     .page-section { display: none; }
@@ -1984,7 +2038,6 @@
                 <a href="#" onclick="navigate('profile'); return false;" class="footer-link">My Profile</a>
                 <a href="#" onclick="navigate('cart'); return false;" class="footer-link">Cart</a>
                 <a href="#" onclick="navigate('profile'); return false;" class="footer-link">Order History</a>
-                <a href="admin.html" class="footer-link" style="opacity:0.15;font-size:0.8rem;margin-top:0.5rem;">⚙️ Admin Panel</a>
               </div>
             </div>
             <div>

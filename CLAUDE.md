@@ -7,7 +7,7 @@ A reference for anyone (humans or AI assistants) working on this codebase. Read 
 **Velorex Music** (velorexmusic.com) is an e-commerce music store that sells vinyl records, CDs, cassettes, Blu-rays, and DVDs. It has:
 
 - A **customer storefront** — `index.html` (single-page-app with hash routing)
-- An **admin panel** — `admin.html` (inventory + customer management)
+- An **admin panel** — `vlx-admin-2026.html` (inventory + customer management). The file is named off the conventional `/admin` path on purpose so passing customers and bot scanners hitting `/vlx-admin-2026.html` get a 404. Bookmark the real URL.
 - A **PHP/MySQL API** — `api/*.php` (data persistence, auth)
 - Razorpay (test mode) for payments
 
@@ -24,7 +24,7 @@ Hosted on **Hostinger** shared hosting (`velorexmusic.com`). The local repo depl
 | Payments | Razorpay (test or live, switchable via `RAZORPAY_MODE` in secrets). Server creates the order, browser opens Checkout, server verifies the HMAC signature. Webhook backstop in case the handshake fails. See [§10 Razorpay flow](#razorpay-payment-flow). |
 | Dev tooling | Playwright + an MCP server for admin-panel browser tests (optional, not required for normal dev) |
 
-No package bundler. No transpilation. What you see in `index.html`/`admin.html` is what runs in the browser. Edit, save, refresh.
+No package bundler. No transpilation. What you see in `index.html`/`vlx-admin-2026.html` is what runs in the browser. Edit, save, refresh.
 
 ## 3. Repository layout
 
@@ -32,7 +32,7 @@ No package bundler. No transpilation. What you see in `index.html`/`admin.html` 
 velorexmusic-new/
 ├── CLAUDE.md                    # ← this file
 ├── index.html                   # Customer storefront (SPA). ~2.3k lines.
-├── admin.html                   # Admin panel. ~3.1k lines.
+├── vlx-admin-2026.html          # Admin panel. ~3.1k lines. (Renamed off `/vlx-admin-2026.html` so the path isn't trivially discoverable.)
 ├── contact.html, faq.html,      # Static info pages.
 │   shipping.html, returns.html,
 │   track-order.html, maintenance.html
@@ -52,7 +52,8 @@ velorexmusic-new/
 │   │   └── change-password.php  # POST (Bearer)
 │   ├── admin/
 │   │   ├── users.php            # GET (list) / POST (reset-password / update-profile / force-logout / update-notes / delete-user)
-│   │   └── customer-detail.php  # GET ?userId=N → orders, addresses, sessions (batched for the admin drawer)
+│   │   ├── customer-detail.php  # GET ?userId=N → orders, addresses, sessions (batched for the admin drawer)
+│   │   └── guest-customers.php  # GET → rolled-up guest checkouts grouped by email (admin Guests filter)
 │   ├── _address_helpers.php     # Shared address validation + snapshot helpers (addresses.php + create-order.php)
 │   ├── _mailer.php              # PHPMailer wrapper: send_mail($to,$name,$subject,$html,$text). Never throws.
 │   ├── _email_templates.php     # order_receipt_email($orderData) → { subject, html, text }
@@ -75,7 +76,7 @@ velorexmusic-new/
 
 ```
 ┌────────────────────────┐         ┌────────────────────────┐
-│  index.html (SPA)      │         │  admin.html (SPA)      │
+│  index.html (SPA)      │         │  vlx-admin-2026.html (SPA)      │
 │  - Hash-routed pages   │         │  - Sidebar-routed      │
 │  - Storage (cache)     │         │  - Storage (cache)     │
 │  - Auth (tokens)       │         │  - X-Admin-Pass header │
@@ -109,7 +110,7 @@ velorexmusic-new/
 
 | Scheme | Header | Used by | Who can set it |
 |---|---|---|---|
-| Admin | `X-Admin-Pass: <ADMIN_PASS>` | admin.html → admin-only endpoints | Single value in `api/config.php` (constant `ADMIN_PASS`) |
+| Admin | `X-Admin-Pass: <ADMIN_PASS>` | vlx-admin-2026.html → admin-only endpoints | Single value in `api/config.php` (constant `ADMIN_PASS`) |
 | Customer | `Authorization: Bearer <token>` | index.html → user-only endpoints | Issued by `login.php`/`signup.php`, stored in `user_sessions` table |
 
 Admin and customer auth never overlap — admin requests don't have a user, customer requests aren't admins. `api/orders.php` is the one endpoint that branches: `is_admin_request()` returns all orders; otherwise `require_user()` returns the caller's orders.
@@ -284,6 +285,7 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 | POST | `/api/admin/users.php` | `{ action: "update-notes", userId, notes }` | `{ ok }` — admin-only free-text notes (max 5000 chars). Requires the `users.notes` migration; 503 otherwise. |
 | POST | `/api/admin/users.php` | `{ action: "delete-user", userId, confirmEmail? }` | `{ ok }` — cascades to `user_sessions`; `orders.user_id` is set NULL. Pass `confirmEmail` to require the admin to echo the email before deletion. |
 | GET | `/api/admin/customer-detail.php?userId=N` | — | `{ orders, addresses, sessions }` — batched read for the admin customer drawer. |
+| GET | `/api/admin/guest-customers.php` | — | `GuestCustomer[]` — `[{email, fullName, phone, orderCount, totalSpent, firstOrderAt, lastOrderAt, registeredUserId}]`. Rolled up from `orders` where `user_id IS NULL`, grouped by `LOWER(JSON_UNQUOTE(JSON_EXTRACT(order_data, '$.contact.email')))`. `registeredUserId` is set if the same email now matches a registered user (claim-on-signup/login has already converted them). |
 
 ### config.php helper functions (PHP)
 
@@ -343,7 +345,7 @@ const Auth = {
 
 The token is sent as `Authorization: Bearer <token>` on every authenticated request. Signup/login/logout all touch the cart (see [§7 cart behavior](#cart-helper)) so the badge stays accurate.
 
-### Admin Storage helper (admin.html)
+### Admin Storage helper (vlx-admin-2026.html)
 
 Same idea but writes go to the server via POST with `X-Admin-Pass: <password>`. The admin password is stored in `sessionStorage` after login (key: `admin_pass`) and replayed on every write request.
 
@@ -369,7 +371,7 @@ npm run logs     # tail PHP container logs
 
 After `npm run setup` you'll see:
 - Storefront: `http://localhost:5500/`
-- Admin: `http://localhost:5500/admin.html` (login `owner` / `owner123`)
+- Admin: `http://localhost:5500/vlx-admin-2026.html` (login `owner` / `owner123`)
 - API health: `http://localhost:5500/api/categories.php`
 
 [scripts/schema.sql](scripts/schema.sql) is the authoritative schema dump applied to fresh databases. If you change the schema locally, re-dump with:
@@ -515,7 +517,7 @@ define('DB_HOST', '127.0.0.1');
 define('DB_NAME', 'velorex_local');
 define('DB_USER', 'velorex_dev');
 define('DB_PASS', 'devpass');
-define('ADMIN_PASS', 'owner123');     // Used both as admin API token AND admin.html login password
+define('ADMIN_PASS', 'owner123');     // Used both as admin API token AND vlx-admin-2026.html login password
 ```
 
 Leave the helper functions and CORS/cache headers untouched.
@@ -534,7 +536,7 @@ PHP's built-in server handles both static files and `.php` execution. No Apache/
 
 Open in your browser:
 - <http://localhost:5500/> → storefront
-- <http://localhost:5500/admin.html> → admin panel (login: `owner` / `owner123`)
+- <http://localhost:5500/vlx-admin-2026.html> → admin panel (login: `owner` / `owner123`)
 - <http://localhost:5500/api/categories.php> → should return `["vinyl","cd","cassette","bluray","dvd"]`
 
 **Step 5 — Smoke test with curl** (works on all platforms; Windows 10+ has `curl` built in)
@@ -747,7 +749,7 @@ It's gitignored on purpose — real DB passwords don't belong in git. But that m
 
 ### Admin auth = admin password = API token
 
-There's a single `ADMIN_PASS` constant in `config.php`. The admin panel (admin.html) prompts for it at login and stores it in `sessionStorage` as `admin_pass`. Every admin-only write replays it as `X-Admin-Pass: <password>`. Same value protects both the UI login and the API endpoints. If you change `ADMIN_PASS`, admin.html still uses the old check (`if (user.toLowerCase() === 'owner' && pass === 'owner123')`) — keep them in sync.
+There's a single `ADMIN_PASS` constant in `config.php`. The admin panel (vlx-admin-2026.html) prompts for it at login and stores it in `sessionStorage` as `admin_pass`. Every admin-only write replays it as `X-Admin-Pass: <password>`. Same value protects both the UI login and the API endpoints. If you change `ADMIN_PASS`, vlx-admin-2026.html still uses the old check (`if (user.toLowerCase() === 'owner' && pass === 'owner123')`) — keep them in sync.
 
 ### Razorpay payment flow
 
@@ -873,7 +875,7 @@ If you delete all products in admin and they reappear, check:
 2. Multiple admin tabs open with stale localStorage — close them all, log in fresh
 3. Customer browsers still have old data in localStorage — this self-heals on their next visit (sync overwrites)
 
-The previous root cause (admin auto-migrating localStorage back to server on login) was fixed in [commit 29807a6](https://github.com/aijazamaankhan/velorexmusic-new/commit/29807a6). If you see this bug again, check `Storage.syncFromServer()` in admin.html — it should never POST stale localStorage to the server.
+The previous root cause (admin auto-migrating localStorage back to server on login) was fixed in [commit 29807a6](https://github.com/aijazamaankhan/velorexmusic-new/commit/29807a6). If you see this bug again, check `Storage.syncFromServer()` in vlx-admin-2026.html — it should never POST stale localStorage to the server.
 
 ### Hostinger's MySQL username has a 14-char cap
 
@@ -900,7 +902,7 @@ The Hostinger MySQL username gets prefixed with `u286479481_`. Anything you type
 2. Update [api/_products_helpers.php](api/_products_helpers.php):
    - `row_to_product()` to read the new column
    - `upsert_product()` to write it
-3. Update `admin.html` form to capture the new field
+3. Update `vlx-admin-2026.html` form to capture the new field
 4. Update `index.html` if customers should see it
 5. Update [§5](#5-database-schema) in this doc with the new column
 
@@ -931,7 +933,7 @@ Admin panel → **Products** → click **Bulk Upload** (next to **New Product**)
 **Implementation:**
 - Endpoint: [api/products-bulk-upsert.php](api/products-bulk-upsert.php) — admin-only (`X-Admin-Pass`), runs in a single transaction. Returns `{ ok, inserted, updated, errors[], products[] }`.
 - Shared persistence: [api/_products_helpers.php](api/_products_helpers.php) holds `upsert_product()` / `row_to_product()` / `products_has_images_column()` so both `products.php` and `products-bulk-upsert.php` write rows identically.
-- Frontend: `openBulkUploadModal()` / `parseCsv()` / `bulkValidate()` / `confirmBulkImport()` in [admin.html](admin.html), plus `Storage.bulkUpsertProducts()` which merges the server-returned canonical rows back into the local cache.
+- Frontend: `openBulkUploadModal()` / `parseCsv()` / `bulkValidate()` / `confirmBulkImport()` in [vlx-admin-2026.html](vlx-admin-2026.html), plus `Storage.bulkUpsertProducts()` which merges the server-returned canonical rows back into the local cache.
 
 ### Resetting a customer's password (support flow)
 
@@ -948,7 +950,7 @@ mysql -u root -e "DROP DATABASE velorex_local; CREATE DATABASE velorex_local CHA
 
 ```bash
 npm install            # First time only
-npm run test:admin     # Launches Chromium, logs into admin.html
+npm run test:admin     # Launches Chromium, logs into vlx-admin-2026.html
 ```
 
 See `PLAYWRIGHT_MCP_README.md` for the optional MCP server setup if you want browser automation tools available in your IDE.
@@ -967,12 +969,12 @@ See `PLAYWRIGHT_MCP_README.md` for the optional MCP server setup if you want bro
 
 ## 13. Conventions for AI assistants editing this repo
 
-- **No build step.** Edit `index.html` / `admin.html` directly. Don't introduce bundlers, frameworks, or transpilers unless explicitly asked.
+- **No build step.** Edit `index.html` / `vlx-admin-2026.html` directly. Don't introduce bundlers, frameworks, or transpilers unless explicitly asked.
 - **No new dependencies in package.json** unless explicitly asked. The app code uses zero npm packages.
 - **Don't commit `api/config.php`.** It's gitignored. Verify with `git status` before pushing.
 - **Match the existing pattern.** The codebase is plain JS with `function foo()` and `const Helper = { ... }` objects. Don't refactor unrelated code into modules/classes.
 - **Match the existing styling.** UI styling uses CSS variables (`var(--accent)`, `var(--text-muted)`, etc.) defined at the top of each HTML file. Reuse those instead of hardcoding colors.
-- **Be careful with `innerHTML`.** Always escape user-controlled strings with `Utils.escape()` (defined in index.html) or the `escapeHTML()` helper in admin.html. SQL is safe everywhere because every query is prepared.
+- **Be careful with `innerHTML`.** Always escape user-controlled strings with `Utils.escape()` (defined in index.html) or the `escapeHTML()` helper in vlx-admin-2026.html. SQL is safe everywhere because every query is prepared.
 - **Server is source of truth.** When in doubt, fetch from the API. localStorage is only a render cache.
 - **Bulk-replace semantics for products/categories.** Don't try to add per-item PATCH endpoints — the existing pattern is "send the whole list, server replaces atomically." Match that for new collection-type entities.
 - **Update this doc.** If you change the schema, add an endpoint, or change a major convention, update the relevant section in `CLAUDE.md` in the same commit.

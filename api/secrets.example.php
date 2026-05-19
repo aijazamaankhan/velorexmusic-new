@@ -20,7 +20,7 @@ define('DB_NAME', 'u286479481_velorex');
 define('DB_USER', 'u286479481_velorex_admin');
 define('DB_PASS', 'REPLACE_WITH_REAL_PASSWORD');
 
-// Used as the admin API token. Must match the password used in admin.html login.
+// Used as the admin API token. Must match the password used in the admin login page (vlx-admin-2026.html).
 define('ADMIN_PASS', 'REPLACE_WITH_ADMIN_PASSWORD');
 
 // =============================================

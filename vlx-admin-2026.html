@@ -1634,6 +1634,17 @@
       background: rgba(16, 185, 129, 0.12);
       color: var(--success);
     }
+    .badge-guest {
+      display: inline-block;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background: rgba(245, 158, 11, 0.15);
+      color: #f59e0b;
+    }
 
     /* Right-side customer drawer */
     .drawer-overlay {
@@ -1909,6 +1920,112 @@
       .drawer-field { grid-template-columns: 1fr; }
       .drawer-stat-grid { grid-template-columns: 1fr 1fr; }
     }
+
+    /* =====================================================================
+       Mobile + tablet — admin panel
+       The desktop layout is sidebar + content. On smaller screens we collapse
+       the sidebar to a slide-in drawer triggered by a hamburger in the header.
+       Tables get horizontal scroll. Modals scroll the overlay instead of the
+       inner card (same iOS-keyboard reason as the storefront).
+       ===================================================================== */
+    .admin-hamburger { display: none; }
+
+    @media (max-width: 1024px) {
+      /* Collapse sidebar to slide-in drawer */
+      #admin-layout { grid-template-columns: 1fr; }
+      .sidebar {
+        position: fixed;
+        top: 0; left: 0; bottom: 0;
+        width: 260px;
+        z-index: 1050;
+        transform: translateX(-100%);
+        transition: transform 0.25s ease;
+        box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+      }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-backdrop {
+        position: fixed; inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        z-index: 1040;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+      }
+      .sidebar-backdrop.open { opacity: 1; pointer-events: auto; }
+
+      .admin-hamburger {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px; height: 40px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 10px;
+        cursor: pointer;
+        color: var(--text);
+        font-size: 1.1rem;
+      }
+      .header { gap: 0.75rem; }
+      .header-title { flex: 1; min-width: 0; }
+      .header-title h1 { font-size: 1.35rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .main-content { padding: 1.25rem; }
+    }
+
+    @media (max-width: 768px) {
+      .main-content { padding: 1rem; }
+      .header { margin-bottom: 1.5rem; padding: 0.5rem 0; }
+      .header-title h1 { font-size: 1.15rem; }
+      .header-actions { gap: 0.5rem; }
+      /* On small phones the View Store button + profile chip + theme toggle
+         crowds the header. Hide everything but the theme toggle + hamburger;
+         the avatar and "View Store" are reachable from the open sidebar. */
+      .btn-view-store { padding: 0.45rem 0.6rem; font-size: 0.75rem; }
+      .btn-view-store span,
+      .profile-info { display: none; }
+
+      /* Tables need horizontal scroll on phone — wrap content in
+         overflow-x:auto wrappers (already done in template). Make sure the
+         table doesn't shrink past readable width. */
+      .admin-table { min-width: 720px; font-size: 0.85rem; }
+      .admin-table th, .admin-table td { padding: 0.6rem 0.5rem; }
+
+      /* Admin modals: scroll the overlay, not the card. Same iOS reason
+         the storefront uses this pattern. */
+      .modal-overlay { padding: 0.5rem; overflow-y: auto; -webkit-overflow-scrolling: touch; align-items: flex-start; }
+      .modal-content { max-height: none; overflow-y: visible; padding: 1.25rem; max-width: 100%; }
+      .modal-header { margin-bottom: 1rem; position: sticky; top: 0; background: var(--surface-light); padding-top: 0.25rem; padding-bottom: 0.5rem; z-index: 1; }
+      .modal-title { font-size: 1.1rem; }
+      .form-grid { grid-template-columns: 1fr !important; }
+
+      /* Drawer takes full width on phone (already in 720px block) but we
+         want a slightly tighter header. */
+      .drawer-header { padding: 1rem; }
+      .drawer-body { padding: 1rem; }
+      .drawer-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+      .drawer-tab { white-space: nowrap; }
+
+      /* Customer chip strip wraps; keep things readable */
+      .cust-chips { gap: 0.4rem; }
+      .cust-chip { padding: 0.4rem 0.7rem; font-size: 0.75rem; }
+    }
+
+    @media (max-width: 480px) {
+      .main-content { padding: 0.75rem; }
+      .header-title h1 { font-size: 1rem; }
+      .header-actions .btn-view-store i { font-size: 0.85rem; }
+      .card { padding: 1rem !important; }
+      .drawer-stat-grid { grid-template-columns: 1fr; }
+      .modal-content { padding: 1rem; border-radius: 14px; }
+      .admin-table { font-size: 0.8rem; min-width: 600px; }
+      /* Make every primary button at least a real touch target */
+      .btn { min-height: 44px; }
+      .btn-sm { min-height: 38px; }
+    }
+
+    /* iOS Safari: form inputs <16px auto-zoom on focus. */
+    @media (max-width: 1024px) {
+      input, select, textarea, .form-control { font-size: 16px; }
+    }
   </style>
 </head>
 
@@ -1941,8 +2058,11 @@
   <!-- Admin Layout -->
   <div id="admin-layout">
 
+    <!-- Mobile sidebar backdrop -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleAdminSidebar(false)"></div>
+
     <!-- Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="adminSidebar">
       <a href="index.html" class="sidebar-logo">
         <div class="logo-v">V</div>
         <span class="logo-text">Velorex</span>
@@ -1988,6 +2108,9 @@
 
       <!-- Header -->
       <header class="header">
+        <button type="button" class="admin-hamburger" id="adminHamburger" onclick="toggleAdminSidebar()" aria-label="Open menu">
+          <i class="fas fa-bars"></i>
+        </button>
         <div class="header-title">
           <h1 id="panel-title">Inventory Management</h1>
         </div>
@@ -2172,16 +2295,18 @@
           </div>
 
           <div class="cust-chips" id="cust-chips">
-            <button type="button" class="cust-chip active" data-filter="all" onclick="setUsersFilter('all')">All</button>
+            <button type="button" class="cust-chip active" data-filter="all" onclick="setUsersFilter('all')">Registered</button>
             <button type="button" class="cust-chip" data-filter="has-orders" onclick="setUsersFilter('has-orders')">Has orders</button>
             <button type="button" class="cust-chip" data-filter="no-orders" onclick="setUsersFilter('no-orders')">No orders</button>
             <button type="button" class="cust-chip" data-filter="joined-month" onclick="setUsersFilter('joined-month')">Joined this month</button>
             <button type="button" class="cust-chip" data-filter="active-session" onclick="setUsersFilter('active-session')">Currently signed in</button>
+            <span style="width:1px;background:var(--border);align-self:stretch;margin:0 0.25rem;"></span>
+            <button type="button" class="cust-chip" data-filter="guests" onclick="setUsersFilter('guests')"><i class="fas fa-user-clock" style="margin-right:0.35rem;"></i>Guests</button>
           </div>
 
           <div style="overflow-x:auto;">
-            <table class="admin-table">
-              <thead>
+            <table class="admin-table" id="admin-users-table-el">
+              <thead id="admin-users-thead">
                 <tr>
                   <th><button type="button" class="cust-sort-btn" data-sort="name"   onclick="setUsersSort('name')">Customer <i class="fas fa-sort"></i></button></th>
                   <th><button type="button" class="cust-sort-btn" data-sort="email"  onclick="setUsersSort('email')">Email <i class="fas fa-sort"></i></button></th>
@@ -3273,10 +3398,28 @@
     // =============================================
     // UI NAVIGATION
     // =============================================
+    // Mobile sidebar toggle. Pass false to force close (used by backdrop +
+     // after a nav-link click so the user actually sees the panel they picked).
+    function toggleAdminSidebar(force) {
+      const sb = document.getElementById('adminSidebar');
+      const bd = document.getElementById('sidebarBackdrop');
+      if (!sb || !bd) return;
+      const open = (force === undefined) ? !sb.classList.contains('open') : !!force;
+      sb.classList.toggle('open', open);
+      bd.classList.toggle('open', open);
+      // Lock body scroll while sidebar is open so the page behind doesn't
+      // accidentally scroll under the user's finger.
+      document.body.style.overflow = open ? 'hidden' : '';
+    }
+
     async function switchPanel(panelId, el) {
       // Update links
       document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
       if (el) el.classList.add('active');
+
+      // Auto-close the mobile sidebar on selection — the user just picked
+      // where to go, no reason to make them swipe it shut.
+      toggleAdminSidebar(false);
 
       // Update panels
       document.querySelectorAll('.panel').forEach(panel => panel.classList.remove('active'));
@@ -3317,8 +3460,11 @@
     // (orders/addresses/sessions) is fetched per-drawer-open.
     const CustState = {
       users: [],
+      guests: [],            // rolled-up guest checkouts (loaded lazily when chip selected)
+      guestsLoaded: false,   // gate so we only fetch once per session unless Refresh
       filter: 'all',         // chip — see setUsersFilter()
       sort: { key: 'joined', dir: 'desc' },
+      guestSort: { key: 'lastOrder', dir: 'desc' },
       activeUser: null,      // currently-open drawer subject
       activeTab: 'profile',  // drawer tab
       detail: null,          // { orders, addresses, sessions } for activeUser
@@ -3347,9 +3493,37 @@
           const fresh = CustState.users.find(u => Number(u.id) === Number(CustState.activeUser.id));
           if (fresh) CustState.activeUser = fresh;
         }
+        // Refresh button also re-pulls guests if that view has been opened
+        // this session — keeps the two tables in sync without an extra click.
+        if (CustState.guestsLoaded) {
+          CustState.guestsLoaded = false;
+          loadGuestsTable();
+        }
         renderUsersTable();
       } catch (e) {
         tbody.innerHTML = `<tr><td colspan="8" style="padding:1.25rem;color:var(--danger);text-align:center;">Failed to load: ${escapeHTML(e.message)}</td></tr>`;
+      }
+    }
+
+    async function loadGuestsTable() {
+      try {
+        const res = await fetch(API_BASE + '/admin/guest-customers.php', {
+          cache: 'no-store',
+          headers: { 'X-Admin-Pass': sessionStorage.getItem('admin_pass') || '' },
+        });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j.error || 'HTTP ' + res.status);
+        }
+        const guests = await res.json();
+        CustState.guests = Array.isArray(guests) ? guests : [];
+        CustState.guestsLoaded = true;
+        if (CustState.filter === 'guests') renderUsersTable();
+      } catch (e) {
+        if (CustState.filter === 'guests') {
+          const tbody = document.getElementById('admin-users-table');
+          if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="padding:1.25rem;color:var(--danger);text-align:center;">Failed to load guests: ${escapeHTML(e.message)}</td></tr>`;
+        }
       }
     }
 
@@ -3358,6 +3532,11 @@
       document.querySelectorAll('#cust-chips .cust-chip').forEach(el => {
         el.classList.toggle('active', el.getAttribute('data-filter') === filter);
       });
+      if (filter === 'guests' && !CustState.guestsLoaded) {
+        const tbody = document.getElementById('admin-users-table');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="padding:1.25rem;color:var(--text-muted);text-align:center;">Loading guests…</td></tr>';
+        loadGuestsTable();
+      }
       renderUsersTable();
     }
 
@@ -3422,7 +3601,26 @@
     function renderUsersTable() {
       const tbody = document.getElementById('admin-users-table');
       const meta = document.getElementById('admin-users-meta');
+      const thead = document.getElementById('admin-users-thead');
       if (!tbody) return;
+
+      if (CustState.filter === 'guests') {
+        renderGuestsTable(tbody, thead, meta);
+        return;
+      }
+
+      // Restore the registered-users header if we previously swapped it.
+      thead.innerHTML = `
+        <tr>
+          <th><button type="button" class="cust-sort-btn" data-sort="name"   onclick="setUsersSort('name')">Customer <i class="fas fa-sort"></i></button></th>
+          <th><button type="button" class="cust-sort-btn" data-sort="email"  onclick="setUsersSort('email')">Email <i class="fas fa-sort"></i></button></th>
+          <th>Phone</th>
+          <th>Account</th>
+          <th><button type="button" class="cust-sort-btn" data-sort="orders" onclick="setUsersSort('orders')">Orders <i class="fas fa-sort"></i></button></th>
+          <th><button type="button" class="cust-sort-btn" data-sort="spent"  onclick="setUsersSort('spent')">Total spent <i class="fas fa-sort"></i></button></th>
+          <th><button type="button" class="cust-sort-btn" data-sort="joined" onclick="setUsersSort('joined')">Joined <i class="fas fa-sort"></i></button></th>
+          <th>Actions</th>
+        </tr>`;
 
       // Reflect sort state in the header buttons.
       document.querySelectorAll('#panel-users .cust-sort-btn').forEach(btn => {
@@ -3475,6 +3673,140 @@
             </td>
           </tr>`;
       }).join('');
+    }
+
+    // ---------- Guests view ----------
+    function setGuestsSort(key) {
+      const numeric = ['orders', 'spent', 'lastOrder', 'firstOrder'].includes(key);
+      if (CustState.guestSort.key === key) {
+        CustState.guestSort.dir = CustState.guestSort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        CustState.guestSort.key = key;
+        CustState.guestSort.dir = numeric ? 'desc' : 'asc';
+      }
+      renderUsersTable();
+    }
+
+    function filteredSortedGuests() {
+      const q = (document.getElementById('cust-search-input')?.value || '').trim().toLowerCase();
+      let rows = CustState.guests.filter(g => {
+        if (!q) return true;
+        const hay = [g.email, g.fullName, g.phone].filter(Boolean).join(' ').toLowerCase();
+        return hay.includes(q);
+      });
+      const { key, dir } = CustState.guestSort;
+      const mult = dir === 'asc' ? 1 : -1;
+      const val = (g) => {
+        switch (key) {
+          case 'name':       return (g.fullName || '').toLowerCase();
+          case 'email':      return (g.email || '').toLowerCase();
+          case 'orders':     return Number(g.orderCount || 0);
+          case 'spent':      return Number(g.totalSpent || 0);
+          case 'firstOrder': return g.firstOrderAt ? new Date(g.firstOrderAt).getTime() : 0;
+          case 'lastOrder':
+          default:           return g.lastOrderAt ? new Date(g.lastOrderAt).getTime() : 0;
+        }
+      };
+      rows.sort((a, b) => {
+        const va = val(a); const vb = val(b);
+        if (va < vb) return -1 * mult;
+        if (va > vb) return  1 * mult;
+        return 0;
+      });
+      return rows;
+    }
+
+    function renderGuestsTable(tbody, thead, meta) {
+      thead.innerHTML = `
+        <tr>
+          <th><button type="button" class="cust-sort-btn" data-sort="name"   onclick="setGuestsSort('name')">Guest <i class="fas fa-sort"></i></button></th>
+          <th><button type="button" class="cust-sort-btn" data-sort="email"  onclick="setGuestsSort('email')">Email <i class="fas fa-sort"></i></button></th>
+          <th>Phone</th>
+          <th>Account</th>
+          <th><button type="button" class="cust-sort-btn" data-sort="orders" onclick="setGuestsSort('orders')">Orders <i class="fas fa-sort"></i></button></th>
+          <th><button type="button" class="cust-sort-btn" data-sort="spent"  onclick="setGuestsSort('spent')">Total spent <i class="fas fa-sort"></i></button></th>
+          <th><button type="button" class="cust-sort-btn" data-sort="lastOrder" onclick="setGuestsSort('lastOrder')">Last order <i class="fas fa-sort"></i></button></th>
+          <th>Actions</th>
+        </tr>`;
+
+      document.querySelectorAll('#panel-users .cust-sort-btn').forEach(btn => {
+        const k = btn.getAttribute('data-sort');
+        const icon = btn.querySelector('i');
+        if (!icon) return;
+        if (k === CustState.guestSort.key) {
+          btn.classList.add('active');
+          icon.className = CustState.guestSort.dir === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
+        } else {
+          btn.classList.remove('active');
+          icon.className = 'fas fa-sort';
+        }
+      });
+
+      if (!CustState.guestsLoaded) {
+        tbody.innerHTML = '<tr><td colspan="8" style="padding:1.25rem;color:var(--text-muted);text-align:center;">Loading guests…</td></tr>';
+        return;
+      }
+
+      const rows = filteredSortedGuests();
+      if (meta) {
+        meta.textContent = rows.length === CustState.guests.length
+          ? `${rows.length} guest checkout${rows.length === 1 ? '' : 's'}`
+          : `Showing ${rows.length} of ${CustState.guests.length}`;
+      }
+
+      if (rows.length === 0) {
+        const msg = CustState.guests.length === 0
+          ? 'No guest checkouts yet.'
+          : 'No guests match this search.';
+        tbody.innerHTML = `<tr><td colspan="8" style="padding:1.25rem;color:var(--text-muted);text-align:center;">${msg}</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = rows.map(g => {
+        const last = formatJoinedDate(g.lastOrderAt);
+        const spent = Math.round(g.totalSpent || 0);
+        const orderCount = g.orderCount || 0;
+        // If the guest's email matches a registered account, surface a quick
+        // jump to that account rather than re-displaying as a "guest" — the
+        // claim-on-login flow may have already converted them.
+        const linkedAccount = g.registeredUserId
+          ? `<button class="btn btn-sm btn-secondary" style="width:auto;margin-top:0.4rem;" onclick="openCustomerDrawer(${g.registeredUserId})"><i class="fas fa-link"></i> View linked account</button>`
+          : '';
+        return `
+          <tr>
+            <td>
+              <div style="font-weight:600;">${escapeHTML(g.fullName || '—')}</div>
+              ${g.registeredUserId ? '<div style="color:var(--success);font-size:0.7rem;margin-top:0.2rem;"><i class="fas fa-circle-check"></i> account exists</div>' : '<div style="color:var(--text-muted);font-size:0.7rem;margin-top:0.2rem;">no account</div>'}
+            </td>
+            <td style="color:var(--text-muted);font-size:0.875rem;word-break:break-all;">${escapeHTML(g.email || '—')}</td>
+            <td style="color:var(--text-muted);font-size:0.875rem;">${escapeHTML(g.phone || '—')}</td>
+            <td><span class="badge-guest">Guest</span></td>
+            <td>${orderCount}</td>
+            <td>₹${spent.toLocaleString()}</td>
+            <td style="font-size:0.85rem;color:var(--text-muted);">${last}</td>
+            <td>
+              <button class="btn btn-sm btn-secondary" style="width:auto;" onclick="viewGuestOrders('${escapeHTML(g.email || '')}')"><i class="fas fa-receipt"></i> View orders</button>
+              ${linkedAccount}
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    // Click-through from a guest row → switches to the Orders panel and
+    // filters by that email. Quick way for an admin to find what a specific
+    // guest bought without leaving the Customers context.
+    function viewGuestOrders(email) {
+      if (!email) return;
+      const ordersNav = document.querySelector('.nav-link[onclick*="switchPanel(\'orders\'"]');
+      switchPanel('orders', ordersNav).then(() => {
+        const input = document.getElementById('ordersSearch');
+        if (input) {
+          input.value = email;
+          // The orders panel's search is wired via oninput; calling
+          // renderOrdersTable directly applies the filter without dispatching.
+          if (typeof renderOrdersTable === 'function') renderOrdersTable();
+        }
+      });
     }
 
     function formatJoinedDate(iso) {

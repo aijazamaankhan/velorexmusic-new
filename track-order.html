@@ -111,7 +111,17 @@
     .tracking-cta { margin-top: 1.5rem; padding: 1rem; background: rgba(255,107,53,0.08); border: 1px solid rgba(255,107,53,0.25); border-radius: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
     .skeleton { color: var(--text-muted); padding: 1rem; text-align: center; }
     .hidden { display: none !important; }
-  </style>
+    @media (max-width: 768px) {
+      .container { padding: 2rem 1rem; }
+      .glass-card { padding: 1.5rem; }
+      h1 { font-size: 1.75rem; }
+      .navbar { padding: 0.75rem 1rem; }
+      .brand-name { font-size: 1.1rem; }
+      .btn { padding: 0.65rem 1.1rem; font-size: 0.9rem; }
+      .tracking-cta { flex-direction: column; align-items: stretch; text-align: center; }
+      /* Prevent iOS auto-zoom on focus */
+      .form-control { font-size: 16px; }
+    }
   <script>
     document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
   </script>

@@ -51,7 +51,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             url: {
               type: 'string',
               description: 'Admin URL to navigate to',
-              default: 'http://127.0.0.1:5500/admin.html',
+              default: 'http://127.0.0.1:5500/vlx-admin-2026.html',
             },
           },
         },
@@ -159,7 +159,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             ],
           };
         }
-        const url = args.url || 'http://127.0.0.1:5500/admin.html';
+        const url = args.url || 'http://127.0.0.1:5500/vlx-admin-2026.html';
         await page.goto(url, { waitUntil: 'networkidle' });
         return {
           content: [

@@ -70,7 +70,7 @@ async function main() {
   console.log(bold('🎉 Velorex Music is running'));
   console.log();
   console.log(green(`  Storefront:    http://localhost:${APP_PORT}/`));
-  console.log(green(`  Admin panel:   http://localhost:${APP_PORT}/admin.html`));
+  console.log(green(`  Admin panel:   http://localhost:${APP_PORT}/vlx-admin-2026.html`));
   console.log(gray ('                 → login as owner / owner123'));
   console.log(green(`  API health:    http://localhost:${APP_PORT}/api/categories.php`));
   console.log();
