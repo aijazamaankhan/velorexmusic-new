@@ -13,30 +13,21 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap"
     rel="stylesheet">
+  <!-- Admin design tokens + reset are extracted to standalone CSS files.
+       See src/styles/admin/tokens.css and src/styles/admin/base.css. -->
+  <link rel="stylesheet" href="src/styles/admin/tokens.css">
+  <link rel="stylesheet" href="src/styles/admin/base.css">
+  <link rel="stylesheet" href="src/styles/admin/components/buttons.css">
+  <link rel="stylesheet" href="src/styles/admin/components/forms.css">
+  <link rel="stylesheet" href="src/styles/admin/components/modal.css">
+  <link rel="stylesheet" href="src/styles/admin/components/toast.css">
   <style>
     /* =============================================
    Velorex Music - ADMIN PORTAL
+   Tokens + base reset are loaded via <link> above
+   (src/styles/admin/tokens.css + admin/base.css).
+   Component + page rules continue below.
    ============================================= */
-    :root {
-      --primary: #0a0a14;
-      --secondary: #ff6b35;
-      --accent: #ffd700;
-      --bg: #050508;
-      --surface: #11111e;
-      --surface-light: #18182a;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --border: rgba(255, 255, 255, 0.05);
-      --success: #10b981;
-      --danger: #ef4444;
-      --warning: #f59e0b;
-      --info: #3b82f6;
-      --font-display: 'DM Sans', sans-serif;
-      --font-body: 'DM Sans', sans-serif;
-      --radius: 16px;
-      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      --glass: rgba(17, 17, 30, 0.8);
-    }
 
     /* ---- Sidebar Layout ---- */
     #admin-layout {
@@ -555,17 +546,10 @@
     }
 
 
-    /* ---- Light Mode Overrides ---- */
-    :root[data-theme="light"] {
-      --primary: #ffffff;
-      --bg: #f8fafc;
-      --surface: #ffffff;
-      --surface-light: #f1f5f9;
-      --text: #0f172a;
-      --text-muted: #64748b;
-      --border: #e2e8f0;
-      --glass: rgba(255, 255, 255, 0.9);
-    }
+    /* ---- Light Mode Overrides ----
+       The :root[data-theme="light"] variable block now lives in
+       src/styles/admin/tokens.css alongside the dark defaults. Only the
+       component-level [data-theme="light"] selectors remain here. */
 
     [data-theme="light"] .sidebar {
       background: #ffffff;
@@ -582,11 +566,7 @@
       box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
     }
 
-    [data-theme="light"] .form-control {
-      background: #f8f9fa;
-      color: #1a0a2e;
-      border-color: #dee2e6;
-    }
+    /* [data-theme="light"] .form-control moved to src/styles/admin/components/forms.css */
 
     [data-theme="light"] .nav-link:hover,
     [data-theme="light"] .nav-link.active {
@@ -602,41 +582,11 @@
       background: rgba(0, 0, 0, 0.02);
     }
 
-    [data-theme="light"] .modal-content {
-      background: #ffffff;
-    }
+    /* [data-theme="light"] .modal-content + .toast moved to their component files
+       in src/styles/admin/components/ */
 
-    [data-theme="light"] .toast {
-      background: #ffffff;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font-body);
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-
-    /* Scrollbar */
-    ::-webkit-scrollbar {
-      width: 6px;
-    }
-
-    ::-webkit-scrollbar-track {
-      background: var(--bg);
-    }
-
-    ::-webkit-scrollbar-thumb {
-      background: var(--secondary);
-      border-radius: 3px;
-    }
+    /* Reset, body, scrollbar styles are extracted to src/styles/admin/base.css.
+       Page-specific rules continue from here. */
 
     /* ---- LOGIN SCREEN ---- */
     #login-screen {
@@ -693,47 +643,7 @@
       margin-bottom: 2rem;
     }
 
-    .form-group {
-      margin-bottom: 1.25rem;
-      text-align: left;
-    }
-
-    .form-label {
-      display: block;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-muted);
-      margin-bottom: 0.5rem;
-      font-weight: 600;
-    }
-
-    .form-control {
-      width: 100%;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 0.8rem 1rem;
-      color: white;
-      font-family: inherit;
-      transition: var(--transition);
-    }
-
-    .form-control:focus {
-      outline: none;
-      border-color: var(--secondary);
-      background: rgba(255, 255, 255, 0.08);
-      box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15);
-    }
-
-    .form-control {
-      background: rgba(255, 255, 255, 0.05);
-    }
-
-    .form-control option {
-      background: var(--surface);
-      color: var(--text);
-    }
+    /* .form-group, .form-label, .form-control extracted to src/styles/admin/components/forms.css */
 
     .category-manager {
       margin-top: 1.5rem;
@@ -1067,30 +977,7 @@
       box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
     }
 
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      padding: 0.8rem 1.5rem;
-      border-radius: 10px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: var(--transition);
-      border: none;
-      font-family: inherit;
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, var(--secondary), #ff3a00);
-      color: white;
-      width: 100%;
-    }
-
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 20px rgba(255, 107, 53, 0.3);
-    }
+    /* .btn / .btn-primary extracted to src/styles/admin/components/buttons.css */
 
     /* ---- ADMIN LAYOUT ---- */
     #admin-layout {
@@ -1354,16 +1241,7 @@
       background: var(--danger);
     }
 
-    /* Form Styles */
-    .form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1.5rem;
-    }
-
-    .full-width {
-      grid-column: 1 / -1;
-    }
+    /* .form-grid + .full-width extracted to src/styles/admin/components/forms.css */
 
     /* Track listing sides grid */
     .track-sides-grid {
@@ -1417,48 +1295,7 @@
 
     /* Navbar/Header Fixes */
 
-    /* Modal */
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(5px);
-      z-index: 1000;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 2rem;
-    }
-
-    .modal-content {
-      background: var(--surface-light);
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      width: 100%;
-      max-width: 800px;
-      max-height: 90vh;
-      overflow-y: auto;
-      padding: 2.5rem;
-      position: relative;
-    }
-
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2rem;
-    }
-
-    .modal-title {
-      font-family: var(--font-display);
-      font-size: 1.5rem;
-    }
-
-    .modal-close {
-      cursor: pointer;
-      font-size: 1.5rem;
-      color: var(--text-muted);
-    }
+    /* Modal styles extracted to src/styles/admin/components/modal.css */
 
     /* Bulk Upload */
     .bulk-dropzone {
@@ -1521,30 +1358,7 @@
     .bulk-row-err { color: #f87171; }
     .bulk-row-err td { background: rgba(248, 113, 113, 0.05); }
 
-    /* Toast */
-    .toast {
-      position: fixed;
-      bottom: 2rem;
-      right: 2rem;
-      background: var(--surface-light);
-      border-left: 4px solid var(--secondary);
-      padding: 1rem 1.5rem;
-      border-radius: 10px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-      display: none;
-      z-index: 9999;
-      animation: slideInRight 0.3s ease;
-    }
-
-    @keyframes slideInRight {
-      from {
-        transform: translateX(100%);
-      }
-
-      to {
-        transform: translateX(0);
-      }
-    }
+    /* .toast extracted to src/styles/admin/components/toast.css */
 
     /* =========================================================
        Customer management — table toolbar, drawer, password modal
@@ -1989,13 +1803,9 @@
       .admin-table { min-width: 720px; font-size: 0.85rem; }
       .admin-table th, .admin-table td { padding: 0.6rem 0.5rem; }
 
-      /* Admin modals: scroll the overlay, not the card. Same iOS reason
-         the storefront uses this pattern. */
-      .modal-overlay { padding: 0.5rem; overflow-y: auto; -webkit-overflow-scrolling: touch; align-items: flex-start; }
-      .modal-content { max-height: none; overflow-y: visible; padding: 1.25rem; max-width: 100%; }
-      .modal-header { margin-bottom: 1rem; position: sticky; top: 0; background: var(--surface-light); padding-top: 0.25rem; padding-bottom: 0.5rem; z-index: 1; }
-      .modal-title { font-size: 1.1rem; }
-      .form-grid { grid-template-columns: 1fr !important; }
+      /* Modal + form-grid responsive rules moved to the component CSS files
+         in src/styles/admin/components/. The pattern: overlay scrolls, card
+         grows naturally — fixes iOS keyboard hiding bottom of long forms. */
 
       /* Drawer takes full width on phone (already in 720px block) but we
          want a slightly tighter header. */
@@ -2015,17 +1825,12 @@
       .header-actions .btn-view-store i { font-size: 0.85rem; }
       .card { padding: 1rem !important; }
       .drawer-stat-grid { grid-template-columns: 1fr; }
-      .modal-content { padding: 1rem; border-radius: 14px; }
       .admin-table { font-size: 0.8rem; min-width: 600px; }
-      /* Make every primary button at least a real touch target */
-      .btn { min-height: 44px; }
-      .btn-sm { min-height: 38px; }
+      /* .modal-content 480px override + .btn touch-target rule moved to their
+         component CSS files in src/styles/admin/components/. */
     }
 
-    /* iOS Safari: form inputs <16px auto-zoom on focus. */
-    @media (max-width: 1024px) {
-      input, select, textarea, .form-control { font-size: 16px; }
-    }
+    /* The 1024px iOS-zoom-prevention rule moved to admin/components/forms.css. */
   </style>
 </head>
 

@@ -1,0 +1,47 @@
+/* =============================================================================
+   Velorex Music — admin design tokens
+   Used by: vlx-admin-2026.html (and nothing else)
+
+   The admin intentionally has a different design system than the storefront:
+   tighter radii, single sans-serif font (no Playfair Display), darker chrome,
+   semi-transparent borders. Keeping it separate from src/styles/tokens.css
+   means a storefront brand refresh doesn't accidentally re-skin the admin.
+   ============================================================================= */
+
+:root {
+  --primary: #0a0a14;
+  --secondary: #ff6b35;
+  --accent: #ffd700;
+
+  --bg: #050508;
+  --surface: #11111e;
+  --surface-light: #18182a;
+
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+
+  --border: rgba(255, 255, 255, 0.05);
+
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --info: #3b82f6;
+
+  --font-display: 'DM Sans', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+
+  --radius: 16px;
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --glass: rgba(17, 17, 30, 0.8);
+}
+
+:root[data-theme="light"] {
+  --primary: #ffffff;
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-light: #f1f5f9;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+  --glass: rgba(255, 255, 255, 0.9);
+}

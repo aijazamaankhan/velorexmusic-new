@@ -9,17 +9,9 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="src/styles/tokens.css">
+  <link rel="stylesheet" href="src/styles/base.css">
   <style>
-    :root {
-      --primary: #1a0a2e; --secondary: #ff6b35; --accent: #ffd700; --bg: #0d0d0d; --surface: #1a1a2e; --text: #f0eaf8; --text-muted: #9890b0; --border: #2e2e5e;
-      --success: #00d4aa; --info: #3b82f6; --warning: #ffb800; --danger: #ef4444;
-      --font-display: 'Playfair Display', serif; --font-body: 'DM Sans', sans-serif; --radius: 12px;
-      --orange-gradient: linear-gradient(135deg, #ff6b35, #ff3a00); --gold-gradient: linear-gradient(135deg, #ffd700, #ff8c00);
-    }
-    :root[data-theme="light"] {
-      --primary: #ffffff; --bg: #f8fafc; --surface: #ffffff; --text: #0f172a; --text-muted: #64748b; --border: #e2e8f0;
-    }
-    body { background: var(--bg); color: var(--text); font-family: var(--font-body); line-height: 1.6; margin: 0; }
     .container { max-width: 900px; margin: 0 auto; padding: 3rem 1.5rem; }
     .glass-card { background: rgba(26, 26, 46, 0.6); backdrop-filter: blur(20px); border: 1px solid var(--border); border-radius: var(--radius); padding: 2.5rem; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
     [data-theme="light"] .glass-card { background: rgba(255, 255, 255, 0.85); }
@@ -122,6 +114,7 @@
       /* Prevent iOS auto-zoom on focus */
       .form-control { font-size: 16px; }
     }
+  </style>
   <script>
     document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || 'dark');
   </script>

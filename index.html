@@ -14,51 +14,18 @@
     href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap"
     rel="stylesheet">
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <!-- Design tokens + base reset are extracted to standalone CSS files so
+       they can be shared between the storefront pages without duplication.
+       See src/styles/tokens.css and src/styles/base.css. -->
+  <link rel="stylesheet" href="src/styles/tokens.css">
+  <link rel="stylesheet" href="src/styles/base.css">
+  <link rel="stylesheet" href="src/styles/components/buttons.css">
+  <link rel="stylesheet" href="src/styles/components/forms.css">
+  <link rel="stylesheet" href="src/styles/components/modal.css">
+  <link rel="stylesheet" href="src/styles/components/payment-modal.css">
+  <link rel="stylesheet" href="src/styles/components/toast.css">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap');
-
-    :root {
-      --primary: #1a0a2e;
-      --secondary: #ff6b35;
-      --accent: #ffd700;
-      --bg: #0d0d0d;
-      --surface: #1a1a2e;
-      --surface2: #16213e;
-      --card-bg: #1e1e3a;
-      --text: #f0eaf8;
-      --text-muted: #9890b0;
-      --border: #2e2e5e;
-      --success: #00d4aa;
-      --danger: #ff4757;
-      --vinyl-gradient: linear-gradient(135deg, #1a0a2e, #0f3460, #533483);
-      --gold-gradient: linear-gradient(135deg, #ffd700, #ff8c00);
-      --orange-gradient: linear-gradient(135deg, #ff6b35, #ff3a00);
-      --font-display: 'Playfair Display', serif;
-      --font-body: 'DM Sans', sans-serif;
-      --radius: 12px;
-      --radius-lg: 20px;
-      --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-      --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.6);
-      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    :root[data-theme="light"] {
-      --primary: #ffffff;
-      --secondary: #ff4d00;
-      --accent: #f59e0b;
-      --bg: #f8fafc;
-      --surface: #ffffff;
-      --surface2: #f1f5f9;
-      --card-bg: #ffffff;
-      --text: #0f172a;
-      --text-muted: #64748b;
-      --border: #e2e8f0;
-      --glass: rgba(255, 255, 255, 0.85);
-      --glass-border: rgba(255, 255, 255, 0.5);
-      --vinyl-gradient: linear-gradient(135deg, #f8fafc, #f1f5f9, #e2e8f0);
-      --shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
-      --shadow-lg: 0 10px 40px rgba(15, 23, 42, 0.1);
-    }
 
     [data-theme="light"] .navbar { background: rgba(255, 255, 255, 0.9); border-bottom-color: #f1f5f9; }
     [data-theme="light"] .hero { background: #fdfbff; }
@@ -73,18 +40,8 @@
     [data-theme="light"] .admin-panel { background: #f8fafc; }
     [data-theme="light"] .admin-card { background: #ffffff; border-color: #f1f5f9; box-shadow: var(--shadow); }
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
-    body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 16px; line-height: 1.6; min-height: 100vh; }
-    a { color: inherit; text-decoration: none; }
-    ul { list-style: none; }
-    img { max-width: 100%; display: block; }
-    button { cursor: pointer; border: none; background: none; font-family: inherit; }
-    input, select, textarea { font-family: inherit; }
-
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg); }
-    ::-webkit-scrollbar-thumb { background: var(--secondary); border-radius: 3px; }
+    /* Reset, body, and scrollbar styles are extracted to src/styles/base.css.
+       Page-specific rules continue from here. */
 
     .navbar {
       position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
@@ -159,23 +116,7 @@
     .vinyl-label .label-title { font-size: 0.75rem; }
     .vinyl-label .label-sub { font-size: 0.55rem; opacity: 0.8; }
 
-    .btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.75rem; border-radius: var(--radius); font-size: 0.9rem; font-weight: 600; transition: var(--transition); white-space: nowrap; position: relative; overflow: hidden; }
-    .btn::after { content: ''; position: absolute; inset: 0; background: rgba(255, 255, 255, 0.1); opacity: 0; transition: opacity 0.2s; }
-    .btn:hover::after { opacity: 1; }
-    .btn-primary { background: var(--orange-gradient); color: white; box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4); }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255, 107, 53, 0.5); }
-    .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
-    .btn-secondary:hover { border-color: var(--secondary); color: var(--secondary); background: rgba(255, 107, 53, 0.05); }
-    .btn-outline-primary { background: transparent; border: 2px solid var(--secondary); color: var(--secondary); }
-    .btn-outline-primary:hover { background: var(--secondary); color: white; }
-    .btn-danger { background: linear-gradient(135deg, var(--danger), #cc0000); color: white; }
-    .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); }
-    .btn-success { background: linear-gradient(135deg, var(--success), #00a884); color: white; }
-    .btn-gold { background: var(--gold-gradient); color: var(--primary); font-weight: 700; }
-    .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255, 215, 0, 0.4); }
-    .btn-sm { padding: 0.4rem 1rem; font-size: 0.8rem; }
-    .btn-lg { padding: 1rem 2.5rem; font-size: 1rem; }
-    .btn-block { width: 100%; justify-content: center; }
+    /* Buttons extracted to src/styles/components/buttons.css */
 
     .section { padding: 5rem 0; }
     .section-alt { background: var(--surface); }
@@ -485,42 +426,14 @@
     .table-badge { padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
     .table-actions { display: flex; gap: 0.4rem; }
     .admin-form-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2rem; }
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
-    .form-grid .full-width { grid-column: 1 / -1; }
-    .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
-    .form-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-    .form-control { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 0.75rem 1rem; font-size: 0.9rem; width: 100%; transition: var(--transition); }
-    .form-control:focus { outline: none; border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15); }
-    .form-control::placeholder { color: var(--text-muted); }
-    .form-control option { background: var(--surface); }
+    /* Forms extracted to src/styles/components/forms.css */
     textarea.form-control { resize: vertical; min-height: 100px; }
     .image-upload-area { border: 2px dashed var(--border); border-radius: var(--radius); padding: 2rem; text-align: center; cursor: pointer; transition: var(--transition); }
     .image-upload-area:hover { border-color: var(--secondary); background: rgba(255, 107, 53, 0.05); }
     .image-upload-icon { font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5; }
     .image-upload-text { font-size: 0.875rem; color: var(--text-muted); }
 
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 1rem; opacity: 0; visibility: hidden; transition: var(--transition); }
-    /* Address modal can be opened from inside the payment modal (z-index 3000),
-       so it needs to stack above. */
-    #addressModal.modal-overlay { z-index: 3500; }
-    .modal-overlay.open { opacity: 1; visibility: visible; }
-    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto; transform: scale(0.95); transition: var(--transition); }
-    .modal-overlay.open .modal { transform: scale(1); }
-    .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid var(--border); }
-    .modal-title { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; }
-    .modal-close { font-size: 1.25rem; cursor: pointer; color: var(--text-muted); transition: var(--transition); }
-    .modal-close:hover { color: var(--danger); }
-    .modal-body { padding: 1.5rem; }
-    .modal-footer { display: flex; gap: 0.75rem; justify-content: flex-end; padding: 1.5rem; border-top: 1px solid var(--border); }
-
-    .toast-container { position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.75rem; pointer-events: none; }
-    .toast { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.5rem; display: flex; align-items: center; gap: 0.75rem; font-size: 0.875rem; min-width: 280px; box-shadow: var(--shadow-lg); pointer-events: auto; animation: slideInToast 0.3s ease; }
-    .toast.toast-success { border-left: 3px solid var(--success); }
-    .toast.toast-error { border-left: 3px solid var(--danger); }
-    .toast.toast-info { border-left: 3px solid var(--secondary); }
-    @keyframes slideInToast { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-    @keyframes fadeOutToast { from { opacity: 1; } to { opacity: 0; transform: translateX(50px); } }
-    .toast.removing { animation: fadeOutToast 0.3s ease forwards; }
+    /* Generic modals + toasts extracted to src/styles/components/modal.css + toast.css */
 
     .page-hero { padding: 3rem 0; background: var(--surface); border-bottom: 1px solid var(--border); margin-bottom: 3rem; }
     .page-hero-title { font-family: var(--font-display); font-size: 2.5rem; font-weight: 700; margin-bottom: 0.5rem; }
@@ -558,19 +471,7 @@
     .no-products { text-align: center; padding: 4rem 2rem; color: var(--text-muted); }
     .no-products-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.4; }
 
-    .payment-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(10px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 1rem; overflow-y: auto; }
-    .payment-modal.active { display: flex; }
-    .payment-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5); margin: auto; }
-    .payment-header { padding: 2rem; border-bottom: 1px solid var(--border); text-align: center; }
-    .payment-header h2 { font-family: var(--font-display); font-size: 1.5rem; }
-    .payment-body { padding: 2rem; }
-    .payment-amount { font-size: 2rem; font-weight: 700; color: var(--accent); text-align: center; margin-bottom: 2rem; }
-    .payment-form { display: none; flex-direction: column; gap: 1rem; }
-    .payment-form.active { display: flex; }
-    .payment-footer { padding: 1.5rem 2rem; background: rgba(255, 255, 255, 0.02); display: flex; gap: 1rem; }
-    .payment-processing { display: none; flex-direction: column; align-items: center; gap: 1.5rem; padding: 4rem 2rem; }
-    .payment-processing.active { display: flex; }
-    .payment-spinner { width: 50px; height: 50px; border: 4px solid rgba(255, 107, 53, 0.1); border-top-color: var(--secondary); border-radius: 50%; animation: spin 1s linear infinite; }
+    /* Payment modal extracted to src/styles/components/payment-modal.css */
 
     @media (max-width: 1024px) {
       .hero-container { grid-template-columns: 1fr; text-align: center; padding: 3rem 1.5rem; gap: 2rem; }
@@ -640,39 +541,11 @@
       .page-hero { padding: 2rem 0; margin-bottom: 2rem; }
       .page-hero-title { font-size: 1.75rem; }
 
-      /* Modals: scroll the OVERLAY (page-scroll) instead of trapping scroll
-         inside .modal/.payment-card. Trapping scroll breaks on iOS Safari
-         when the on-screen keyboard opens — the bottom of the form ends up
-         hidden behind the keyboard with no way to scroll to it. Letting the
-         overlay scroll means the form behaves like a regular page form. */
-      .modal-overlay { align-items: flex-start; padding: 0.5rem; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-      .modal {
-        max-height: none;
-        overflow-y: visible;
-        margin: 0.5rem auto;
-        max-width: 100%;
-      }
-      .modal-header { padding: 1rem 1.25rem; position: sticky; top: 0; background: var(--surface); z-index: 1; }
-      .modal-body { padding: 1.25rem; }
-      .modal-footer { padding: 1rem 1.25rem; flex-direction: column-reverse; gap: 0.6rem; }
-      .modal-footer .btn { width: 100%; }
-
-      /* Payment modal — same scroll-the-overlay treatment for the same iOS reason */
-      .payment-modal { align-items: flex-start; justify-content: center; padding: 0.5rem; -webkit-overflow-scrolling: touch; }
-      .payment-card {
-        max-height: none;
-        overflow-y: visible;
-        margin: 0.5rem auto;
-        max-width: 100%;
-      }
-      .payment-header { padding: 1.25rem; position: sticky; top: 0; background: var(--surface); z-index: 1; }
-      .payment-body { padding: 1.25rem; }
-      .payment-footer { padding: 1rem 1.25rem; flex-direction: column; gap: 0.6rem; }
-      .payment-footer .btn { width: 100%; }
-
-      /* Toast — don't dock to corner on mobile, span the bottom edge instead */
-      .toast-container { left: 0.75rem; right: 0.75rem; bottom: 0.75rem; align-items: stretch; }
-      .toast { min-width: 0; }
+      /* Modal / payment-modal / toast mobile rules moved into the component
+         files alongside their base styles. See:
+         src/styles/components/modal.css
+         src/styles/components/payment-modal.css
+         src/styles/components/toast.css */
     }
     @media (max-width: 480px) {
       .container { padding: 0 1rem; }
@@ -680,27 +553,12 @@
       .hero-desc { font-size: 0.95rem; }
       .section { padding: 2.5rem 0; }
       .admin-stats { grid-template-columns: 1fr 1fr; }
-      .payment-header h2 { font-size: 1.2rem; }
-      .payment-amount { font-size: 1.75rem; margin-bottom: 1.25rem; }
-      .payment-body { padding: 1rem; }
-      .modal-body { padding: 1rem; }
-      .modal-header { padding: 0.9rem 1rem; }
-      .modal-footer { padding: 0.9rem 1rem; }
-      .modal-title { font-size: 1.05rem; }
       .footer { padding: 2.5rem 0 1.5rem; }
       .products-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; }
       .page-hero-title { font-size: 1.5rem; }
-      /* Touch targets — 44px min for buttons/icons on phone */
-      .btn { min-height: 44px; }
-      .btn-sm { min-height: 38px; }
+      /* Modal/payment/btn 480px overrides moved to their component files. */
     }
-    /* iOS Safari: form inputs <16px auto-zoom on focus. Force 16px on all
-       form controls below tablet width to prevent the unwanted zoom. */
-    @media (max-width: 1024px) {
-      input, select, textarea, .form-control {
-        font-size: 16px;
-      }
-    }
+    /* The 1024px iOS-zoom-prevention rule moved into components/forms.css. */
 
     .page-section { display: none; }
     .page-section.active { display: block; }

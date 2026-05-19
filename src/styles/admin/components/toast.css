@@ -1,0 +1,32 @@
+/* =============================================================================
+   Admin — toast
+   Used by: vlx-admin-2026.html (showToast helper)
+
+   Unlike the storefront's container+items pattern, the admin uses a single
+   .toast element fixed in the bottom-right corner. It's repurposed for each
+   message — the JS swaps its text + variant class + sets display:block then
+   sets a timer to clear it. There can only be one admin toast at a time.
+   ============================================================================= */
+
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background: var(--surface-light);
+  border-left: 4px solid var(--secondary);
+  padding: 1rem 1.5rem;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  display: none;
+  z-index: 9999;
+  animation: slideInRight 0.3s ease;
+}
+
+[data-theme="light"] .toast {
+  background: #ffffff;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}

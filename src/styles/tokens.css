@@ -1,0 +1,72 @@
+/* =============================================================================
+   Velorex Music — storefront design tokens
+   Used by: index.html, contact.html, faq.html, shipping.html, returns.html,
+            track-order.html, maintenance.html
+   NOT used by: vlx-admin-2026.html (the admin has its own design system at
+                src/styles/admin/tokens.css)
+
+   Anything that needs to change globally for the customer-facing surface
+   (brand colors, typography, radii, gradients) lives here. Page-specific
+   styling consumes these as var(--name) so a token change ripples everywhere.
+   ============================================================================= */
+
+:root {
+  /* Brand palette — dark theme is the default */
+  --primary: #1a0a2e;
+  --secondary: #ff6b35;
+  --accent: #ffd700;
+
+  /* Surfaces */
+  --bg: #0d0d0d;
+  --surface: #1a1a2e;
+  --surface2: #16213e;
+  --card-bg: #1e1e3a;
+
+  /* Text */
+  --text: #f0eaf8;
+  --text-muted: #9890b0;
+
+  /* Lines + states */
+  --border: #2e2e5e;
+  --success: #00d4aa;
+  --danger: #ff4757;
+  --warning: #ffb800;
+  --info: #3b82f6;
+
+  /* Gradients */
+  --vinyl-gradient: linear-gradient(135deg, #1a0a2e, #0f3460, #533483);
+  --gold-gradient: linear-gradient(135deg, #ffd700, #ff8c00);
+  --orange-gradient: linear-gradient(135deg, #ff6b35, #ff3a00);
+
+  /* Typography */
+  --font-display: 'Playfair Display', serif;
+  --font-body: 'DM Sans', sans-serif;
+
+  /* Geometry */
+  --radius: 12px;
+  --radius-lg: 20px;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.6);
+
+  /* Motion */
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Light theme — opt-in via <html data-theme="light"> */
+:root[data-theme="light"] {
+  --primary: #ffffff;
+  --secondary: #ff4d00;
+  --accent: #f59e0b;
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface2: #f1f5f9;
+  --card-bg: #ffffff;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+  --glass: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --vinyl-gradient: linear-gradient(135deg, #f8fafc, #f1f5f9, #e2e8f0);
+  --shadow: 0 4px 20px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 10px 40px rgba(15, 23, 42, 0.1);
+}
