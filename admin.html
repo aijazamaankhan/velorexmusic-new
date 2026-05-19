@@ -4047,7 +4047,12 @@
         '<td><strong style="color: var(--secondary);">' + Utils.escape(String(id)) + '</strong></td>' +
         '<td style="white-space:nowrap;font-size:0.85rem;">' + Utils.escape(String(date || '')) + '</td>' +
         '<td>' +
-          '<div style="font-weight:600;font-size:0.85rem;">' + Utils.escape(String(customer.name || '—')) + '</div>' +
+          '<div style="font-weight:600;font-size:0.85rem;display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">' +
+            Utils.escape(String(customer.name || '—')) +
+            (customer.isGuest
+              ? '<span style="font-size:0.65rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;padding:0.1rem 0.4rem;border-radius:4px;background:rgba(148,163,184,0.18);color:var(--text-muted);">Guest</span>'
+              : '') +
+          '</div>' +
           (customer.email ? '<div style="font-size:0.75rem;color:var(--text-muted);">' + Utils.escape(String(customer.email)) + '</div>' : '') +
         '</td>' +
         '<td style="font-size:0.85rem;color:var(--text-muted);">' + summary + '</td>' +
@@ -4264,11 +4269,45 @@
     }
 
     function getOrderCustomer(order) {
-      var c = order && order.customer ? order.customer : null;
-      var name = (c && c.name) || order.customerName || order.customer || (order.prefill && order.prefill.name) || 'Valued Customer';
-      var email = (c && c.email) || (order.prefill && order.prefill.email) || order.email || '';
-      var phone = (c && (c.phone || c.mobile || c.contact)) || (order.prefill && order.prefill.contact) || order.contact || '';
-      return { name: name, email: email, phone: phone };
+      // Three sources, checked in priority order:
+      //   1. order.contact  — guest checkout (populated by _payment_finalize.php
+      //      from payment_orders.guest_contact). Shape: {email, phone, fullName, isGuest}.
+      //   2. order.userEmail/userName — server-side LEFT JOIN to users for registered orders.
+      //   3. Legacy fallbacks (order.customer object/string, order.prefill, raw fields)
+      //      that older locally-cached orders may still carry.
+      //
+      // The previous version stopped at `order.customer` and `order.prefill`, so
+      // every guest order showed "Valued Customer" with no email — even though
+      // the contact block was sitting right there in order.contact.
+      var c = (order && typeof order.contact === 'object' && order.contact) ? order.contact : null;
+      var legacy = (order && typeof order.customer === 'object' && order.customer) ? order.customer : null;
+
+      var name = (c && c.fullName)
+        || order.userName
+        || (legacy && legacy.name)
+        || order.customerName
+        || (typeof order.customer === 'string' ? order.customer : null)
+        || (order.prefill && order.prefill.name)
+        || 'Valued Customer';
+
+      var email = (c && c.email)
+        || order.userEmail
+        || (legacy && legacy.email)
+        || (order.prefill && order.prefill.email)
+        || (typeof order.email === 'string' ? order.email : '')
+        || '';
+
+      var phone = (c && c.phone)
+        || (legacy && (legacy.phone || legacy.mobile || legacy.contact))
+        || (order.prefill && order.prefill.contact)
+        || (typeof order.contact === 'string' ? order.contact : '')
+        || '';
+
+      // userId is NULL for guest orders; the contact block also has an isGuest flag
+      // populated at finalize-time. Either signal is sufficient.
+      var isGuest = !!(c && c.isGuest) || (order && (order.userId === null || typeof order.userId === 'undefined'));
+
+      return { name: name, email: email, phone: phone, isGuest: isGuest };
     }
 
     function fmtAddress(addr) {
