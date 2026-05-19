@@ -57,7 +57,20 @@ function row_to_order_public(array $r, bool $includeUser = false): array {
 try {
     if ($method === 'GET') {
         // Public anonymous-tracking path: ?id=...&email=...
-        // Matches the order when the email used at checkout matches the user's account email.
+        //
+        // Matches the order when EITHER the user's account email matches (for
+        // registered orders) OR the contact email stored in order_data matches
+        // (for guest orders — user_id is NULL there, so the LEFT JOIN to users
+        // gives a NULL u.email and the registered-side check can't match).
+        //
+        // The OR pattern is deliberately permissive: a guest may later sign up
+        // with the same email, in which case both branches match. That's still
+        // the right behaviour — the lookup is gated by the order id, which is
+        // not enumerable.
+        //
+        // To prevent enumeration, both fields must match exactly (case-
+        // insensitive on email). A missing id, wrong id, or right id with
+        // wrong email all return the same 404 "Order not found".
         if (!is_admin_request() && current_user_id_or_null() === null
             && isset($_GET['id']) && isset($_GET['email'])) {
             $id = trim((string)$_GET['id']);
@@ -67,10 +80,20 @@ try {
                 echo json_encode(['error' => 'Missing id or email']);
                 exit;
             }
-            $stmt = $pdo->prepare('SELECT o.*, u.email AS user_email
-                FROM orders o LEFT JOIN users u ON u.id = o.user_id
-                WHERE o.id = :id AND LOWER(u.email) = :e LIMIT 1');
-            $stmt->execute([':id' => $id, ':e' => $email]);
+            // Two placeholders bound to the same value — native PDO prepares
+            // don't allow a single named placeholder to appear in the SQL twice.
+            $stmt = $pdo->prepare(
+                "SELECT o.*, u.email AS user_email
+                 FROM orders o
+                 LEFT JOIN users u ON u.id = o.user_id
+                 WHERE o.id = :id
+                   AND (
+                     LOWER(u.email) = :e_user
+                     OR LOWER(JSON_UNQUOTE(JSON_EXTRACT(o.order_data, '$.contact.email'))) = :e_guest
+                   )
+                 LIMIT 1"
+            );
+            $stmt->execute([':id' => $id, ':e_user' => $email, ':e_guest' => $email]);
             $row = $stmt->fetch();
             if (!$row) {
                 http_response_code(404);

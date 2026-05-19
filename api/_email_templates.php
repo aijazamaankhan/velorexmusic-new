@@ -65,7 +65,13 @@ function order_receipt_email(array $orderData): array {
     $firstName = trim(explode(' ', trim($fullName))[0]) ?: 'there';
 
     $base      = _vv_base_url();
-    $trackUrl  = $base . '/track-order.html?orderId=' . urlencode($id);
+    // Pre-fill both fields in the tracking link so the customer just clicks
+    // through. track-order.html auto-submits when both ?id= and ?email= are
+    // present. Email isn't sensitive in a URL — it's already in this email's
+    // To: header — but including it removes a guess-and-retype step.
+    $contactEmail = (string)($contact['email'] ?? '');
+    $trackUrl  = $base . '/track-order.html?id=' . urlencode($id)
+               . ($contactEmail !== '' ? '&email=' . urlencode($contactEmail) : '');
     $storeUrl  = $base . '/';
 
     $subject   = "Your Velorex Music order #{$id} is confirmed";

@@ -2867,13 +2867,14 @@
             Storage.syncFromServer().catch(() => {});
             showToast('🎉 Payment Successful! Order ID: ' + verified.orderId, 'success');
             closePaymentModal();
-            // Guests have no /#profile page to land on. The Track Order page
-            // (a static HTML page) is the closest thing; Phase 1B turns it
-            // into a real public-tracking UI keyed on (orderId + email).
-            // For now we hand the order id over in the URL so it's at least
-            // visible/copyable on a stable page after the toast disappears.
+            // Guests have no /#profile page. Send them to the public tracking
+            // page with both order id + email pre-filled — track-order.html
+            // auto-submits when both are present, so the customer lands
+            // directly on their order's status timeline.
             if (isGuest) {
-              window.location.href = 'track-order.html?orderId=' + encodeURIComponent(verified.orderId);
+              const guestEmail = (createBody.contact && createBody.contact.email) || '';
+              window.location.href = 'track-order.html?id=' + encodeURIComponent(verified.orderId)
+                + (guestEmail ? '&email=' + encodeURIComponent(guestEmail) : '');
             } else {
               navigate('profile');
             }
@@ -2883,9 +2884,13 @@
             showToast('Payment received — verifying with our server. Check your orders in a moment. (' + err.message + ')', 'info');
             closePaymentModal();
             if (isGuest) {
-              // Same fallback — at least we know the Razorpay order id, which
-              // the webhook will eventually finalize.
-              window.location.href = 'track-order.html?razorpayOrderId=' + encodeURIComponent(response.razorpay_order_id);
+              // Fallback: we don't yet have the internal VD-… id. Drop the
+              // customer onto the empty tracking form with email pre-filled so
+              // they can paste the id from the email receipt the webhook
+              // finalizer is sending in parallel.
+              const guestEmail = (createBody.contact && createBody.contact.email) || '';
+              window.location.href = 'track-order.html'
+                + (guestEmail ? '?email=' + encodeURIComponent(guestEmail) : '');
             } else {
               navigate('profile');
             }

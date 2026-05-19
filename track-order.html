@@ -415,10 +415,14 @@
 
     // Auto-fill from query string. If both id + email are present, kick off the
     // lookup automatically — that's the flow when a customer clicks "Track Order"
-    // from the profile page.
+    // from the profile page or from the receipt email link.
+    //
+    // Accept both ?id= and ?orderId= so older receipt emails (which used the
+    // longer name before the param was standardized) continue to work.
     (function () {
       var p = new URLSearchParams(window.location.search);
-      var id = p.get('id'); var email = p.get('email');
+      var id = p.get('id') || p.get('orderId');
+      var email = p.get('email');
       if (id) document.getElementById('order-id').value = id;
       if (email) document.getElementById('order-email').value = email;
       if (id && email) {
