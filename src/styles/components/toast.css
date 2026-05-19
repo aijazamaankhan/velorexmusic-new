@@ -1,0 +1,53 @@
+/* =============================================================================
+   Storefront — toast notifications
+   Used by: index.html (showToast helper inserts .toast nodes here)
+
+   The container is fixed in the bottom-right on desktop; on phones it spans
+   the bottom edge so the toast is reachable from one-thumb territory.
+   pointer-events: none on the container + auto on each toast keeps the rest
+   of the page interactive (clicks pass through empty container area).
+   ============================================================================= */
+
+.toast-container {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  min-width: 280px;
+  box-shadow: var(--shadow-lg);
+  pointer-events: auto;
+  animation: slideInToast 0.3s ease;
+}
+.toast.toast-success { border-left: 3px solid var(--success); }
+.toast.toast-error   { border-left: 3px solid var(--danger); }
+.toast.toast-info    { border-left: 3px solid var(--secondary); }
+.toast.removing { animation: fadeOutToast 0.3s ease forwards; }
+
+@keyframes slideInToast {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes fadeOutToast {
+  from { opacity: 1; }
+  to   { opacity: 0; transform: translateX(50px); }
+}
+
+@media (max-width: 768px) {
+  .toast-container { left: 0.75rem; right: 0.75rem; bottom: 0.75rem; align-items: stretch; }
+  .toast { min-width: 0; }
+}

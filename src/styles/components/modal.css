@@ -1,0 +1,94 @@
+/* =============================================================================
+   Storefront — generic modal
+   Used by: index.html (#confirmModal, #addressModal, #guestUpgradeModal, etc.)
+
+   Structure: .modal-overlay (fixed full-screen backdrop) > .modal (card)
+              > .modal-header / .modal-body / .modal-footer
+
+   IMPORTANT — mobile scroll behavior:
+   On desktop the .modal has max-height: 90vh; overflow-y: auto so the card
+   itself scrolls. On phones (≤768px) we INVERT that: the overlay scrolls
+   instead, and the modal grows naturally. The reason is iOS Safari — when
+   the on-screen keyboard appears with focus inside an input in a max-height
+   card with overflow:auto, the contained-scroll-area frequently refuses to
+   scroll and the bottom of the form ends up hidden behind the keyboard. The
+   overlay-scrolls pattern behaves like a regular page form which iOS handles
+   correctly. (We hit this exact bug in checkout — see git history.)
+   ============================================================================= */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: var(--transition);
+}
+/* Address modal can be opened from inside the payment modal (z-index 3000),
+   so it needs to stack above. */
+#addressModal.modal-overlay { z-index: 3500; }
+.modal-overlay.open { opacity: 1; visibility: visible; }
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  transform: scale(0.95);
+  transition: var(--transition);
+}
+.modal-overlay.open .modal { transform: scale(1); }
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.modal-title { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; }
+.modal-close { font-size: 1.25rem; cursor: pointer; color: var(--text-muted); transition: var(--transition); }
+.modal-close:hover { color: var(--danger); }
+.modal-body { padding: 1.5rem; }
+.modal-footer {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  padding: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 768px) {
+  .modal-overlay {
+    align-items: flex-start;
+    padding: 0.5rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .modal {
+    max-height: none;
+    overflow-y: visible;
+    margin: 0.5rem auto;
+    max-width: 100%;
+  }
+  .modal-header { padding: 1rem 1.25rem; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+  .modal-body { padding: 1.25rem; }
+  .modal-footer { padding: 1rem 1.25rem; flex-direction: column-reverse; gap: 0.6rem; }
+  .modal-footer .btn { width: 100%; }
+}
+
+@media (max-width: 480px) {
+  .modal-body { padding: 1rem; }
+  .modal-header { padding: 0.9rem 1rem; }
+  .modal-footer { padding: 0.9rem 1rem; }
+  .modal-title { font-size: 1.05rem; }
+}

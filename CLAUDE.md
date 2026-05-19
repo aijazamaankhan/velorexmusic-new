@@ -32,7 +32,25 @@ No package bundler. No transpilation. What you see in `index.html`/`vlx-admin-20
 velorexmusic-new/
 ├── CLAUDE.md                    # ← this file
 ├── index.html                   # Customer storefront (SPA). ~2.3k lines.
-├── vlx-admin-2026.html          # Admin panel. ~3.1k lines. (Renamed off `/vlx-admin-2026.html` so the path isn't trivially discoverable.)
+├── vlx-admin-2026.html          # Admin panel. ~3.1k lines. (Renamed off the conventional `/admin.html` path so customers and bot scanners can't trivially discover the login.)
+├── src/                         # Extracted modular code (introduced incrementally — see §13)
+│   └── styles/
+│       ├── tokens.css           # Storefront CSS variables (used by index + 5 static pages)
+│       ├── base.css             # Storefront reset + body + scrollbar
+│       ├── components/
+│       │   ├── buttons.css      # .btn + variants (primary/secondary/outline/danger/gold/sm/lg/block)
+│       │   ├── forms.css        # .form-grid, .form-group, .form-label, .form-control
+│       │   ├── modal.css        # .modal-overlay > .modal pattern + mobile scroll-the-overlay fix
+│       │   ├── payment-modal.css# .payment-modal > .payment-card (Razorpay overlay)
+│       │   └── toast.css        # .toast-container + .toast variants + keyframes
+│       └── admin/
+│           ├── tokens.css       # Admin CSS variables (used by vlx-admin-2026.html only)
+│           ├── base.css         # Admin reset + body + scrollbar
+│           └── components/
+│               ├── buttons.css  # Admin .btn + .btn-primary
+│               ├── forms.css    # Admin .form-grid + .form-control (semi-transparent dark style)
+│               ├── modal.css    # .modal-overlay > .modal-content (note: different from storefront's .modal)
+│               └── toast.css    # Single-element admin toast (bottom-right pop)
 ├── contact.html, faq.html,      # Static info pages.
 │   shipping.html, returns.html,
 │   track-order.html, maintenance.html

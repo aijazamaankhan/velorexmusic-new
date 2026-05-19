@@ -1,0 +1,51 @@
+/* =============================================================================
+   Storefront — buttons
+   Used by: index.html (and any storefront-context HTML that needs CTAs)
+
+   Variants: primary (orange-gradient CTA), secondary (outlined), outline-primary,
+             danger, success, gold, sm, lg, block.
+   The base .btn provides layout + transitions; variants add color/emphasis.
+   ============================================================================= */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.75rem;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: var(--transition);
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+.btn::after { content: ''; position: absolute; inset: 0; background: rgba(255, 255, 255, 0.1); opacity: 0; transition: opacity 0.2s; }
+.btn:hover::after { opacity: 1; }
+
+.btn-primary { background: var(--orange-gradient); color: white; box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4); }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255, 107, 53, 0.5); }
+
+.btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.btn-secondary:hover { border-color: var(--secondary); color: var(--secondary); background: rgba(255, 107, 53, 0.05); }
+
+.btn-outline-primary { background: transparent; border: 2px solid var(--secondary); color: var(--secondary); }
+.btn-outline-primary:hover { background: var(--secondary); color: white; }
+
+.btn-danger { background: linear-gradient(135deg, var(--danger), #cc0000); color: white; }
+.btn-danger:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); }
+
+.btn-success { background: linear-gradient(135deg, var(--success), #00a884); color: white; }
+
+.btn-gold { background: var(--gold-gradient); color: var(--primary); font-weight: 700; }
+.btn-gold:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255, 215, 0, 0.4); }
+
+.btn-sm { padding: 0.4rem 1rem; font-size: 0.8rem; }
+.btn-lg { padding: 1rem 2.5rem; font-size: 1rem; }
+.btn-block { width: 100%; justify-content: center; }
+
+@media (max-width: 480px) {
+  /* 44px touch-target floor on phone */
+  .btn { min-height: 44px; }
+  .btn-sm { min-height: 38px; }
+}

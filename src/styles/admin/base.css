@@ -1,0 +1,26 @@
+/* =============================================================================
+   Velorex Music — admin base styles
+   Loaded after admin/tokens.css. Universal reset, body defaults, scrollbar.
+
+   The admin's body has overflow-x: hidden (the sidebar slide-in transition
+   on mobile would otherwise paint a brief horizontal scrollbar during the
+   animation).
+   ============================================================================= */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--secondary); border-radius: 3px; }

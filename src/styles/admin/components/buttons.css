@@ -1,0 +1,38 @@
+/* =============================================================================
+   Admin — buttons
+   Used by: vlx-admin-2026.html
+
+   The admin uses a tighter, more uniform button system than the storefront.
+   .btn is the base; .btn-primary is the gradient CTA. Specialized buttons
+   (.btn-view-store, .btn-new-product, .btn-export, .btn-view-order) live in
+   the page-level CSS for now since they belong to specific panels.
+   ============================================================================= */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.8rem 1.5rem;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  border: none;
+  font-family: inherit;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--secondary), #ff3a00);
+  color: white;
+  width: 100%;
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(255, 107, 53, 0.3);
+}
+
+@media (max-width: 480px) {
+  .btn { min-height: 44px; }
+  .btn-sm { min-height: 38px; }
+}

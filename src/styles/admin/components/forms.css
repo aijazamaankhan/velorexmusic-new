@@ -1,0 +1,66 @@
+/* =============================================================================
+   Admin — forms
+   Used by: vlx-admin-2026.html
+
+   Admin forms use a chunkier input style (10px radius, semi-transparent
+   background on dark mode). The .form-grid is 2-column on desktop, collapses
+   on mobile.
+   ============================================================================= */
+
+.form-group {
+  margin-bottom: 1.25rem;
+  text-align: left;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.form-control {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.8rem 1rem;
+  color: white;
+  font-family: inherit;
+  transition: var(--transition);
+}
+.form-control:focus {
+  outline: none;
+  border-color: var(--secondary);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15);
+}
+.form-control option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+[data-theme="light"] .form-control {
+  background: #f8f9fa;
+  color: #1a0a2e;
+  border-color: #dee2e6;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+.full-width { grid-column: 1 / -1; }
+
+@media (max-width: 1024px) {
+  /* Prevent iOS auto-zoom on input focus */
+  input, select, textarea, .form-control { font-size: 16px; }
+}
+
+@media (max-width: 768px) {
+  .form-grid { grid-template-columns: 1fr !important; }
+}
