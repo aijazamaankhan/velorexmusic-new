@@ -203,7 +203,8 @@ CREATE TABLE addresses (
 -- browser cannot tamper with what's actually charged.
 CREATE TABLE payment_orders (
   razorpay_order_id VARCHAR(64) PRIMARY KEY,
-  user_id INT NOT NULL,
+  user_id INT NULL,                               -- NULL for guest checkouts
+  guest_contact JSON NULL,                        -- {email, phone, fullName} for guests; NULL for registered orders
   amount_paise BIGINT NOT NULL,                   -- canonical amount; never re-derive from anywhere else
   currency CHAR(3) NOT NULL DEFAULT 'INR',
   mode ENUM('test','live') NOT NULL,              -- which key set was active when the order was minted
@@ -254,8 +255,8 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 | POST | `/api/auth/change-password.php` | `{ currentPassword, newPassword }` | `{ ok }` (invalidates all OTHER sessions for this user) |
 | GET | `/api/orders.php` | — | `Order[]` (caller's orders) |
 | ~~POST `/api/orders.php`~~ | — | — | **Disabled** — returns 410. Order creation runs through the verified payment flow below; direct POSTs were a security hole. |
-| POST | `/api/payments/create-order.php` | `{ items: [{id, qty}], addressId }` | `{ ok, keyId, razorpayOrderId, amount, currency, mode, subtotal, shipping, total }` — server recomputes the total from DB prices and mints a Razorpay order bound to that amount |
-| POST | `/api/payments/verify.php` | `{ razorpay_order_id, razorpay_payment_id, razorpay_signature }` | `{ ok, orderId, alreadyFinalized }` — verifies HMAC, decrements stock, creates the internal `orders` row. Idempotent. |
+| POST | `/api/payments/create-order.php` | Registered: `{ items: [{id, qty}], addressId }`. Guest (no Bearer token): `{ items: [{id, qty}], contact: {email, phone}, shippingAddress: {fullName, phone, line1, line2?, landmark?, city, state?, postalCode?, countryCode, gstin?, label?} }`. | `{ ok, keyId, razorpayOrderId, amount, currency, mode, subtotal, shipping, total }` — server recomputes the total from DB prices and mints a Razorpay order bound to that amount. For guest payloads the contact + address are validated inline; the snapshot is persisted on `payment_orders` and copied into `orders.order_data` at finalize time. |
+| POST | `/api/payments/verify.php` | `{ razorpay_order_id, razorpay_payment_id, razorpay_signature }` | `{ ok, orderId, alreadyFinalized }` — verifies HMAC, decrements stock, creates the internal `orders` row. Idempotent. Works for both registered and guest payments — for guest rows (where `payment_orders.user_id IS NULL`) the HMAC signature alone is the gate (only Razorpay and the paying browser ever see it), so no Bearer-token session is required. |
 | GET | `/api/addresses.php` | — | `Address[]` (caller's saved addresses, default first) |
 | POST | `/api/addresses.php` | `{ id?, fullName, phone, line1, line2?, landmark?, city, state?, postalCode?, countryCode, label?, gstin?, isDefault? }` | `{ ok, address }` — `id` present = update, absent = create. Max 10 per user. |
 | DELETE | `/api/addresses.php?id=N` | — | `{ ok }` — hard delete; promotes the next address to default if needed |
@@ -675,6 +676,15 @@ CREATE TABLE payment_orders (
 ```sql
 ALTER TABLE users ADD COLUMN notes TEXT NULL;
 ```
+
+**Pending migration — payment_orders for guest checkout** (run once on Hostinger to allow guests to place orders without signing up; without it `/api/payments/create-order.php` rejects guest payloads with a FK error on insert):
+
+```sql
+ALTER TABLE payment_orders MODIFY COLUMN user_id INT NULL;
+ALTER TABLE payment_orders ADD COLUMN guest_contact JSON NULL AFTER user_id;
+```
+
+For guest rows, `user_id` stays `NULL` and `guest_contact` holds `{email, phone, fullName}` so `finalize_payment()` can copy that into `orders.order_data.contact` at capture time. The existing `ON DELETE CASCADE` on the `user_id` foreign key is unaffected — NULL rows simply skip the cascade.
 
 **Pending update — secrets file** (the Razorpay integration adds new constants):
 

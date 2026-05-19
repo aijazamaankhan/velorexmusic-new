@@ -1,27 +1,35 @@
 <?php
 // Step 1 of the secure payment flow.
 //
-// Client sends: { items: [{id, qty}], addressId }
-// Server does:
-//   1. Validates the user is logged in (Bearer token).
-//   2. Validates the chosen shipping address belongs to this user.
-//   3. Loads each product by id FROM THE DATABASE — this is the price the
-//      customer will be charged. The client cannot influence the price.
-//   4. Recomputes subtotal + shipping server-side. Same rule as the UI
-//      (₹99 shipping below ₹999 subtotal, free above).
-//   5. Calls Razorpay's create-order API to mint an order_id bound to that
-//      amount. The browser cannot tamper with the bound amount.
-//   6. Persists a payment_orders row so verify.php can look it up later.
-//   7. Returns { keyId, razorpayOrderId, amount, currency, mode } to the
-//      client — KEY_SECRET is never sent.
+// Two callers, one contract:
 //
-// Why we recompute on the server every step of the way: an attacker can edit
-// any number in the browser (cart total, payment options.amount, even the
-// product price displayed). The only price that matters is the one the
-// server signs the Razorpay order with.
+//   Registered user (Bearer token present):
+//     Client sends: { items: [{id, qty}], addressId }
+//     Server uses the saved address row keyed by addressId+user_id.
+//
+//   Guest checkout (no token):
+//     Client sends: { items: [{id, qty}], contact: {email, phone},
+//                     shippingAddress: {fullName, phone, line1, line2?, landmark?,
+//                                       city, state?, postalCode?, countryCode, gstin?, label?} }
+//     Server validates contact + address inline (no save to addresses table —
+//     guests by definition have no account to attach a saved address to).
+//
+// In both paths the server does:
+//   1. Loads each product by id FROM THE DATABASE — this is the price the
+//      customer will be charged. The client cannot influence the price.
+//   2. Recomputes subtotal + shipping server-side. Same rule as the UI
+//      (₹99 shipping below ₹999 subtotal, free above).
+//   3. Calls Razorpay's create-order API to mint an order_id bound to that
+//      amount. The browser cannot tamper with the bound amount.
+//   4. Persists a payment_orders row so verify.php can look it up later.
+//      For guests user_id stays NULL and the contact snapshot goes into
+//      payment_orders.guest_contact.
+//   5. Returns { keyId, razorpayOrderId, amount, currency, mode } to the
+//      client — KEY_SECRET is never sent.
 
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../_razorpay.php';
+require_once __DIR__ . '/../_address_helpers.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -30,34 +38,74 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
-    $userId = require_user();
+    $userId = current_user_id_or_null();
     $body = read_json_body();
 
     $items = isset($body['items']) && is_array($body['items']) ? $body['items'] : [];
-    $addressId = isset($body['addressId']) ? (int)$body['addressId'] : 0;
     if (!$items) {
         http_response_code(400);
         echo json_encode(['error' => 'Cart is empty']);
         exit;
     }
-    if ($addressId <= 0) {
-        http_response_code(400);
-        echo json_encode(['error' => 'Missing shipping address']);
-        exit;
-    }
 
     $pdo = db();
 
-    // Verify the address belongs to this user (block tampering with addressId).
-    $stmt = $pdo->prepare('SELECT * FROM addresses WHERE id = :id AND user_id = :u LIMIT 1');
-    $stmt->execute([':id' => $addressId, ':u' => $userId]);
-    $addrRow = $stmt->fetch();
-    if (!$addrRow) {
-        http_response_code(403);
-        echo json_encode(['error' => 'Shipping address not found for this account']);
-        exit;
+    // -------- Resolve the shipping address + guest contact --------
+    // $addressSnapshot is the canonical shape persisted into payment_orders
+    // (then later into orders.order_data). $guestContact is JSON-stored on
+    // payment_orders so finalize_payment() can copy email/phone into the order.
+    $addressSnapshot = null;
+    $guestContact    = null;
+
+    if ($userId) {
+        $addressId = isset($body['addressId']) ? (int)$body['addressId'] : 0;
+        if ($addressId <= 0) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Missing shipping address']);
+            exit;
+        }
+        // Block tampering with addressId — must belong to the caller.
+        $stmt = $pdo->prepare('SELECT * FROM addresses WHERE id = :id AND user_id = :u LIMIT 1');
+        $stmt->execute([':id' => $addressId, ':u' => $userId]);
+        $addrRow = $stmt->fetch();
+        if (!$addrRow) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Shipping address not found for this account']);
+            exit;
+        }
+        $addressSnapshot = address_snapshot_from_row($addrRow);
+    } else {
+        // Guest path. Require contact + inline shippingAddress.
+        $contact = isset($body['contact']) && is_array($body['contact']) ? $body['contact'] : [];
+        $email = isset($contact['email']) ? trim((string)$contact['email']) : '';
+        $phone = isset($contact['phone']) ? trim((string)$contact['phone']) : '';
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'A valid email is required to track your order']);
+            exit;
+        }
+        if (!preg_match('/^[\d\s\-\+\(\)]{6,20}$/', $phone)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'A valid phone number is required']);
+            exit;
+        }
+
+        $addrIn = isset($body['shippingAddress']) && is_array($body['shippingAddress']) ? $body['shippingAddress'] : [];
+        $err = validate_address_payload($addrIn);
+        if ($err !== null) {
+            http_response_code(400);
+            echo json_encode(['error' => $err]);
+            exit;
+        }
+        $addressSnapshot = address_snapshot_from_payload($addrIn);
+        $guestContact = [
+            'email'    => $email,
+            'phone'    => $phone,
+            'fullName' => $addressSnapshot['fullName'],
+        ];
     }
 
+    // -------- Items + canonical price --------
     // Collapse duplicate-line items (id repeated) and reject malformed entries.
     $quantities = [];
     foreach ($items as $line) {
@@ -135,46 +183,34 @@ try {
     }
     $amountPaise = $total * 100;
 
-    // Snapshot the address right now so a later edit/delete to the saved
-    // address doesn't change what shipped to where. Country name is added in
-    // a separate display field by the client at render time.
-    $addressSnapshot = [
-        'label'       => $addrRow['label'],
-        'fullName'    => $addrRow['full_name'],
-        'phone'       => $addrRow['phone'],
-        'line1'       => $addrRow['line1'],
-        'line2'       => $addrRow['line2'],
-        'landmark'    => $addrRow['landmark'],
-        'city'        => $addrRow['city'],
-        'state'       => $addrRow['state'],
-        'postalCode'  => $addrRow['postal_code'],
-        'countryCode' => $addrRow['country_code'],
-        'gstin'       => $addrRow['gstin'],
-    ];
-
     $creds = razorpay_active_credentials();
 
-    // Short, unique receipt — Razorpay caps at 40 chars. Uniquifying with
-    // microtime + user id + random suffix keeps it idempotent enough for
-    // retries while making collisions effectively impossible.
-    $receipt = 'vv_' . $userId . '_' . substr(bin2hex(random_bytes(8)), 0, 16);
+    // Short, unique receipt — Razorpay caps at 40 chars. Guest orders use a
+    // 'g' marker instead of the user id so the receipt is still meaningful
+    // when scanning Razorpay's dashboard.
+    $receiptOwner = $userId ? (string)$userId : 'g';
+    $receipt = 'vv_' . $receiptOwner . '_' . substr(bin2hex(random_bytes(8)), 0, 16);
 
-    $rzOrder = razorpay_create_order(
-        $amountPaise,
-        'INR',
-        $receipt,
-        ['user_id' => (string)$userId, 'app' => 'velorex-music']
-    );
+    $rzNotes = ['app' => 'velorex-music'];
+    if ($userId) {
+        $rzNotes['user_id'] = (string)$userId;
+    } else {
+        $rzNotes['guest'] = '1';
+        $rzNotes['email'] = $guestContact['email'];
+    }
+
+    $rzOrder = razorpay_create_order($amountPaise, 'INR', $receipt, $rzNotes);
 
     // Persist the binding between (razorpay order id) and (amount + items +
-    // address + user). verify.php will re-load this row by razorpay_order_id
-    // — that's the *only* source of truth at finalization time.
+    // address + user-or-guest). verify.php will re-load this row by
+    // razorpay_order_id — that's the *only* source of truth at finalization time.
     $stmt = $pdo->prepare('INSERT INTO payment_orders
-        (razorpay_order_id, user_id, amount_paise, currency, mode, status, items, shipping_address)
-        VALUES (:rid, :u, :amt, :cur, :mode, :st, :it, :sa)');
+        (razorpay_order_id, user_id, guest_contact, amount_paise, currency, mode, status, items, shipping_address)
+        VALUES (:rid, :u, :gc, :amt, :cur, :mode, :st, :it, :sa)');
     $stmt->execute([
         ':rid'  => $rzOrder['id'],
         ':u'    => $userId,
+        ':gc'   => $guestContact !== null ? json_encode($guestContact) : null,
         ':amt'  => $amountPaise,
         ':cur'  => 'INR',
         ':mode' => $creds['mode'],

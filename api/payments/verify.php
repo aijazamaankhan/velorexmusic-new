@@ -4,13 +4,14 @@
 //
 // Client sends: { razorpay_order_id, razorpay_payment_id, razorpay_signature }
 // Server does:
-//   1. Verifies the user is logged in.
-//   2. Verifies the HMAC-SHA256 signature using KEY_SECRET. If the signature
+//   1. Verifies the HMAC-SHA256 signature using KEY_SECRET. If the signature
 //      doesn't match, this is a forged success — refuse, do nothing else.
-//   3. Verifies the payment_orders row exists AND belongs to this user.
-//      Without this check, user A could submit user B's order/payment ids
-//      with their own session and "claim" the order.
-//   4. Calls finalize_payment() — idempotent, so a duplicate verify (e.g.
+//   2. Verifies the payment_orders row exists. If the row has a user_id
+//      (registered checkout) the caller must be that user — otherwise user A
+//      could replay user B's signature triple from their own session. For
+//      guest rows (user_id IS NULL) the signature itself is the gate; only
+//      Razorpay and the actual paying browser ever see it.
+//   3. Calls finalize_payment() — idempotent, so a duplicate verify (e.g.
 //      page refresh on the success view, or both this endpoint AND the
 //      webhook firing) returns the same order id without side effects.
 //
@@ -27,7 +28,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 try {
-    $userId = require_user();
+    // Guest checkouts have no Bearer token. We don't reject here — the
+    // ownership check below treats guest rows specially.
+    $userId = current_user_id_or_null();
     $body = read_json_body();
 
     $rzOrderId   = isset($body['razorpay_order_id'])   ? trim((string)$body['razorpay_order_id'])   : '';
@@ -63,9 +66,13 @@ try {
     }
 
     // -------- OWNERSHIP CHECK --------
-    // Ensures the logged-in user is the one who created this payment_orders
-    // row in step 1. Without this, a malicious user could replay another
-    // user's signature triple and claim someone else's order.
+    // For registered orders: the caller must be the user who created the
+    // payment_orders row in step 1 — otherwise a malicious user could replay
+    // another user's signature triple and claim someone else's order.
+    // For guest orders (user_id IS NULL): no session-binding exists, so the
+    // signature verified above is the sole gate. That's safe because the
+    // signature is only known to Razorpay and the actual paying browser; an
+    // attacker without the triple cannot finalize the order.
     $pdo = db();
     $stmt = $pdo->prepare('SELECT user_id, status, internal_order_id FROM payment_orders WHERE razorpay_order_id = :rid LIMIT 1');
     $stmt->execute([':rid' => $rzOrderId]);
@@ -75,10 +82,12 @@ try {
         echo json_encode(['error' => 'Payment order not found']);
         exit;
     }
-    if ((int)$po['user_id'] !== $userId) {
-        http_response_code(403);
-        echo json_encode(['error' => 'Payment does not belong to this account']);
-        exit;
+    if ($po['user_id'] !== null) {
+        if (!$userId || (int)$po['user_id'] !== $userId) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Payment does not belong to this account']);
+            exit;
+        }
     }
 
     // -------- FINALIZE (idempotent) --------

@@ -48,7 +48,7 @@ function finalize_payment(PDO $pdo, string $razorpayOrderId, string $razorpayPay
             return [
                 'orderId'          => (string)$po['internal_order_id'],
                 'alreadyFinalized' => true,
-                'userId'           => (int)$po['user_id'],
+                'userId'           => $po['user_id'] !== null ? (int)$po['user_id'] : null,
             ];
         }
         if ($po['status'] === 'failed') {
@@ -56,12 +56,37 @@ function finalize_payment(PDO $pdo, string $razorpayOrderId, string $razorpayPay
             throw new RuntimeException('Payment is in failed state and cannot be finalized');
         }
 
-        $userId = (int)$po['user_id'];
+        $userId = $po['user_id'] !== null ? (int)$po['user_id'] : null;
         $items  = json_decode($po['items'], true);
         $addr   = json_decode($po['shipping_address'], true);
+        $guestContact = isset($po['guest_contact']) && $po['guest_contact'] !== null
+            ? json_decode($po['guest_contact'], true) : null;
         if (!is_array($items) || !is_array($addr)) {
             $pdo->rollBack();
             throw new RuntimeException('Payment order has malformed snapshot');
+        }
+
+        // Build the canonical contact block stored on the order. Tracking,
+        // order-confirmation emails, and admin support all read this single
+        // field rather than chasing through users / guest_contact branches.
+        if ($userId !== null) {
+            $uStmt = $pdo->prepare('SELECT email, phone, first_name, last_name FROM users WHERE id = :id');
+            $uStmt->execute([':id' => $userId]);
+            $u = $uStmt->fetch();
+            $fullName = trim(($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? ''));
+            $contact = [
+                'email'    => $u['email']  ?? '',
+                'phone'    => $u['phone']  ?? ($addr['phone'] ?? ''),
+                'fullName' => $fullName !== '' ? $fullName : ($addr['fullName'] ?? ''),
+                'isGuest'  => false,
+            ];
+        } else {
+            $contact = [
+                'email'    => $guestContact['email']    ?? '',
+                'phone'    => $guestContact['phone']    ?? ($addr['phone'] ?? ''),
+                'fullName' => $guestContact['fullName'] ?? ($addr['fullName'] ?? ''),
+                'isGuest'  => true,
+            ];
         }
 
         // Generate the internal customer-facing order id. Random hex chosen so
@@ -121,6 +146,7 @@ function finalize_payment(PDO $pdo, string $razorpayOrderId, string $razorpayPay
             'currency'        => $po['currency'],
             'mode'            => $po['mode'],
             'shippingAddress' => $addr,
+            'contact'         => $contact,
         ];
         $initialHistory = [[
             'status' => 'pending',
@@ -134,7 +160,7 @@ function finalize_payment(PDO $pdo, string $razorpayOrderId, string $razorpayPay
             VALUES (:id, :u, :st, :data, :hist)');
         $ins->execute([
             ':id'   => $internalOrderId,
-            ':u'    => $userId,
+            ':u'    => $userId, // null for guest orders — column is nullable, FK uses ON DELETE SET NULL
             ':st'   => 'pending',
             ':data' => json_encode($orderData),
             ':hist' => json_encode($initialHistory),
@@ -154,7 +180,7 @@ function finalize_payment(PDO $pdo, string $razorpayOrderId, string $razorpayPay
         return [
             'orderId'          => $internalOrderId,
             'alreadyFinalized' => false,
-            'userId'           => $userId,
+            'userId'           => $userId, // null for guest orders
         ];
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) $pdo->rollBack();
