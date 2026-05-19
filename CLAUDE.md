@@ -51,7 +51,8 @@ velorexmusic-new/
 │   │   ├── update-profile.php   # POST (Bearer)
 │   │   └── change-password.php  # POST (Bearer)
 │   └── admin/
-│       └── users.php            # GET (list) / POST (reset-password / delete-user)
+│       ├── users.php            # GET (list) / POST (reset-password / update-profile / force-logout / update-notes / delete-user)
+│       └── customer-detail.php  # GET ?userId=N → orders, addresses, sessions (batched for the admin drawer)
 ├── package.json                 # Just Playwright + MCP — no app dependencies
 ├── playwright-mcp-server.js     # MCP server (used optionally for admin-panel browser tests)
 ├── test-admin-login.js          # Sanity test for admin login
@@ -156,6 +157,7 @@ CREATE TABLE users (
   phone VARCHAR(30),
   date_of_birth DATE,
   music_preferences VARCHAR(500),
+  notes TEXT NULL,                      -- admin-only internal notes (support call history etc.)
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -267,9 +269,13 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 | DELETE | `/api/products.php?id=N` | — | `{ ok }` |
 | POST | `/api/categories.php` | `{ categories: string[] }` (full list) | `{ ok, count }` — transactional replace |
 | GET | `/api/orders.php` | — | `Order[]` (all orders, joined with user info) |
-| GET | `/api/admin/users.php` | — | `User[]` (with order count + total spent) |
-| POST | `/api/admin/users.php` | `{ action: "reset-password", userId, newPassword }` | `{ ok }` (also logs the user out of all sessions) |
-| POST | `/api/admin/users.php` | `{ action: "delete-user", userId }` | `{ ok }` (cascades to user_sessions; orders.user_id set NULL) |
+| GET | `/api/admin/users.php` | — | `User[]` (each row includes `orderCount`, `totalSpent`, `activeSessionCount`, `addressCount`, `notes`) |
+| POST | `/api/admin/users.php` | `{ action: "reset-password", userId, newPassword? }` | `{ ok, generated, newPassword? }` — if `newPassword` is omitted the server generates a strong temp password and returns it once. Always invalidates all sessions for the user. |
+| POST | `/api/admin/users.php` | `{ action: "update-profile", userId, firstName?, lastName?, email?, phone? }` | `{ ok, user }` — partial update; rejects email collisions with 409. |
+| POST | `/api/admin/users.php` | `{ action: "force-logout", userId }` | `{ ok, revoked }` — deletes all `user_sessions` rows for the user. |
+| POST | `/api/admin/users.php` | `{ action: "update-notes", userId, notes }` | `{ ok }` — admin-only free-text notes (max 5000 chars). Requires the `users.notes` migration; 503 otherwise. |
+| POST | `/api/admin/users.php` | `{ action: "delete-user", userId, confirmEmail? }` | `{ ok }` — cascades to `user_sessions`; `orders.user_id` is set NULL. Pass `confirmEmail` to require the admin to echo the email before deletion. |
+| GET | `/api/admin/customer-detail.php?userId=N` | — | `{ orders, addresses, sessions }` — batched read for the admin customer drawer. |
 
 ### config.php helper functions (PHP)
 
@@ -662,6 +668,12 @@ CREATE TABLE payment_orders (
   INDEX idx_internal (internal_order_id),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+```
+
+**Pending migration — users.notes** (run once on Hostinger to enable the admin's internal customer-notes feature; without it the notes textarea in the admin customer drawer returns 503 but everything else keeps working):
+
+```sql
+ALTER TABLE users ADD COLUMN notes TEXT NULL;
 ```
 
 **Pending update — secrets file** (the Razorpay integration adds new constants):
