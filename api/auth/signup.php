@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../_claim_guest_orders.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -45,6 +46,16 @@ try {
     $stmt->execute([':e' => $email, ':h' => $hash, ':f' => $firstName, ':l' => $lastName]);
     $userId = (int)$pdo->lastInsertId();
 
+    // Claim-on-signup: attach any prior guest orders matching this email.
+    // Best-effort — a failure here MUST NOT block account creation, the user
+    // already gave us the credentials so the signup needs to land regardless.
+    $claimed = 0;
+    try {
+        $claimed = claim_guest_orders_for_user($pdo, $userId, $email);
+    } catch (Throwable $claimErr) {
+        error_log('[signup] claim_guest_orders failed for user ' . $userId . ': ' . $claimErr->getMessage());
+    }
+
     $token = create_session_for_user($userId);
     $stmt = $pdo->prepare('SELECT * FROM users WHERE id = :id');
     $stmt->execute([':id' => $userId]);
@@ -54,6 +65,7 @@ try {
         'ok' => true,
         'token' => $token,
         'user' => user_public_fields($row),
+        'claimedGuestOrders' => $claimed,
     ]);
 } catch (Exception $e) {
     http_response_code(500);

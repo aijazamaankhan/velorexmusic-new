@@ -1180,6 +1180,26 @@
             <div id="checkout-guest-error" style="display:none;margin-top:0.75rem;padding:0.6rem 0.85rem;background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);border-radius:8px;color:var(--danger);font-size:0.8rem;"></div>
           </div>
 
+          <!-- Guest-only "save my info" affordance. Hidden for logged-in users.
+               The password field appears only when the checkbox is checked, so
+               guests who don't want an account see one harmless checkbox + no
+               extra form noise. -->
+          <div id="checkout-guest-upgrade" style="display:none;margin-bottom:1.25rem;padding:0.85rem 1rem;background:rgba(255,107,53,0.06);border:1px solid rgba(255,107,53,0.25);border-radius:10px;">
+            <label style="display:flex;align-items:flex-start;gap:0.65rem;cursor:pointer;font-size:0.9rem;line-height:1.45;">
+              <input id="guest-save-info" type="checkbox" style="margin-top:0.2rem;width:18px;height:18px;cursor:pointer;flex-shrink:0;" onchange="toggleGuestSaveInfo()">
+              <span>
+                <strong style="color:var(--text);">Save my info for next time</strong>
+                <span style="display:block;color:var(--text-muted);font-size:0.8rem;margin-top:0.2rem;">
+                  Create an account so this order shows up in your profile and checkout is one tap next time. Just pick a password.
+                </span>
+              </span>
+            </label>
+            <div id="guest-save-info-password-wrap" style="display:none;margin-top:0.75rem;">
+              <input id="guest-save-info-password" type="password" class="form-control" maxlength="100" minlength="8" placeholder="Choose a password (min 8 characters)" autocomplete="new-password">
+              <p style="font-size:0.7rem;color:var(--text-muted);margin-top:0.3rem;">We'll create your account right after the payment succeeds.</p>
+            </div>
+          </div>
+
           <div id="payment-method-section">
             <p style="font-size:0.85rem;color:var(--text-muted);line-height:1.6;margin-bottom:0.25rem;">
               Clicking <strong>Pay Now</strong> opens our secure payment partner Razorpay, where
@@ -1200,6 +1220,41 @@
         <div class="payment-spinner"></div>
         <div style="text-align:center;"><h3 style="margin-bottom:0.5rem;">Processing Payment...</h3><p style="color:var(--text-muted);font-size:0.8rem;">Please do not refresh the page</p></div>
       </div>
+    </div>
+  </div>
+
+  <!-- Post-purchase upgrade modal. Shown after a successful guest order
+       when the customer didn't tick "Save my info" during checkout. Asks
+       them for a password — the rest (email, name, address) is reused from
+       the order they just placed. -->
+  <div id="guestUpgradeModal" class="modal-overlay">
+    <div class="modal" style="max-width:480px;">
+      <div class="modal-header">
+        <h2 class="modal-title">🎉 Order placed!</h2>
+      </div>
+      <form id="guestUpgradeForm" onsubmit="submitGuestUpgrade(event)" novalidate>
+        <div class="modal-body">
+          <p style="color:var(--text-muted);font-size:0.9rem;line-height:1.6;margin-bottom:1rem;">
+            Order <strong id="guest-upgrade-order-id" style="color:var(--secondary);">#</strong> is confirmed.
+            We've sent the receipt to <strong id="guest-upgrade-email">…</strong>.
+          </p>
+          <div style="padding:0.85rem 1rem;background:rgba(255,107,53,0.06);border:1px solid rgba(255,107,53,0.25);border-radius:10px;margin-bottom:1.25rem;">
+            <strong style="display:block;color:var(--text);margin-bottom:0.3rem;">Want this order in your profile?</strong>
+            <span style="display:block;color:var(--text-muted);font-size:0.85rem;line-height:1.5;">
+              Just pick a password and we'll create an account. Track orders, save addresses, one-tap checkout next time.
+            </span>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="guest-upgrade-password">Choose a password</label>
+            <input id="guest-upgrade-password" type="password" class="form-control" minlength="8" maxlength="100" placeholder="At least 8 characters" autocomplete="new-password" required>
+          </div>
+          <div id="guestUpgradeError" style="display:none;margin-top:0.75rem;padding:0.6rem 0.85rem;background:rgba(220,38,38,0.1);border:1px solid rgba(220,38,38,0.3);border-radius:8px;color:var(--danger);font-size:0.85rem;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeGuestUpgradeModal(true)">No thanks</button>
+          <button type="submit" class="btn btn-primary" id="guestUpgradeSubmit">Create account</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -2539,11 +2594,34 @@
       document.getElementById('checkout-guest-address').style.display  = isGuest ? '' : 'none';
       document.getElementById('checkout-address-section').style.display = isGuest ? 'none' : '';
       document.getElementById('checkout-guest-error').style.display    = 'none';
+      document.getElementById('checkout-guest-upgrade').style.display  = isGuest ? '' : 'none';
+      // Reset upgrade form state on each open so the previous session's
+      // checked/typed values don't leak into the next checkout.
+      var saveInfoChk = document.getElementById('guest-save-info');
+      var saveInfoPw  = document.getElementById('guest-save-info-password');
+      var saveInfoPwWrap = document.getElementById('guest-save-info-password-wrap');
+      if (saveInfoChk) saveInfoChk.checked = false;
+      if (saveInfoPw)  saveInfoPw.value = '';
+      if (saveInfoPwWrap) saveInfoPwWrap.style.display = 'none';
 
       if (isGuest) {
         initGuestCheckoutForm();
       } else {
         await renderCheckoutAddressPicker();
+      }
+    }
+
+    // Reveal/hide the password field as the "Save my info" checkbox is toggled.
+    function toggleGuestSaveInfo() {
+      var chk = document.getElementById('guest-save-info');
+      var wrap = document.getElementById('guest-save-info-password-wrap');
+      var pw = document.getElementById('guest-save-info-password');
+      if (!chk || !wrap) return;
+      wrap.style.display = chk.checked ? '' : 'none';
+      if (chk.checked && pw) {
+        setTimeout(function () { pw.focus(); }, 50);
+      } else if (pw) {
+        pw.value = '';
       }
     }
 
@@ -2646,6 +2724,155 @@
     function closePaymentModal() {
       document.getElementById('payment-modal').classList.remove('active');
       CHECKOUT_SELECTED_ADDRESS_ID = null;
+    }
+
+    // -------- Guest post-purchase upgrade --------
+    // Holds the data we need to fall back to the public-tracking page if the
+    // upgrade is skipped or fails. Populated by handleGuestPostPurchase().
+    const GUEST_UPGRADE_STATE = { orderId: null, email: null, name: null };
+
+    // Called after a successful guest payment. Drives one of three outcomes:
+    //   1. Inline password supplied → silent signup → /#profile
+    //   2. No inline password → open the post-purchase modal
+    //   3. Both above fall back to track-order page on any failure/decline
+    async function handleGuestPostPurchase(orderId, createBody) {
+      const email = (createBody.contact && createBody.contact.email) || '';
+      const fullName = (createBody.shippingAddress && createBody.shippingAddress.fullName) || '';
+      GUEST_UPGRADE_STATE.orderId = orderId;
+      GUEST_UPGRADE_STATE.email = email;
+      GUEST_UPGRADE_STATE.name = fullName;
+
+      const saveInfoChk = document.getElementById('guest-save-info');
+      const saveInfoPw  = document.getElementById('guest-save-info-password');
+      const inlinePw = saveInfoChk && saveInfoChk.checked && saveInfoPw ? saveInfoPw.value : '';
+      // Clear out the password before doing anything else so it doesn't sit
+      // in the DOM (and the user re-opening the modal sees a clean form).
+      if (saveInfoPw) saveInfoPw.value = '';
+
+      if (inlinePw && inlinePw.length >= 8 && email) {
+        // Path 1: silent inline upgrade. Best-effort — on any failure we
+        // gracefully fall through to the post-purchase modal so the
+        // customer still gets a chance to claim the order.
+        const ok = await attemptGuestUpgrade(email, inlinePw, fullName);
+        if (ok) {
+          showToast('✅ Account created — you\'re signed in!', 'success');
+          navigate('profile');
+          return;
+        }
+        // Inline path failed (most often: email already taken). Open the modal
+        // with a clear hint so the customer can pick a different action.
+        openGuestUpgradeModal(true);
+        return;
+      }
+
+      // Path 2: post-purchase modal.
+      openGuestUpgradeModal(false);
+    }
+
+    function openGuestUpgradeModal(showAccountExistsHint) {
+      const m = document.getElementById('guestUpgradeModal'); if (!m) return;
+      document.getElementById('guest-upgrade-order-id').textContent = '#' + (GUEST_UPGRADE_STATE.orderId || '');
+      document.getElementById('guest-upgrade-email').textContent = GUEST_UPGRADE_STATE.email || '';
+      const pw = document.getElementById('guest-upgrade-password');
+      if (pw) pw.value = '';
+      const err = document.getElementById('guestUpgradeError');
+      if (err) {
+        if (showAccountExistsHint) {
+          err.innerHTML = 'An account with this email already exists. <a href="#" onclick="closeGuestUpgradeModal(true); navigate(\'login\', { redirect: \'profile\' }); return false;" style="color:var(--secondary);text-decoration:underline;">Sign in</a> to claim this order.';
+          err.style.display = '';
+        } else {
+          err.textContent = '';
+          err.style.display = 'none';
+        }
+      }
+      m.classList.add('open');
+      // The modal-overlay base style isn't quite the same as payment-modal —
+      // the existing modals use display flex on .open. Make sure it's visible.
+      m.style.display = 'flex';
+      setTimeout(function () { pw && pw.focus(); }, 100);
+    }
+
+    function closeGuestUpgradeModal(redirectToTracking) {
+      const m = document.getElementById('guestUpgradeModal'); if (!m) return;
+      m.classList.remove('open');
+      m.style.display = 'none';
+      if (redirectToTracking) {
+        const id = GUEST_UPGRADE_STATE.orderId;
+        const email = GUEST_UPGRADE_STATE.email;
+        if (id && email) {
+          window.location.href = 'track-order.html?id=' + encodeURIComponent(id) + '&email=' + encodeURIComponent(email);
+        } else if (id) {
+          window.location.href = 'track-order.html?id=' + encodeURIComponent(id);
+        }
+      }
+    }
+
+    async function submitGuestUpgrade(ev) {
+      ev.preventDefault();
+      const pw = document.getElementById('guest-upgrade-password');
+      const err = document.getElementById('guestUpgradeError');
+      const btn = document.getElementById('guestUpgradeSubmit');
+      err.style.display = 'none'; err.textContent = '';
+      const password = pw ? pw.value : '';
+      if (password.length < 8) {
+        err.textContent = 'Password must be at least 8 characters.';
+        err.style.display = '';
+        return;
+      }
+      const origBtn = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = 'Creating…';
+      try {
+        const ok = await attemptGuestUpgrade(GUEST_UPGRADE_STATE.email, password, GUEST_UPGRADE_STATE.name, err);
+        if (ok) {
+          closeGuestUpgradeModal(false);
+          showToast('✅ Account created — you\'re signed in!', 'success');
+          navigate('profile');
+        }
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = origBtn;
+      }
+    }
+
+    // Calls /api/auth/signup.php with the upgrade data. Returns true on
+    // success (and Auth state is mutated to the new logged-in user). On
+    // failure returns false and, if an error element was supplied, writes
+    // a human-readable message into it.
+    async function attemptGuestUpgrade(email, password, fullName, errEl) {
+      const parts = (fullName || '').trim().split(/\s+/);
+      const firstName = parts[0] || 'Friend';
+      const lastName = parts.slice(1).join(' ');
+      try {
+        const res = await fetch(API_BASE + '/auth/signup.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, firstName, lastName }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.ok && data.token) {
+          // Mirror what Auth.signup() does so the rest of the SPA recognizes us.
+          localStorage.setItem(Auth.TOKEN_KEY, data.token);
+          if (data.user) localStorage.setItem(Auth.USER_KEY, JSON.stringify(data.user));
+          if (typeof Auth._claimAnonCart === 'function') {
+            try { Auth._claimAnonCart(); } catch (_) {}
+          }
+          return true;
+        }
+        // Show the error inline if we have a target element.
+        if (errEl) {
+          if (res.status === 409) {
+            errEl.innerHTML = 'An account with this email already exists. <a href="#" onclick="closeGuestUpgradeModal(true); navigate(\'login\', { redirect: \'profile\' }); return false;" style="color:var(--secondary);text-decoration:underline;">Sign in</a> instead.';
+          } else {
+            errEl.textContent = data.error || ('Could not create account (HTTP ' + res.status + ').');
+          }
+          errEl.style.display = '';
+        }
+        return false;
+      } catch (e) {
+        if (errEl) { errEl.textContent = 'Network error. Please try again.'; errEl.style.display = ''; }
+        return false;
+      }
     }
 
     async function renderCheckoutAddressPicker(preferredId) {
@@ -2867,14 +3094,19 @@
             Storage.syncFromServer().catch(() => {});
             showToast('🎉 Payment Successful! Order ID: ' + verified.orderId, 'success');
             closePaymentModal();
-            // Guests have no /#profile page. Send them to the public tracking
-            // page with both order id + email pre-filled — track-order.html
-            // auto-submits when both are present, so the customer lands
-            // directly on their order's status timeline.
+            // After a successful guest order we offer an account upgrade.
+            // Two paths:
+            //   (a) Customer ticked "Save my info" inline during checkout and
+            //       gave us a password → call signup silently. On success
+            //       they're logged in and the order is already attached
+            //       (claim-on-signup in signup.php). Land them on /#profile.
+            //   (b) They didn't tick it → pop the post-purchase upgrade modal.
+            //       If they accept it, same outcome. If they decline ("No
+            //       thanks"), continue to the public tracking page as before.
+            // The whole flow is best-effort: if any of the upgrade calls fail
+            // we never block the customer from landing on a useful page.
             if (isGuest) {
-              const guestEmail = (createBody.contact && createBody.contact.email) || '';
-              window.location.href = 'track-order.html?id=' + encodeURIComponent(verified.orderId)
-                + (guestEmail ? '&email=' + encodeURIComponent(guestEmail) : '');
+              await handleGuestPostPurchase(verified.orderId, createBody);
             } else {
               navigate('profile');
             }
