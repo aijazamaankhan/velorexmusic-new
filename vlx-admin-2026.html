@@ -270,6 +270,8 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
       margin-bottom: 2.5rem;
     }
 
@@ -360,12 +362,14 @@
     .inventory-actions {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      flex-wrap: wrap;
+      gap: 0.75rem;
     }
 
     .search-wrapper {
       position: relative;
       width: 300px;
+      max-width: 100%;
     }
 
     .search-wrapper i {
@@ -393,10 +397,11 @@
       padding: 0.7rem 1.5rem;
       border-radius: 10px;
       font-weight: 700;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 0.6rem;
       text-decoration: none;
+      white-space: nowrap;
       transition: var(--transition);
     }
 
@@ -413,9 +418,10 @@
       border-radius: 10px;
       font-size: 0.9rem;
       font-weight: 600;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 0.5rem;
+      white-space: nowrap;
     }
 
     .admin-table {
@@ -1048,7 +1054,7 @@
     /* Stats Grid */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 1.5rem;
       margin-bottom: 2.5rem;
     }
@@ -1743,6 +1749,10 @@
        inner card (same iOS-keyboard reason as the storefront).
        ===================================================================== */
     .admin-hamburger { display: none; }
+    /* Backdrop is only used by the mobile sidebar drawer. Keep it out of the
+       grid layout at desktop widths — otherwise it claims the first grid cell
+       and the sidebar + main content shift one column to the right. */
+    .sidebar-backdrop { display: none; }
 
     @media (max-width: 1024px) {
       /* Collapse sidebar to slide-in drawer */
@@ -1758,6 +1768,7 @@
       }
       .sidebar.open { transform: translateX(0); }
       .sidebar-backdrop {
+        display: block;
         position: fixed; inset: 0;
         background: rgba(0, 0, 0, 0.55);
         z-index: 1040;
@@ -1797,10 +1808,11 @@
       .btn-view-store span,
       .profile-info { display: none; }
 
-      /* Tables need horizontal scroll on phone — wrap content in
-         overflow-x:auto wrappers (already done in template). Make sure the
-         table doesn't shrink past readable width. */
-      .admin-table { min-width: 720px; font-size: 0.85rem; }
+      /* Tables get cramped under 768px. Shrink padding + font, but don't
+         force a min-width — that creates a horizontal scrollbar even when
+         the columns would actually fit. The smaller .admin-table min-width
+         is only applied at <=480px below, where we definitely need scroll. */
+      .admin-table { font-size: 0.85rem; }
       .admin-table th, .admin-table td { padding: 0.6rem 0.5rem; }
 
       /* Modal + form-grid responsive rules moved to the component CSS files
