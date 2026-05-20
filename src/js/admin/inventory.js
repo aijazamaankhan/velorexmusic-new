@@ -62,7 +62,11 @@
           <tr>
             <td>
               <div class="product-cell">
-                ${typeof p.image === 'string' && p.image.length > 0 ? `<img src="${p.image}" class="product-img" loading="lazy" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=100&h=100&fit=crop'">` : `<span class="skeleton skeleton-thumb" aria-label="Loading image"></span>`}
+                ${typeof p.image === 'string' && p.image.length > 0
+                  ? `<img src="${p.image}" class="product-img" loading="lazy" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=100&h=100&fit=crop'">`
+                  : (Array.isArray(Storage._products)
+                      ? `<img src="https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=100&h=100&fit=crop" class="product-img" loading="lazy" decoding="async">`
+                      : `<span class="skeleton skeleton-thumb" aria-label="Loading image"></span>`)}
                 <div>
                   <div style="font-weight: 700;">${Utils.escape(p.title)}</div>
                   <div style="font-size: 0.75rem; color: var(--text-muted);">${Utils.escape(p.artist)}</div>
@@ -114,7 +118,11 @@
           <tr>
             <td>
               <div class="product-info">
-                ${typeof p.image === 'string' && p.image.length > 0 ? `<img src="${p.image}" class="product-img" loading="lazy" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=100&h=100&fit=crop'">` : `<span class="skeleton skeleton-thumb" aria-label="Loading image"></span>`}
+                ${typeof p.image === 'string' && p.image.length > 0
+                  ? `<img src="${p.image}" class="product-img" loading="lazy" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=100&h=100&fit=crop'">`
+                  : (Array.isArray(Storage._products)
+                      ? `<img src="https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=100&h=100&fit=crop" class="product-img" loading="lazy" decoding="async">`
+                      : `<span class="skeleton skeleton-thumb" aria-label="Loading image"></span>`)}
                 <div class="product-name-artist">
                   <div class="product-name">${Utils.escape(p.title)}</div>
                   <div style="font-size: 0.75rem; color: var(--text-muted);">${Utils.escape(p.artist)}</div>

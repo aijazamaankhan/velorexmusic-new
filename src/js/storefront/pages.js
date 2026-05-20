@@ -39,17 +39,24 @@
       const priceHtml = product.originalPrice ? `<span class="product-price">₹${product.price.toLocaleString()}</span><span class="product-price-original">₹${product.originalPrice.toLocaleString()}</span>` : `<span class="product-price">₹${product.price.toLocaleString()}</span>`;
       const catLabel = product.category === 'vinyl' ? '<i class="fas fa-compact-disc"></i> Vinyl' : product.category === 'cd' ? '<i class="fas fa-compact-disc"></i> CD' : product.category === 'cassette' ? '<i class="fas fa-tape"></i> Cassette' : product.category === 'bluray' ? '<i class="fas fa-film"></i> Blu-ray' : '<i class="fas fa-film"></i> DVD';
       const langLabel = product.language === 'hindi' ? '<i class="fas fa-globe"></i> Hindi' : '<i class="fas fa-earth-americas"></i> English';
-      // When the catalog exceeded the 5MB localStorage quota, Storage._tryCache
-      // strips `image` to null and caches metadata-only (see storage.js). On
-      // the next page load we'd otherwise render <img src="null"> → onerror
-      // → unsplash music-CD placeholder, which looks like real content and
-      // misleads users. Instead, render a shimmering skeleton in the image
-      // area until the background sync brings the real image in and the card
-      // re-renders.
+      // Three image states:
+      //   1. image is a real string         → render <img>
+      //   2. image missing + not synced yet → render skeleton (stripped cache;
+      //      the bg sync will re-render with real data)
+      //   3. image missing + synced         → render <img> with onerror →
+      //      unsplash fallback (this product genuinely has no image on the
+      //      server; the previous "always skeleton if missing" rule made the
+      //      shimmer linger forever for these products).
+      //
+      // Storage._memory is null until syncFromServer() resolves successfully,
+      // then becomes an array — that's our "synced" signal.
       const hasImage = typeof product.image === 'string' && product.image.length > 0;
+      const synced = Array.isArray(Storage._memory);
       const imageHtml = hasImage
         ? `<img src="${product.image}" alt="${Utils.escape(product.title)}" loading="lazy" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=400&h=400&fit=crop'">`
-        : `<div class="skeleton skeleton-card-image" aria-label="Loading image"></div>`;
+        : (synced
+            ? `<img src="https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=400&h=400&fit=crop" alt="${Utils.escape(product.title)}" loading="lazy" decoding="async">`
+            : `<div class="skeleton skeleton-card-image" aria-label="Loading image"></div>`);
       return `
       <div class="product-card" data-id="${product.id}">
         <div class="product-card-image">
@@ -528,9 +535,11 @@
       var itemsHtml = cartItems.map(item => `
       <div class="cart-item">
         <div class="cart-item-image" onclick="navigate('product',{id:${item.id}})" style="cursor:pointer;">${
-          typeof item.image === 'string' && item.image.length > 0
+          (typeof item.image === 'string' && item.image.length > 0)
             ? `<img src="${item.image}" alt="${Utils.escape(item.title)}" loading="lazy" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=200&fit=crop'">`
-            : `<div class="skeleton skeleton-card-image" style="height:100%;aspect-ratio:auto;" aria-label="Loading image"></div>`
+            : (Array.isArray(Storage._memory)
+                ? `<img src="https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=200&fit=crop" alt="${Utils.escape(item.title)}" loading="lazy" decoding="async">`
+                : `<div class="skeleton skeleton-card-image" style="height:100%;aspect-ratio:auto;" aria-label="Loading image"></div>`)
         }</div>
         <div>
           <h4 class="cart-item-title" onclick="navigate('product',{id:${item.id}})" style="cursor:pointer;">${Utils.escape(item.title)}</h4>
