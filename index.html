@@ -24,6 +24,13 @@
   <script src="src/js/storage.js"></script>
   <script src="src/js/auth.js"></script>
   <script src="src/js/addresses.js"></script>
+  <!-- Shared component JS extracted in PR 5. These are the leaves of the
+       UI — toast, confirm dialog, cart, address modal. Page-level renderers
+       still live in the inline <script> for now (will move in PR 6). -->
+  <script src="src/js/toast.js"></script>
+  <script src="src/js/confirm-dialog.js"></script>
+  <script src="src/js/cart.js"></script>
+  <script src="src/js/address-form.js"></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
        they can be shared between the storefront pages without duplication.
        See src/styles/tokens.css and src/styles/base.css. -->
@@ -838,73 +845,6 @@
 
 
 
-    const CartHelpers = {
-      addToCart(productId, qty = 1) {
-        const products = Storage.getProducts();
-        const product = products.find(p => p.id === productId);
-        if (!product || qty <= 0) return false;
-        if (product.stock === 0) { showToast('This item is out of stock', 'error'); return false; }
-        let cart = Storage.getCart();
-        const existing = cart.find(item => item.id === productId);
-        const reservedQty = existing ? existing.qty : 0;
-        const available = Math.max(0, product.stock - reservedQty);
-        if (available === 0) { showToast('⚠️ Only ' + product.stock + ' available in stock', 'error'); return false; }
-        const addQty = Math.min(qty, available);
-        if (existing) existing.qty += addQty; else cart.push({ id: productId, qty: addQty });
-        Storage.saveCart(cart);
-        CartHelpers.updateBadge();
-        if (addQty < qty) showToast('⚠️ Only ' + product.stock + ' available. Cart quantity capped to stock.', 'error');
-        else showToast('"' + product.title + '" added to cart! 🎵', 'success');
-        return true;
-      },
-      removeFromCart(productId) { let cart = Storage.getCart().filter(item => item.id !== productId); Storage.saveCart(cart); this.updateBadge(); },
-      updateQty(productId, qty) {
-        let cart = Storage.getCart();
-        const item = cart.find(i => i.id === productId);
-        if (!item) return;
-        const product = Storage.getProducts().find(p => p.id === productId);
-        if (!product) return;
-        if (qty <= 0) { this.removeFromCart(productId); return; }
-        if (qty > product.stock) {
-          if (product.stock === 0) { this.removeFromCart(productId); showToast('❌ Product is out of stock and removed from cart', 'error'); return; }
-          item.qty = product.stock; Storage.saveCart(cart); this.updateBadge();
-          showToast('⚠️ Only ' + product.stock + ' available in stock. Quantity adjusted.', 'error'); return;
-        }
-        item.qty = qty; Storage.saveCart(cart); this.updateBadge();
-      },
-      getCartWithDetails() {
-        const cart = Storage.getCart(), products = Storage.getProducts();
-        return cart.map(item => { const p = products.find(p => p.id === item.id); return p ? {...p, qty: item.qty} : null; }).filter(Boolean);
-      },
-      getCartCount() { return Storage.getCart().reduce((sum, item) => sum + item.qty, 0); },
-      getCartTotal() { return this.getCartWithDetails().reduce((sum, item) => sum + item.price * item.qty, 0); },
-      updateBadge() {
-        const badges = document.querySelectorAll('.cart-badge'), count = this.getCartCount();
-        badges.forEach(b => { b.textContent = count > 99 ? '99+' : count; b.classList.toggle('visible', count > 0); });
-      }
-    };
-
-    function showToast(message, type = 'info') {
-      let container = document.getElementById('toast-container');
-      if (!container) { container = document.createElement('div'); container.id = 'toast-container'; container.className = 'toast-container'; document.body.appendChild(container); }
-      const icons = { success: '<i class="fas fa-circle-check"></i>', error: '<i class="fas fa-circle-xmark"></i>', info: '<i class="fas fa-circle-info"></i>' };
-      const toast = document.createElement('div');
-      toast.className = `toast toast-${type}`;
-      toast.innerHTML = `<span>${icons[type] || '🎵'}</span><span>${message}</span>`;
-      container.appendChild(toast);
-      setTimeout(() => { toast.classList.add('removing'); setTimeout(() => toast.remove(), 300); }, 3000);
-    }
-
-    function openConfirmDialog(options) {
-      var modal = document.getElementById('confirmModal'); if (!modal) return;
-      document.getElementById('confirmModalTitle').textContent = options.title || 'Confirm';
-      document.getElementById('confirmModalMessage').textContent = options.message || 'Are you sure?';
-      var btn = document.getElementById('confirmModalConfirmBtn');
-      btn.textContent = options.confirmText || 'Confirm';
-      btn.onclick = function() { closeConfirmDialog(); if (typeof options.onConfirm === 'function') options.onConfirm(); };
-      modal.classList.add('open');
-    }
-    function closeConfirmDialog() { var m = document.getElementById('confirmModal'); if (m) m.classList.remove('open'); }
 
     function createProductCard(product) {
       const badgeHtml = product.badge ? `<span class="product-badge badge-${product.badge}"><i class="fas fa-${product.badge === 'hot' ? 'fire' : product.badge === 'new' ? 'sparkles' : product.badge === 'upcoming' ? 'clock' : 'tag'}"></i> ${Utils.escape(product.badge === 'hot' ? 'Hot' : product.badge === 'new' ? 'New' : product.badge === 'upcoming' ? 'Soon' : 'Sale')}</span>` : '';
@@ -2287,180 +2227,6 @@
         </div>`;
     }
 
-    function openAddressModal(id, context) {
-      var modal = document.getElementById('addressModal'); if (!modal) return;
-      if (!Auth.isLoggedIn()) { showToast('Please sign in first', 'info'); navigate('login'); return; }
-      // Populate country dropdown once.
-      var countrySel = document.getElementById('addr-country');
-      if (countrySel && !countrySel.options.length) {
-        countrySel.innerHTML = COUNTRIES.map(c => `<option value="${c[0]}">${c[1]}</option>`).join('');
-      }
-      document.getElementById('addressForm').reset();
-      document.getElementById('addr-id').value = '';
-      document.getElementById('addr-context').value = context || 'profile';
-      document.getElementById('addressFormError').style.display = 'none';
-      document.getElementById('addressModalTitle').textContent = id ? 'Edit Address' : 'Add Address';
-      document.getElementById('addressSubmitBtn').textContent = id ? 'Save Changes' : 'Save Address';
-
-      if (id) {
-        var existing = (Addresses._cached || []).find(a => a.id === id);
-        if (!existing) { showToast('Address not found', 'error'); return; }
-        document.getElementById('addr-id').value = existing.id;
-        document.getElementById('addr-country').value = existing.countryCode;
-        document.getElementById('addr-fullName').value = existing.fullName || '';
-        document.getElementById('addr-phone').value = existing.phone || '';
-        document.getElementById('addr-line1').value = existing.line1 || '';
-        document.getElementById('addr-line2').value = existing.line2 || '';
-        document.getElementById('addr-landmark').value = existing.landmark || '';
-        document.getElementById('addr-city').value = existing.city || '';
-        document.getElementById('addr-postal').value = existing.postalCode || '';
-        document.getElementById('addr-label').value = existing.label || '';
-        document.getElementById('addr-gstin').value = existing.gstin || '';
-        document.getElementById('addr-default').checked = !!existing.isDefault;
-        updateAddressFormForCountry();
-        // Set state AFTER updateAddressFormForCountry has wired up the right widget.
-        setAddressFormState(existing.state || '');
-      } else {
-        document.getElementById('addr-country').value = 'IN';
-        updateAddressFormForCountry();
-      }
-
-      modal.classList.add('open');
-    }
-
-    function closeAddressModal() {
-      var m = document.getElementById('addressModal'); if (m) m.classList.remove('open');
-    }
-
-    function updateAddressFormForCountry() {
-      var code = document.getElementById('addr-country').value;
-      var stateLabel = document.getElementById('addr-state-label');
-      var postalLabel = document.getElementById('addr-postal-label');
-      var stateSelect = document.getElementById('addr-state-select');
-      var stateInput = document.getElementById('addr-state-input');
-      var landmark = document.getElementById('addr-landmark-group');
-      var gstinGroup = document.getElementById('addr-gstin-group');
-
-      // State widget: dropdown for IN + US, free text elsewhere.
-      if (code === 'IN') {
-        stateSelect.innerHTML = '<option value="">Select state…</option>' + IN_STATES.map(s => `<option value="${s}">${s}</option>`).join('');
-        stateSelect.style.display = '';
-        stateInput.style.display = 'none';
-        stateInput.value = '';
-      } else if (code === 'US') {
-        stateSelect.innerHTML = '<option value="">Select state…</option>' + US_STATES.map(s => `<option value="${s[1]}">${s[1]}</option>`).join('');
-        stateSelect.style.display = '';
-        stateInput.style.display = 'none';
-        stateInput.value = '';
-      } else {
-        stateSelect.style.display = 'none';
-        stateSelect.innerHTML = '';
-        stateInput.style.display = '';
-      }
-      stateLabel.textContent = STATE_REQUIRED.has(code) ? 'State / Region *' : 'State / Region';
-      postalLabel.textContent = POSTAL_REQUIRED.has(code) ? 'Postal Code *' : 'Postal Code';
-
-      // Landmark is an India-ism — hide elsewhere to keep the form tidy.
-      landmark.style.display = code === 'IN' ? '' : 'none';
-      if (code !== 'IN') document.getElementById('addr-landmark').value = '';
-
-      // GSTIN is India-only.
-      gstinGroup.style.display = code === 'IN' ? '' : 'none';
-      if (code !== 'IN') document.getElementById('addr-gstin').value = '';
-    }
-
-    function setAddressFormState(val) {
-      var sel = document.getElementById('addr-state-select');
-      var input = document.getElementById('addr-state-input');
-      if (sel.style.display !== 'none') {
-        // Make sure the value exists as an option, otherwise leave blank.
-        var opt = Array.from(sel.options).find(o => o.value === val);
-        sel.value = opt ? val : '';
-      } else {
-        input.value = val || '';
-      }
-    }
-
-    function readAddressFormState() {
-      var sel = document.getElementById('addr-state-select');
-      var input = document.getElementById('addr-state-input');
-      return sel.style.display !== 'none' ? sel.value : input.value.trim();
-    }
-
-    async function submitAddressForm(ev) {
-      ev.preventDefault();
-      var errBox = document.getElementById('addressFormError');
-      errBox.style.display = 'none';
-      var country = document.getElementById('addr-country').value;
-      var payload = {
-        label: document.getElementById('addr-label').value.trim() || null,
-        fullName: document.getElementById('addr-fullName').value.trim(),
-        phone: document.getElementById('addr-phone').value.trim(),
-        line1: document.getElementById('addr-line1').value.trim(),
-        line2: document.getElementById('addr-line2').value.trim() || null,
-        landmark: country === 'IN' ? (document.getElementById('addr-landmark').value.trim() || null) : null,
-        city: document.getElementById('addr-city').value.trim(),
-        state: readAddressFormState() || null,
-        postalCode: document.getElementById('addr-postal').value.trim() || null,
-        countryCode: country,
-        gstin: country === 'IN' ? (document.getElementById('addr-gstin').value.trim().toUpperCase() || null) : null,
-        isDefault: document.getElementById('addr-default').checked,
-      };
-      var idStr = document.getElementById('addr-id').value;
-      if (idStr) payload.id = parseInt(idStr, 10);
-
-      // Lightweight client-side guard. The server is authoritative.
-      if (!payload.fullName || !payload.phone || !payload.line1 || !payload.city || !payload.countryCode) {
-        errBox.textContent = 'Please fill in all required fields.';
-        errBox.style.display = 'block';
-        return;
-      }
-
-      var btn = document.getElementById('addressSubmitBtn');
-      var origText = btn.textContent;
-      btn.disabled = true;
-      btn.textContent = 'Saving…';
-      try {
-        var saved = await Addresses.save(payload);
-        closeAddressModal();
-        showToast(idStr ? 'Address updated' : 'Address saved', 'success');
-        var context = document.getElementById('addr-context').value;
-        if (context === 'checkout') {
-          // Collapse the picker and show the summary with the just-saved address.
-          var picker = document.getElementById('checkout-address-picker');
-          var summary = document.getElementById('checkout-address-summary');
-          if (picker) picker.style.display = 'none';
-          if (summary) summary.style.display = '';
-          await renderCheckoutAddressPicker(saved.id);
-        } else {
-          var user = Auth.getUser();
-          renderAddressesSPA(user);
-        }
-      } catch (e) {
-        errBox.textContent = e.message || 'Save failed';
-        errBox.style.display = 'block';
-      } finally {
-        btn.disabled = false;
-        btn.textContent = origText;
-      }
-    }
-
-    function confirmDeleteAddress(id) {
-      openConfirmDialog({
-        title: 'Delete Address',
-        message: 'Remove this address from your saved addresses? Existing orders are unaffected.',
-        confirmText: 'Delete',
-        onConfirm: async () => {
-          try {
-            await Addresses.remove(id);
-            showToast('Address deleted', 'success');
-            renderAddressesSPA(Auth.getUser());
-          } catch (e) {
-            showToast(e.message || 'Delete failed', 'error');
-          }
-        },
-      });
-    }
 
     async function setDefaultAddress(id) {
       var existing = (Addresses._cached || []).find(a => a.id === id);

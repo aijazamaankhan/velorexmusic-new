@@ -71,6 +71,11 @@ velorexmusic-new/
 │       │                        # degradation against localStorage quota, per-user cart
 │       ├── auth.js              # Auth — bearer token + session + login/signup/logout
 │       ├── addresses.js         # Addresses CRUD wrapper around /api/addresses.php
+│       ├── toast.js             # showToast() — bottom-right pill, auto-dismisses (storefront)
+│       ├── confirm-dialog.js    # openConfirmDialog/closeConfirmDialog — styled window.confirm replacement
+│       ├── cart.js              # CartHelpers — addToCart/updateQty/getCartCount/getCartTotal + stock guards
+│       ├── address-form.js      # openAddressModal + country-aware state/postal/landmark/GSTIN widgets +
+│       │                        # submitAddressForm + confirmDeleteAddress (shared by profile + checkout)
 │       └── admin/
 │           └── storage.js       # Admin Storage helper — caches products/orders/categories
 │                                # with the same 3-tier degradation pattern
