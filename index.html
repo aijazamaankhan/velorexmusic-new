@@ -14,6 +14,16 @@
     href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap"
     rel="stylesheet">
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <!-- Storefront JS modules extracted in PR 4. Load order is meaningful —
+       leaves first, then objects that reference them. All are plain scripts
+       (not type="module") so the inline <script> later in the body and
+       inline onclick= handlers can resolve them via script-scope. -->
+  <script src="src/js/utils.js"></script>
+  <script src="src/js/api-base.js"></script>
+  <script src="src/js/constants.js"></script>
+  <script src="src/js/storage.js"></script>
+  <script src="src/js/auth.js"></script>
+  <script src="src/js/addresses.js"></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
        they can be shared between the storefront pages without duplication.
        See src/styles/tokens.css and src/styles/base.css. -->
@@ -500,12 +510,7 @@
       btn.classList.toggle('visible', window.scrollY > 300);
     });
 
-    const Utils = {
-      escape(str) {
-        if (typeof str !== 'string') return str;
-        return str.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-      }
-    };
+    /* Utils.escape moved to src/js/utils.js — loaded in <head>. */
   </script>
 
   <!-- PAYMENT MODAL -->
@@ -759,39 +764,6 @@
   <script>
     // Products are loaded dynamically from /api/products.php — see Storage.syncFromServer below.
 
-    // ---- PEOPLE FILTER SLUG → DISPLAY LABEL ----
-    const PEOPLE_LABELS = {
-      'rd-burman': 'R.D. Burman',
-      'ar-rahman': 'A.R. Rahman',
-      'laxmikant-pyarelal': 'Laxmikant-Pyarelal',
-      'jatin-lalit': 'Jatin-Lalit',
-      'shankar-ehsaan-loy': 'Shankar-Ehsaan-Loy',
-      'anu-malik': 'Anu Malik',
-      'anupam-roy': 'Anupam Roy',
-      'lata-mangeshkar': 'Lata Mangeshkar',
-      'mukesh': 'Mukesh',
-      'udit-narayan': 'Udit Narayan',
-      'arijit-singh': 'Arijit Singh',
-      'pink-floyd': 'Pink Floyd',
-      'michael-jackson': 'Michael Jackson',
-      'beatles': 'The Beatles',
-      'fleetwood-mac': 'Fleetwood Mac',
-      'adele': 'Adele',
-      'ed-sheeran': 'Ed Sheeran',
-      'bruce-springsteen': 'Bruce Springsteen',
-      'nirvana': 'Nirvana',
-      'amitabh-bachchan': 'Amitabh Bachchan',
-      'shahrukh-khan': 'Shah Rukh Khan',
-      'aamir-khan': 'Aamir Khan',
-      'ranveer-singh': 'Ranveer Singh',
-      'kajol': 'Kajol',
-      'deepika-padukone': 'Deepika Padukone',
-      'ss-rajamouli': 'S.S. Rajamouli',
-      'christopher-nolan': 'Christopher Nolan',
-      'francis-ford-coppola': 'Francis Ford Coppola',
-      'ashutosh-gowariker': 'Ashutosh Gowariker',
-      'yash-chopra': 'Yash Chopra'
-    };
 
     // ---- Carrier metadata + logo badge helpers ----
     // Mirrored from track-order.html — keep both in sync if you add a carrier.
@@ -860,341 +832,11 @@
         '</span>';
     }
 
-    // ---- Storage Helpers ----
-    // Products are the server's responsibility. localStorage is only a render cache:
-    // we write whatever the server returned so the next page navigation can paint instantly,
-    // but the server is always the source of truth.
-    const API_BASE = '/api';
-    const Storage = {
-      // In-memory cache populated by syncFromServer. This is the primary source
-      // of truth for the current page session — localStorage is only a best-effort
-      // paint cache for the next visit.
-      //
-      // Why this layering exists: product images are stored as base64 data URLs
-      // in the DB (LONGTEXT). A catalog of ~200 products with images regularly
-      // crosses the 5MB per-origin localStorage quota in Chrome/Safari. When
-      // that write throws, the storefront previously fell back to the
-      // (now-empty) localStorage cache and showed "0 products" even though the
-      // server returned a healthy response — see the bug fixed in this commit.
-      _memory: null,
 
-      async syncFromServer() {
-        try {
-          const res = await fetch(API_BASE + '/products.php', { cache: 'no-store' });
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          const products = await res.json();
-          if (!Array.isArray(products)) throw new Error('Invalid response shape');
-          this._memory = products;
-          Storage._tryCache(products);
-        } catch (e) {
-          console.warn('Storage.syncFromServer failed; in-memory cache unchanged:', e.message);
-        }
-      },
 
-      // Try to persist the catalog to localStorage. Graceful degradation:
-      //   1. Full catalog (with base64 images) — ideal, gives instant paint with real images on next visit.
-      //   2. Metadata-only (images stripped) — the next visit paints with placeholder images until syncFromServer refreshes. createProductCard's onerror falls back to a stock image, so the page still works.
-      //   3. No cache at all — the next visit just waits for syncFromServer.
-      // In all three cases the current page session is fine because _memory is populated.
-      _tryCache(products) {
-        try {
-          localStorage.setItem('vv_products', JSON.stringify(products));
-          return;
-        } catch (quotaErr) {
-          // Most likely QuotaExceededError. Strip the heavy fields and retry.
-        }
-        try {
-          const stripped = products.map(p => ({ ...p, image: null, images: null }));
-          localStorage.setItem('vv_products', JSON.stringify(stripped));
-          console.info('Storage: catalog exceeded localStorage quota; cached metadata-only fallback (images will reload from server on next visit).');
-          return;
-        } catch (_) {
-          // Even the stripped version didn't fit. Drop the cache entirely; next visit will fetch from server.
-        }
-        try { localStorage.removeItem('vv_products'); } catch (_) {}
-        console.info('Storage: localStorage cache disabled (quota even after stripping images).');
-      },
 
-      getProducts() {
-        // In-memory wins after the first sync — always has the freshest data
-        // including images. Fallback path is the localStorage paint cache
-        // (which may be metadata-only with image=null; createProductCard's
-        // onerror handler will pick up a stock placeholder image).
-        if (Array.isArray(this._memory)) return this._memory;
-        const stored = localStorage.getItem('vv_products');
-        if (!stored) return [];
-        try {
-          const parsed = JSON.parse(stored);
-          return Array.isArray(parsed) ? parsed : [];
-        } catch { return []; }
-      },
 
-      saveProducts(products) {
-        const list = Array.isArray(products) ? products : [];
-        this._memory = list;
-        Storage._tryCache(list);
-      },
-      getOrders() { const s = localStorage.getItem('vv_orders'); return s ? JSON.parse(s) : []; },
-      // Local cache only. Server-side order creation now happens through the
-      // signature-verified payment flow (api/payments/verify.php), so this
-      // function intentionally does NOT POST anywhere. Direct POSTs to
-      // /api/orders.php now return 410 Gone by design.
-      saveOrder(order) {
-        const o = this.getOrders();
-        o.unshift(order);
-        localStorage.setItem('vv_orders', JSON.stringify(o));
-      },
-      // Cart is stored per-user: vv_cart_anon for anonymous browsers, vv_cart_<id> for logged-in users.
-      // This way user A's cart survives logout/login, and user B never sees A's items.
-      _cartKey() {
-        const u = (typeof Auth !== 'undefined' && Auth.getUser && Auth.getUser()) ? Auth.getUser().id : null;
-        return u ? 'vv_cart_' + u : 'vv_cart_anon';
-      },
-      getCart() {
-        // One-time migration from the old un-segmented `vv_cart` key
-        const legacy = localStorage.getItem('vv_cart');
-        if (legacy !== null) {
-          const target = this._cartKey();
-          if (!localStorage.getItem(target)) localStorage.setItem(target, legacy);
-          localStorage.removeItem('vv_cart');
-        }
-        const s = localStorage.getItem(this._cartKey());
-        if (!s) return [];
-        try { const v = JSON.parse(s); return Array.isArray(v) ? v : []; } catch { return []; }
-      },
-      saveCart(cart) {
-        localStorage.setItem(this._cartKey(), JSON.stringify(cart));
-        CartHelpers.updateBadge();
-      },
-    };
 
-    // ---- Auth ----
-    // Manages the customer session: token + cached user object in localStorage.
-    // Token is sent as `Authorization: Bearer <token>` on protected calls.
-    const Auth = {
-      TOKEN_KEY: 'vv_auth_token',
-      USER_KEY: 'vv_auth_user',
-
-      getToken() { return localStorage.getItem(this.TOKEN_KEY) || ''; },
-      getUser() {
-        const raw = localStorage.getItem(this.USER_KEY);
-        if (!raw) return null;
-        try { return JSON.parse(raw); } catch { return null; }
-      },
-      isLoggedIn() { return !!this.getToken(); },
-
-      _setSession(token, user) {
-        localStorage.setItem(this.TOKEN_KEY, token);
-        localStorage.setItem(this.USER_KEY, JSON.stringify(user));
-      },
-      _clearSession() {
-        localStorage.removeItem(this.TOKEN_KEY);
-        localStorage.removeItem(this.USER_KEY);
-      },
-      // When a user logs in or signs up, claim any anonymous cart in this browser
-      // (so the "browse anonymously then sign up at checkout" flow preserves items).
-      // If the user already has a saved cart from a previous session, keep that instead.
-      _claimAnonCart(userId) {
-        const anonKey = 'vv_cart_anon';
-        const userKey = 'vv_cart_' + userId;
-        const anon = localStorage.getItem(anonKey);
-        if (anon !== null && !localStorage.getItem(userKey)) {
-          localStorage.setItem(userKey, anon);
-        }
-        localStorage.removeItem(anonKey);
-      },
-      _refreshCartBadge() {
-        if (typeof CartHelpers !== 'undefined') CartHelpers.updateBadge();
-      },
-
-      headers() {
-        const t = this.getToken();
-        return t ? { 'Authorization': 'Bearer ' + t } : {};
-      },
-
-      async signup(data) {
-        const res = await fetch(API_BASE + '/auth/signup.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || 'Signup failed');
-        this._claimAnonCart(json.user.id);
-        this._setSession(json.token, json.user);
-        this._refreshCartBadge();
-        return json.user;
-      },
-
-      async login(email, password) {
-        const res = await fetch(API_BASE + '/auth/login.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || 'Login failed');
-        this._claimAnonCart(json.user.id);
-        this._setSession(json.token, json.user);
-        this._refreshCartBadge();
-        return json.user;
-      },
-
-      async logout() {
-        try {
-          await fetch(API_BASE + '/auth/logout.php', {
-            method: 'POST',
-            headers: this.headers(),
-          });
-        } catch (e) { /* logout is best-effort on the client */ }
-        this._clearSession();
-        // Keep the user's cart (vv_cart_<id>) so it's still there when they log back in.
-        // Clear vv_cart_anon so the next anonymous browser session starts fresh.
-        localStorage.removeItem('vv_cart_anon');
-        this._refreshCartBadge();
-      },
-
-      async fetchMe() {
-        if (!this.isLoggedIn()) return null;
-        try {
-          const res = await fetch(API_BASE + '/auth/me.php', { headers: this.headers(), cache: 'no-store' });
-          if (res.status === 401) {
-            this._clearSession();
-            return null;
-          }
-          const json = await res.json();
-          if (!res.ok) throw new Error(json.error || 'Failed to load profile');
-          localStorage.setItem(this.USER_KEY, JSON.stringify(json.user));
-          return json.user;
-        } catch (e) {
-          console.warn('Auth.fetchMe failed:', e.message);
-          return this.getUser();
-        }
-      },
-
-      async updateProfile(data) {
-        const res = await fetch(API_BASE + '/auth/update-profile.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...this.headers() },
-          body: JSON.stringify(data),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || 'Update failed');
-        localStorage.setItem(this.USER_KEY, JSON.stringify(json.user));
-        return json.user;
-      },
-
-      async changePassword(currentPassword, newPassword) {
-        const res = await fetch(API_BASE + '/auth/change-password.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...this.headers() },
-          body: JSON.stringify({ currentPassword, newPassword }),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || 'Password change failed');
-        return true;
-      },
-
-      async fetchOrders() {
-        if (!this.isLoggedIn()) return [];
-        const res = await fetch(API_BASE + '/orders.php', { headers: this.headers(), cache: 'no-store' });
-        if (!res.ok) return [];
-        const data = await res.json();
-        return Array.isArray(data) ? data : [];
-      },
-    };
-
-    // ISO-3166-1 alpha-2 list of common shipping destinations.
-    // India is intentionally first so it's the default selection for the storefront.
-    const COUNTRIES = [
-      ['IN', 'India'], ['US', 'United States'], ['GB', 'United Kingdom'], ['CA', 'Canada'],
-      ['AU', 'Australia'], ['AE', 'United Arab Emirates'], ['SG', 'Singapore'], ['DE', 'Germany'],
-      ['FR', 'France'], ['IT', 'Italy'], ['ES', 'Spain'], ['NL', 'Netherlands'], ['BE', 'Belgium'],
-      ['CH', 'Switzerland'], ['AT', 'Austria'], ['IE', 'Ireland'], ['SE', 'Sweden'], ['NO', 'Norway'],
-      ['DK', 'Denmark'], ['FI', 'Finland'], ['PL', 'Poland'], ['PT', 'Portugal'], ['GR', 'Greece'],
-      ['CZ', 'Czechia'], ['HU', 'Hungary'], ['RO', 'Romania'], ['NZ', 'New Zealand'],
-      ['JP', 'Japan'], ['KR', 'South Korea'], ['HK', 'Hong Kong'], ['TW', 'Taiwan'], ['MY', 'Malaysia'],
-      ['TH', 'Thailand'], ['VN', 'Vietnam'], ['ID', 'Indonesia'], ['PH', 'Philippines'],
-      ['BD', 'Bangladesh'], ['LK', 'Sri Lanka'], ['NP', 'Nepal'], ['BT', 'Bhutan'], ['MV', 'Maldives'],
-      ['PK', 'Pakistan'], ['SA', 'Saudi Arabia'], ['QA', 'Qatar'], ['KW', 'Kuwait'], ['OM', 'Oman'],
-      ['BH', 'Bahrain'], ['IL', 'Israel'], ['TR', 'Turkey'], ['EG', 'Egypt'], ['ZA', 'South Africa'],
-      ['KE', 'Kenya'], ['NG', 'Nigeria'], ['MA', 'Morocco'], ['BR', 'Brazil'], ['MX', 'Mexico'],
-      ['AR', 'Argentina'], ['CL', 'Chile'], ['CO', 'Colombia'], ['PE', 'Peru'], ['RU', 'Russia'],
-      ['UA', 'Ukraine'], ['CN', 'China'],
-    ];
-
-    // 28 states + 8 UTs.
-    const IN_STATES = [
-      'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Goa', 'Gujarat',
-      'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh',
-      'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan',
-      'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
-      'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu',
-      'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry',
-    ];
-
-    const US_STATES = [
-      ['AL', 'Alabama'], ['AK', 'Alaska'], ['AZ', 'Arizona'], ['AR', 'Arkansas'], ['CA', 'California'],
-      ['CO', 'Colorado'], ['CT', 'Connecticut'], ['DE', 'Delaware'], ['DC', 'District of Columbia'],
-      ['FL', 'Florida'], ['GA', 'Georgia'], ['HI', 'Hawaii'], ['ID', 'Idaho'], ['IL', 'Illinois'],
-      ['IN', 'Indiana'], ['IA', 'Iowa'], ['KS', 'Kansas'], ['KY', 'Kentucky'], ['LA', 'Louisiana'],
-      ['ME', 'Maine'], ['MD', 'Maryland'], ['MA', 'Massachusetts'], ['MI', 'Michigan'],
-      ['MN', 'Minnesota'], ['MS', 'Mississippi'], ['MO', 'Missouri'], ['MT', 'Montana'],
-      ['NE', 'Nebraska'], ['NV', 'Nevada'], ['NH', 'New Hampshire'], ['NJ', 'New Jersey'],
-      ['NM', 'New Mexico'], ['NY', 'New York'], ['NC', 'North Carolina'], ['ND', 'North Dakota'],
-      ['OH', 'Ohio'], ['OK', 'Oklahoma'], ['OR', 'Oregon'], ['PA', 'Pennsylvania'],
-      ['RI', 'Rhode Island'], ['SC', 'South Carolina'], ['SD', 'South Dakota'], ['TN', 'Tennessee'],
-      ['TX', 'Texas'], ['UT', 'Utah'], ['VT', 'Vermont'], ['VA', 'Virginia'], ['WA', 'Washington'],
-      ['WV', 'West Virginia'], ['WI', 'Wisconsin'], ['WY', 'Wyoming'],
-    ];
-
-    // Which countries require a state/region (not optional in the form).
-    const STATE_REQUIRED = new Set(['IN', 'US', 'CA', 'AU']);
-    // Postal codes are required in these countries; for everything else they're optional.
-    const POSTAL_REQUIRED = new Set(['IN', 'US', 'CA', 'GB', 'AU', 'DE', 'FR', 'IT', 'ES', 'NL', 'BE', 'CH', 'AT', 'JP', 'KR', 'SG', 'PT', 'CZ', 'PL']);
-
-    const Addresses = {
-      _cached: null,
-      async fetchAll(force = false) {
-        if (!Auth.isLoggedIn()) return [];
-        if (!force && this._cached) return this._cached;
-        const res = await fetch(API_BASE + '/addresses.php', { headers: Auth.headers(), cache: 'no-store' });
-        if (!res.ok) return [];
-        const data = await res.json();
-        this._cached = Array.isArray(data) ? data : [];
-        return this._cached;
-      },
-      async save(payload) {
-        const res = await fetch(API_BASE + '/addresses.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...Auth.headers() },
-          body: JSON.stringify(payload),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || 'Save failed');
-        this._cached = null;
-        return json.address;
-      },
-      async remove(id) {
-        const res = await fetch(API_BASE + '/addresses.php?id=' + encodeURIComponent(id), {
-          method: 'DELETE',
-          headers: Auth.headers(),
-        });
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(json.error || 'Delete failed');
-        this._cached = null;
-        return true;
-      },
-      invalidate() { this._cached = null; },
-      formatOneLine(a) {
-        const parts = [a.line1, a.line2, a.landmark, a.city, a.state, a.postalCode, this.countryName(a.countryCode)].filter(Boolean);
-        return parts.join(', ');
-      },
-      countryName(code) {
-        const c = COUNTRIES.find(x => x[0] === code);
-        return c ? c[1] : code;
-      },
-    };
 
     const CartHelpers = {
       addToCart(productId, qty = 1) {

@@ -58,6 +58,22 @@ velorexmusic-new/
 │           └── pages/
 │               └── admin.css    # All page-level admin CSS (sidebar layout, header, panels,
 │                                # tables, drawer, login screen, responsive).
+├── src/
+│   └── js/                      # Extracted JS modules (PR 4). Plain non-module
+│       │                        # scripts — they share script-scope with the
+│       │                        # inline <script> + onclick= handlers.
+│       ├── utils.js             # Utils.escape (HTML escape, returns non-strings unchanged)
+│       │                        # + top-level escapeHTML() (coerces null → '', for admin use)
+│       ├── api-base.js          # const API_BASE = '/api' — shared by storefront + admin
+│       ├── constants.js         # COUNTRIES, IN_STATES, US_STATES, STATE_REQUIRED,
+│       │                        # POSTAL_REQUIRED, PEOPLE_LABELS (storefront only)
+│       ├── storage.js           # Storefront Storage helper — 3-tier graceful
+│       │                        # degradation against localStorage quota, per-user cart
+│       ├── auth.js              # Auth — bearer token + session + login/signup/logout
+│       ├── addresses.js         # Addresses CRUD wrapper around /api/addresses.php
+│       └── admin/
+│           └── storage.js       # Admin Storage helper — caches products/orders/categories
+│                                # with the same 3-tier degradation pattern
 ├── contact.html, faq.html,      # Static info pages.
 │   shipping.html, returns.html,
 │   track-order.html, maintenance.html
