@@ -1,0 +1,119 @@
+/* =============================================================================
+   Velorex Music — shared chrome for static info pages
+   Used by: contact.html, faq.html, shipping.html, returns.html, track-order.html
+   NOT used by: maintenance.html (uses its own design system intentionally) or
+                index.html (uses src/styles/pages/storefront.css).
+
+   This file contains the navbar + brand + glass-card + typography + button
+   pattern that all five static pages share. Each page keeps its own page-
+   specific bits inline (form-grid, faq-item, carrier badges, etc.).
+
+   Loaded after tokens.css + base.css, so it can reference var(--*) and
+   inherits the reset.
+   ============================================================================= */
+
+/* ---- Navbar ------------------------------------------------------------- */
+.navbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  background: rgba(13, 13, 13, 0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+body { padding-top: 80px; }
+[data-theme="light"] .navbar { background: rgba(255, 255, 255, 0.95); }
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-decoration: none;
+}
+.logo-icon {
+  width: 32px;
+  height: 32px;
+  background: var(--orange-gradient);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+.brand-name {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.25rem;
+  color: var(--text);
+}
+
+/* ---- Glass card --------------------------------------------------------- */
+.glass-card {
+  background: rgba(26, 26, 46, 0.6);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 3rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+[data-theme="light"] .glass-card { background: rgba(255, 255, 255, 0.8); }
+
+/* ---- Typography --------------------------------------------------------- */
+h1 {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  margin-bottom: 2rem;
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+h2 {
+  color: var(--secondary);
+  margin-top: 2rem;
+  font-size: 1.5rem;
+}
+p {
+  margin-bottom: 1rem;
+  color: var(--text-muted);
+}
+
+/* ---- Button ------------------------------------------------------------- */
+/* Base style. Pages that need a full-width form-submit variant set
+   `width: 100%` in their own inline override (see contact.html). */
+.btn {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background: var(--secondary);
+  color: white;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: 0.3s;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(255, 107, 53, 0.4);
+}
+
+/* ---- Responsive --------------------------------------------------------- */
+@media (max-width: 768px) {
+  .glass-card { padding: 1.5rem; }
+  h1 { font-size: 2rem; }
+  h2 { font-size: 1.2rem; }
+  .navbar { padding: 0.75rem 1rem; }
+  .brand-name { font-size: 1.1rem; }
+  .btn { padding: 0.5rem 1rem; font-size: 0.85rem; }
+}
+
+/* iOS auto-zoom prevention for any page that adds form inputs */
+@media (max-width: 1024px) {
+  input, select, textarea, .form-control { font-size: 16px; }
+}

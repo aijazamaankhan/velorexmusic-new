@@ -44,9 +44,13 @@ velorexmusic-new/
 │       │   ├── payment-modal.css# .payment-modal > .payment-card (Razorpay overlay)
 │       │   └── toast.css        # .toast-container + .toast variants + keyframes
 │       ├── pages/
-│       │   └── storefront.css   # All page-level storefront CSS (navbar, hero, products grid,
-│       │                        # cart, profile, footer, status stepper, responsive). Single
-│       │                        # large file for now — split per-page if a section needs iteration.
+│       │   ├── storefront.css   # All page-level storefront CSS (navbar, hero, products grid,
+│       │   │                    # cart, profile, footer, status stepper, responsive). Single
+│       │   │                    # large file for now — split per-page if a section needs iteration.
+│       │   └── static-pages.css # Shared chrome (navbar + brand + glass-card + h1/h2/p + btn
+│       │                        # + responsive) for contact / faq / shipping / returns. Not used
+│       │                        # by track-order (page-specific btn/control variants) or
+│       │                        # maintenance (its own design system).
 │       └── admin/
 │           ├── tokens.css       # Admin CSS variables (used by vlx-admin-2026.html only)
 │           ├── base.css         # Admin reset + body + scrollbar
