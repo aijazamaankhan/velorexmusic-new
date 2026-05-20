@@ -43,14 +43,21 @@ velorexmusic-new/
 │       │   ├── modal.css        # .modal-overlay > .modal pattern + mobile scroll-the-overlay fix
 │       │   ├── payment-modal.css# .payment-modal > .payment-card (Razorpay overlay)
 │       │   └── toast.css        # .toast-container + .toast variants + keyframes
+│       ├── pages/
+│       │   └── storefront.css   # All page-level storefront CSS (navbar, hero, products grid,
+│       │                        # cart, profile, footer, status stepper, responsive). Single
+│       │                        # large file for now — split per-page if a section needs iteration.
 │       └── admin/
 │           ├── tokens.css       # Admin CSS variables (used by vlx-admin-2026.html only)
 │           ├── base.css         # Admin reset + body + scrollbar
-│           └── components/
-│               ├── buttons.css  # Admin .btn + .btn-primary
-│               ├── forms.css    # Admin .form-grid + .form-control (semi-transparent dark style)
-│               ├── modal.css    # .modal-overlay > .modal-content (note: different from storefront's .modal)
-│               └── toast.css    # Single-element admin toast (bottom-right pop)
+│           ├── components/
+│           │   ├── buttons.css  # Admin .btn + .btn-primary
+│           │   ├── forms.css    # Admin .form-grid + .form-control (semi-transparent dark style)
+│           │   ├── modal.css    # .modal-overlay > .modal-content (note: different from storefront's .modal)
+│           │   └── toast.css    # Single-element admin toast (bottom-right pop)
+│           └── pages/
+│               └── admin.css    # All page-level admin CSS (sidebar layout, header, panels,
+│                                # tables, drawer, login screen, responsive).
 ├── contact.html, faq.html,      # Static info pages.
 │   shipping.html, returns.html,
 │   track-order.html, maintenance.html
