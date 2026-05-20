@@ -332,7 +332,58 @@
       });
       container.innerHTML = tags.map((tag, idx) => `<span class="filter-tag">${tag.label}<span class="filter-tag-remove" onclick="removeFilterProduct(${idx})">✕</span></span>`).join('');
       window._filterTags = tags;
+      // Sync the "Filters" toggle button's count badge with the active set
+      // so users on the drawer-mode (≤1023px) can see at a glance how many
+      // filters they've applied without opening the drawer.
+      var countBadge = document.getElementById('filtersToggleCount');
+      if (countBadge) {
+        if (tags.length > 0) { countBadge.textContent = tags.length; countBadge.removeAttribute('hidden'); }
+        else { countBadge.setAttribute('hidden', ''); }
+      }
     }
+
+    // ---- Filters drawer (≤1023px) ----
+    // Above 1024px the filter sidebar is sticky-positioned next to the
+    // products grid and these handlers are no-ops in practice — the drawer
+    // CSS only kicks in below that breakpoint, so opening/closing on
+    // desktop is harmless. ESC + backdrop close. Body scroll is locked
+    // while open so the page behind doesn't accidentally scroll under
+    // touch input.
+    function openFiltersDrawer() {
+      var sidebar = document.getElementById('filtersSidebar');
+      var backdrop = document.getElementById('filtersBackdrop');
+      if (!sidebar) return;
+      sidebar.classList.add('open');
+      if (backdrop) backdrop.classList.add('open');
+      document.body.classList.add('filters-drawer-open');
+      // Pre-update the "Show results" label with the current product count.
+      updateFiltersDrawerCta();
+    }
+    function closeFiltersDrawer(scrollToGrid) {
+      var sidebar = document.getElementById('filtersSidebar');
+      var backdrop = document.getElementById('filtersBackdrop');
+      if (sidebar) sidebar.classList.remove('open');
+      if (backdrop) backdrop.classList.remove('open');
+      document.body.classList.remove('filters-drawer-open');
+      if (scrollToGrid) {
+        var grid = document.getElementById('products-grid');
+        if (grid) grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+    function updateFiltersDrawerCta() {
+      var label = document.getElementById('filtersDrawerCtaLabel');
+      var countEl = document.getElementById('products-count');
+      if (!label) return;
+      // Best-effort parse of the current count text ("Showing 5 of 67 products").
+      var m = countEl && /Showing\s+(\d+)\s+of/.exec(countEl.textContent || '');
+      label.textContent = m ? 'Show ' + m[1] + ' results' : 'Show results';
+    }
+    // ESC closes the drawer (matches the modal UX everywhere else).
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      var sidebar = document.getElementById('filtersSidebar');
+      if (sidebar && sidebar.classList.contains('open')) closeFiltersDrawer();
+    });
 
     function removeFilterProduct(idx) {
       if (window._filterTags && window._filterTags[idx]) { window._filterTags[idx].input.checked = false; applyFilters(); }
