@@ -545,7 +545,19 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   .product-detail-gallery { position: static; }
 }
 
-@media (max-width: 768px) {
+/* Navbar collapses to the hamburger menu earlier than the rest of the page
+   layout. Rationale: the full desktop navbar (brand + 7 nav items + Vinyl
+   dropdown + search + cart/theme/login + hamburger) needs ~1100px to render
+   without clipping. Between 769px and 1099px the desktop layout used to
+   overflow the right edge — search collapsed to icon-only, the rightmost
+   nav items and the cart icon got clipped, and the hamburger wasn't yet
+   active so users couldn't reach the hidden items. iPad portrait (820w),
+   iPad landscape (1024w) and iPad mini both fell into this dead zone.
+   The hamburger threshold below covers the whole tablet range; the page-
+   layout collapse below stays at the conventional 768px because the
+   products sidebar + content grid still fits comfortably between 769 and
+   1099px. */
+@media (max-width: 1100px) {
   /* Navigation: hamburger swap. The mobile menu is the same <ul> that lives
      inside .navbar (a flex parent). When we toggle .mobile-open we take it out
      of the flex flow with position:fixed and span the area under the navbar.
@@ -582,8 +594,12 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   .dropdown-menu { position: static; opacity: 1; visibility: visible; transform: none; box-shadow: none; background: var(--surface2); margin-top: 0.25rem; }
   .navbar-brand .brand-name { font-size: 1.15rem; }
   .navbar-brand .logo-icon { width: 36px; height: 36px; font-size: 1rem; }
+}
 
-  /* Page layout collapses */
+@media (max-width: 768px) {
+  /* Page layout collapses — kept at the conventional mobile breakpoint
+     because the two-column products/cart/profile/admin layouts fit fine on
+     tablet. The navbar hamburger above kicks in earlier (≤1100px). */
   .products-layout { grid-template-columns: 1fr; }
   .filters-sidebar { position: static; }
   .cart-layout { grid-template-columns: 1fr; }
