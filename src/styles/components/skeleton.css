@@ -26,13 +26,19 @@
   100% { background-position:  200% 0; }
 }
 
-/* Base — every skeleton shape inherits this. Variants below adjust size only. */
+/* Base — every skeleton shape inherits this. Variants below adjust size only.
+   The shimmer needs to sit on a translucent base color so it reads as
+   "loading" against any card/surface background. Previous version had the
+   shimmer-only (rgba 0.04→0.12) which was barely visible on dark cards —
+   user reported the image-area placeholder looked like a flat empty box.
+   Now: an opaque base tone + a more contrasted shimmer over it. */
 .skeleton {
-  background: linear-gradient(
+  background-color: rgba(255, 255, 255, 0.06);
+  background-image: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.04) 0%,
-    rgba(255, 255, 255, 0.12) 50%,
-    rgba(255, 255, 255, 0.04) 100%
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 255, 255, 0) 100%
   );
   background-size: 200% 100%;
   animation: vlx-skeleton-shimmer 1.6s ease-in-out infinite;
@@ -43,11 +49,12 @@
 }
 
 [data-theme="light"] .skeleton {
-  background: linear-gradient(
+  background-color: rgba(15, 23, 42, 0.06);
+  background-image: linear-gradient(
     90deg,
-    rgba(15, 23, 42, 0.04) 0%,
-    rgba(15, 23, 42, 0.10) 50%,
-    rgba(15, 23, 42, 0.04) 100%
+    rgba(15, 23, 42, 0) 0%,
+    rgba(15, 23, 42, 0.16) 50%,
+    rgba(15, 23, 42, 0) 100%
   );
   background-size: 200% 100%;
 }
@@ -71,10 +78,39 @@
   overflow: hidden;
   padding-bottom: 1rem;
 }
-.skeleton-card .skeleton-card-image {
+.skeleton-card .skeleton-card-image,
+.skeleton-card-image {
   width: 100%;
   aspect-ratio: 1;
   border-radius: 0; /* image fills the top — square-block */
+}
+
+/* When .skeleton-card-image stands alone inside a real .product-card-image
+   (i.e. the stripped-cache state — product card with real text but no image
+   yet), a centered icon makes the "loading" intent unmistakable. Without
+   this it just looked like a flat dark rectangle. */
+.product-card-image > .skeleton-card-image {
+  position: relative;
+  height: 100%;
+}
+.product-card-image > .skeleton-card-image::before {
+  /* Font Awesome image icon. Available because index.html loads the FA
+     stylesheet. Pointer-events: none so the icon doesn't intercept hover
+     on the product card. */
+  content: '\f03e';
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  color: rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+}
+[data-theme="light"] .product-card-image > .skeleton-card-image::before {
+  color: rgba(15, 23, 42, 0.22);
 }
 .skeleton-card .skeleton-card-body {
   padding: 1rem 1.25rem 0;
