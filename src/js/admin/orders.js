@@ -122,6 +122,10 @@
     }
 
     function refreshOrders() {
+      // Paint skeleton rows in the orders table during the sync so the
+      // operator sees a fresh loading state on click (instead of stale rows
+      // until the round-trip completes).
+      paintPanelSkeleton('orders');
       Storage.syncFromServer().then(function () {
         renderOrdersTable();
         showToast('✅ Refreshed from server', 'success');

@@ -206,7 +206,10 @@
       loginScreen.style.display = 'none';
       adminLayout.style.display = 'grid';
 
-      // Pull latest data from server before rendering anything
+      // Pull latest data from server before rendering anything. Paint
+       // skeletons in the destination panel first so the operator sees a
+       // loading state during the round-trip rather than blank panels.
+      paintPanelSkeleton('dashboard');
       await Storage.syncFromServer();
 
       try {
@@ -353,13 +356,45 @@
         titleEl.textContent = titles[panelId].t;
       }
 
+      // Paint skeletons in the destination panel BEFORE awaiting the sync.
+      // Without this the operator sees stale data from the previous panel
+      // render (or the previous switchPanel's leftovers) until the round-
+      // trip completes — confusing on a control panel where freshness
+      // matters. paintPanelSkeleton is a no-op for panels that don't fetch
+      // (categories, settings).
+      paintPanelSkeleton(panelId);
+
       // Pull latest stock/orders from the server so quantities reflect customer
       // purchases made by other users since the admin opened the panel.
       if (panelId === 'dashboard' || panelId === 'orders') {
         await Storage.syncFromServer();
       }
 
-      if (panelId === 'dashboard') renderProductsTable();
+      // Use initDashboard (not renderProductsTable alone) so the stat card +
+      // recent-products list also refresh — paintPanelSkeleton above filled
+      // both with skeletons, so we need a renderer that clears them.
+      if (panelId === 'dashboard') initDashboard();
       if (panelId === 'orders') renderOrdersTable();
       if (panelId === 'users') loadUsersTable();
+    }
+
+    // Paint skeleton placeholders into the loading-aware containers of the
+    // given panel. Called before any fetch that re-renders panel content so
+    // operators see "data refreshing" feedback instead of stale rows.
+    function paintPanelSkeleton(panelId) {
+      if (panelId === 'dashboard') {
+        const stat = document.getElementById('stat-total-products');
+        if (stat) stat.innerHTML = Skeleton.inlineLine('2rem');
+        const recent = document.getElementById('recent-products-list');
+        if (recent) recent.innerHTML = Skeleton.tableRows(5, 4);
+        const products = document.getElementById('admin-products-table');
+        if (products) products.innerHTML = Skeleton.tableRows(5, 7);
+      } else if (panelId === 'orders') {
+        const tbody = document.getElementById('orders-table-body');
+        if (tbody) tbody.innerHTML = Skeleton.tableRows(5, 8);
+      } else if (panelId === 'users') {
+        const tbody = document.getElementById('admin-users-table');
+        if (tbody) tbody.innerHTML = Skeleton.tableRows(5, 8);
+      }
+      // categories + settings panels have no async fetch — no skeleton needed.
     }
