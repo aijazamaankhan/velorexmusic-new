@@ -37,12 +37,21 @@
       renderLastSaveBadge();
       const products = Storage.getProducts();
       const totalEl = document.getElementById('stat-total-products');
-      if (totalEl) totalEl.textContent = products.length;
+      // Cold cache: replace the stat value with an inline shimmer until the
+      // sync pipeline calls initDashboard again with real data.
+      if (totalEl) {
+        if (products.length) totalEl.textContent = products.length;
+        else totalEl.innerHTML = Skeleton.inlineLine('2rem');
+      }
       renderOrdersTable();
       renderProductsTable();
 
       const recentList = document.getElementById('recent-products-list');
       if (!recentList) return;
+      if (!products.length) {
+        recentList.innerHTML = Skeleton.tableRows(5, 4);
+        return;
+      }
       const recent = products.slice(-5).reverse();
 
       recentList.innerHTML = recent.map(p => {
@@ -53,7 +62,7 @@
           <tr>
             <td>
               <div class="product-cell">
-                <img src="${p.image}" class="product-img" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=100&h=100&fit=crop'">
+                <img src="${p.image}" class="product-img" loading="lazy" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=100&h=100&fit=crop'">
                 <div>
                   <div style="font-weight: 700;">${Utils.escape(p.title)}</div>
                   <div style="font-size: 0.75rem; color: var(--text-muted);">${Utils.escape(p.artist)}</div>
@@ -89,6 +98,14 @@
       const tbody = document.getElementById('admin-products-table');
       if (!tbody) return;
 
+      // Cold cache + no search query: skeleton rows. Suppress skeleton if the
+      // user has applied a search/filter so an "0 results" doesn't flash as
+      // skeletons.
+      if (!allProducts.length && !searchQuery && !catFilter) {
+        tbody.innerHTML = Skeleton.tableRows(5, 7);
+        return;
+      }
+
       tbody.innerHTML = filtered.map(p => {
         const stock = Number.isFinite(p.stock) ? p.stock : 0;
         const stockClass = stock === 0 ? 'status-oos' : (stock < 5 ? 'status-low' : 'status-instock');
@@ -97,7 +114,7 @@
           <tr>
             <td>
               <div class="product-info">
-                <img src="${p.image}" class="product-img" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=100&h=100&fit=crop'">
+                <img src="${p.image}" class="product-img" loading="lazy" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=100&h=100&fit=crop'">
                 <div class="product-name-artist">
                   <div class="product-name">${Utils.escape(p.title)}</div>
                   <div style="font-size: 0.75rem; color: var(--text-muted);">${Utils.escape(p.artist)}</div>

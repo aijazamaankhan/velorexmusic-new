@@ -24,6 +24,7 @@
   <script src="src/js/storage.js"></script>
   <script src="src/js/auth.js"></script>
   <script src="src/js/addresses.js"></script>
+  <script src="src/js/skeleton.js"></script>
   <!-- Shared component JS extracted in PR 5. These are the leaves of the
        UI — toast, confirm dialog, cart, address modal. Page-level renderers
        still live in the inline <script> for now (will move in PR 6). -->
@@ -50,6 +51,7 @@
   <link rel="stylesheet" href="src/styles/components/modal.css">
   <link rel="stylesheet" href="src/styles/components/payment-modal.css">
   <link rel="stylesheet" href="src/styles/components/toast.css">
+  <link rel="stylesheet" href="src/styles/components/skeleton.css">
   <!-- Page-specific styles (hero, products, cart, profile, footer, etc.).
        Must load AFTER components so page-level rules override defaults. -->
   <link rel="stylesheet" href="src/styles/pages/storefront.css">
@@ -784,8 +786,12 @@
     // =============================================
     // INIT APP
     // =============================================
+    // First paint runs synchronously (with skeleton placeholders if the
+    // product cache is empty), then we kick off Storage.syncFromServer() in
+    // the background and re-render the current page when it resolves. This
+    // replaces the previous "await syncFromServer before navigate" pattern
+    // which left users staring at empty grids for the round-trip duration.
     document.addEventListener('DOMContentLoaded', async function() {
-      await Storage.syncFromServer();
       injectNavbar('home');
       injectFooter();
 
@@ -816,6 +822,15 @@
         navigate(initial.page, initial.params, { pushState: false });
         window.history.replaceState({ page: initial.page, params: initial.params }, '', buildPageUrl(initial.page, initial.params));
       }
+
+      // Background product sync. If the cache was warm (we have products in
+      // localStorage from a previous visit), the first paint above already
+      // showed real cards and this just refreshes them in place. If the
+      // cache was cold, initPageX rendered skeletons; once sync resolves we
+      // re-run the dispatcher to replace them with real data.
+      Storage.syncFromServer().then(function () {
+        try { initPage(currentPage, currentParams); } catch (e) { console.warn('post-sync rerender failed:', e); }
+      });
     });
   </script>
 

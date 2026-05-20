@@ -42,7 +42,7 @@
       return `
       <div class="product-card" data-id="${product.id}">
         <div class="product-card-image">
-          <img src="${product.image}" alt="${Utils.escape(product.title)}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=400&h=400&fit=crop'">
+          <img src="${product.image}" alt="${Utils.escape(product.title)}" loading="lazy" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=400&h=400&fit=crop'">
           ${badgeHtml}
           <div class="product-card-actions">
             <button class="quick-action-btn" onclick="CartHelpers.addToCart(${product.id})" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
@@ -139,13 +139,26 @@
 
     function initPageIndex() {
       var products = Storage.getProducts();
+      var bsg = document.getElementById('best-selling-grid'), nrg = document.getElementById('new-releases-grid'), ug = document.getElementById('upcoming-grid');
+      // Cold cache: paint skeletons in all three strips + category counts.
+      // The background sync in the DOMContentLoaded bootstrap will re-invoke
+      // initPageIndex once real data arrives.
+      if (!products.length) {
+        ['vinyl','cd','cassette','bluray','dvd'].forEach(cat => {
+          var el = document.getElementById(cat + '-count');
+          if (el) el.innerHTML = Skeleton.inlineLine('5rem');
+        });
+        if (bsg) bsg.innerHTML = Skeleton.productGrid(4);
+        if (nrg) nrg.innerHTML = Skeleton.productGrid(4);
+        if (ug)  ug.innerHTML  = Skeleton.productGrid(4);
+        return;
+      }
       var counts = { vinyl: 0, cd: 0, cassette: 0, bluray: 0, dvd: 0 };
       products.forEach(p => { if (counts[p.category] !== undefined) counts[p.category]++; });
       ['vinyl','cd','cassette','bluray','dvd'].forEach(cat => {
         var el = document.getElementById(cat + '-count');
         if (el) el.textContent = counts[cat] + ' titles available';
       });
-      var bsg = document.getElementById('best-selling-grid'), nrg = document.getElementById('new-releases-grid'), ug = document.getElementById('upcoming-grid');
       var emptyMsg = function (msg) { return '<p class="text-muted text-center" style="grid-column:1/-1;padding:1rem 0;">' + msg + '</p>'; };
       if (bsg) { var hot = products.filter(p => p.badge === 'hot').slice(0, 4); bsg.innerHTML = hot.length ? hot.map(createProductCard).join('') : emptyMsg('No bestsellers yet'); }
       if (nrg) { var nw = products.filter(p => p.badge === 'new').slice(0, 4); nrg.innerHTML = nw.length ? nw.map(createProductCard).join('') : emptyMsg('No new releases yet'); }
@@ -155,6 +168,16 @@
 
     function initPageProducts(params) {
       var allProducts = Storage.getProducts();
+      // Cold cache: paint skeleton cards in the grid + skip count updates.
+      // The DOMContentLoaded bootstrap's post-sync re-invocation will run
+      // initPageProducts again with real data.
+      if (!allProducts.length) {
+        var sg = document.getElementById('products-grid');
+        if (sg) sg.innerHTML = Skeleton.productGrid(8);
+        var sc = document.getElementById('products-count');
+        if (sc) sc.innerHTML = Skeleton.inlineLine('10rem');
+        return;
+      }
       document.querySelectorAll('#page-products input[name="cat"]').forEach(cb => cb.checked = false);
       document.querySelectorAll('#page-products input[name="lang"]').forEach(cb => cb.checked = false);
       document.querySelectorAll('#page-products input[name="people"]').forEach(cb => cb.checked = false);
@@ -408,12 +431,12 @@
       var primary = gallery[0] || 'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=800&h=800&fit=crop';
       var thumbsHtml = gallery.map(function (src, i) {
         var safe = String(src).replace(/'/g, "\\'");
-        return '<button type="button" class="product-detail-thumb' + (i === 0 ? ' active' : '') + '" onclick="selectGalleryThumb(this, \'' + safe + '\')"><img src="' + src + '" alt="thumbnail ' + (i + 1) + '" onerror="this.style.opacity=0.3"></button>';
+        return '<button type="button" class="product-detail-thumb' + (i === 0 ? ' active' : '') + '" onclick="selectGalleryThumb(this, \'' + safe + '\')"><img src="' + src + '" alt="thumbnail ' + (i + 1) + '" loading="lazy" decoding="async" onerror="this.style.opacity=0.3"></button>';
       }).join('');
       container.innerHTML = `
       <div class="product-detail">
         <div class="product-detail-gallery">
-          <div class="product-detail-main-image"><img src="${primary}" alt="${product.title}" id="mainImage" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=800&h=800&fit=crop'"></div>
+          <div class="product-detail-main-image"><img src="${primary}" alt="${product.title}" id="mainImage" fetchpriority="high" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=800&h=800&fit=crop'"></div>
           <div class="product-detail-thumbs">${thumbsHtml}</div>
         </div>
         <div class="product-detail-info">
@@ -493,7 +516,7 @@
       var total = subtotal + shipping;
       var itemsHtml = cartItems.map(item => `
       <div class="cart-item">
-        <div class="cart-item-image" onclick="navigate('product',{id:${item.id}})" style="cursor:pointer;"><img src="${item.image}" alt="${Utils.escape(item.title)}" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=200&fit=crop'"></div>
+        <div class="cart-item-image" onclick="navigate('product',{id:${item.id}})" style="cursor:pointer;"><img src="${item.image}" alt="${Utils.escape(item.title)}" loading="lazy" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=200&fit=crop'"></div>
         <div>
           <h4 class="cart-item-title" onclick="navigate('product',{id:${item.id}})" style="cursor:pointer;">${Utils.escape(item.title)}</h4>
           <p class="cart-item-meta">${Utils.escape(item.artist)} · ${item.category.toUpperCase()}</p>
@@ -533,6 +556,10 @@
         return;
       }
       populateProfileFromUser(user);
+      // Paint order-card skeletons while the orders fetch is in flight —
+      // the API call can take 500ms+ on a cold DB connection.
+      var ordersList = document.getElementById('orders-list');
+      if (ordersList) ordersList.innerHTML = Skeleton.orderCards(3);
       try {
         CURRENT_USER_ORDERS = await Auth.fetchOrders();
       } catch (e) { CURRENT_USER_ORDERS = []; }
@@ -573,7 +600,8 @@
 
     async function renderAddressesSPA(user) {
       var container = document.getElementById('addresses-list'); if (!container) return;
-      container.innerHTML = '<div style="grid-column:1/-1;color:var(--text-muted);font-size:0.9rem;">Loading addresses…</div>';
+      // Skeleton order-card-shaped blocks while /api/addresses.php loads.
+      container.innerHTML = Skeleton.orderCards(2);
       var list = [];
       try { list = await Addresses.fetchAll(true); } catch (e) { /* fall through to empty render */ }
       if (!list.length) {

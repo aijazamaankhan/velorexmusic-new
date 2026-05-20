@@ -140,6 +140,12 @@
       if (!tbody) return;
       renderStatusChips();
       var orders = Storage.getOrders();
+      // Cold cache (orders not synced yet): show skeleton rows. The sync
+      // pipeline calls renderOrdersTable() again once data lands.
+      if (orders === null || (Array.isArray(orders) && orders.length === 0 && !Storage._orders)) {
+        tbody.innerHTML = Skeleton.tableRows(5, 8);
+        return;
+      }
       var q = ((document.getElementById('ordersSearch') || {}).value || '').trim().toLowerCase();
 
       var filtered = orders.slice();

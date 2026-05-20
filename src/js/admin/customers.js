@@ -46,7 +46,8 @@
     async function loadUsersTable() {
       const tbody = document.getElementById('admin-users-table');
       if (!tbody) return;
-      tbody.innerHTML = '<tr><td colspan="8" style="padding:1.25rem;color:var(--text-muted);text-align:center;">Loading…</td></tr>';
+      // Skeleton 5 rows of 8 cells (matches the Customers panel column count).
+      tbody.innerHTML = Skeleton.tableRows(5, 8);
       try {
         const res = await fetch(API_BASE + '/admin/users.php', {
           cache: 'no-store',
@@ -106,7 +107,7 @@
       });
       if (filter === 'guests' && !CustState.guestsLoaded) {
         const tbody = document.getElementById('admin-users-table');
-        if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="padding:1.25rem;color:var(--text-muted);text-align:center;">Loading guests…</td></tr>';
+        if (tbody) tbody.innerHTML = Skeleton.tableRows(5, 7);
         loadGuestsTable();
       }
       renderUsersTable();
@@ -315,7 +316,7 @@
       });
 
       if (!CustState.guestsLoaded) {
-        tbody.innerHTML = '<tr><td colspan="8" style="padding:1.25rem;color:var(--text-muted);text-align:center;">Loading guests…</td></tr>';
+        tbody.innerHTML = Skeleton.tableRows(5, 8);
         return;
       }
 
@@ -533,7 +534,7 @@
 
     function renderOrdersTab() {
       const d = CustState.detail;
-      if (!d) return `<div class="drawer-empty">Loading orders…</div>`;
+      if (!d) return Skeleton.drawerSection(3);
       if (d._error) return `<div class="drawer-empty" style="color:var(--danger);">Failed to load: ${escapeHTML(d._error)}</div>`;
       if (!d.orders || d.orders.length === 0) return `<div class="drawer-empty">This customer hasn't placed an order yet.</div>`;
       return d.orders.map(o => {
@@ -554,7 +555,7 @@
 
     function renderAddressesTab() {
       const d = CustState.detail;
-      if (!d) return `<div class="drawer-empty">Loading addresses…</div>`;
+      if (!d) return Skeleton.drawerSection(2);
       if (d._error) return `<div class="drawer-empty" style="color:var(--danger);">Failed to load: ${escapeHTML(d._error)}</div>`;
       if (!d.addresses || d.addresses.length === 0) return `<div class="drawer-empty">No saved addresses.</div>`;
       return d.addresses.map(a => {

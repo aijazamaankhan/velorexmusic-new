@@ -42,7 +42,9 @@ velorexmusic-new/
 │       │   ├── forms.css        # .form-grid, .form-group, .form-label, .form-control
 │       │   ├── modal.css        # .modal-overlay > .modal pattern + mobile scroll-the-overlay fix
 │       │   ├── payment-modal.css# .payment-modal > .payment-card (Razorpay overlay)
-│       │   └── toast.css        # .toast-container + .toast variants + keyframes
+│       │   ├── toast.css        # .toast-container + .toast variants + keyframes
+│       │   └── skeleton.css     # Shared skeleton loaders — shimmer keyframe + card/row/
+│       │                        # order/stat/drawer shapes. Used by storefront + admin.
 │       ├── pages/
 │       │   ├── storefront.css   # All page-level storefront CSS (navbar, hero, products grid,
 │       │   │                    # cart, profile, footer, status stepper, responsive). Single
@@ -80,6 +82,9 @@ velorexmusic-new/
 │       ├── cart.js              # CartHelpers — addToCart/updateQty/getCartCount/getCartTotal + stock guards
 │       ├── address-form.js      # openAddressModal + country-aware state/postal/landmark/GSTIN widgets +
 │       │                        # submitAddressForm + confirmDeleteAddress (shared by profile + checkout)
+│       ├── skeleton.js          # Skeleton.{productGrid, orderCards, statCards, tableRows,
+│       │                        # drawerSection, inlineLine} — string-output helpers used by
+│       │                        # both storefront + admin for cold-cache placeholder UI.
 │       ├── storefront/
 │       │   ├── carriers.js      # CARRIERS_META + carrier helpers (inline SVG logos, tracking URLs)
 │       │   ├── pages.js         # createProductCard + all initPageXxx + page renderers

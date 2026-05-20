@@ -21,6 +21,7 @@
   <link rel="stylesheet" href="src/styles/admin/components/forms.css">
   <link rel="stylesheet" href="src/styles/admin/components/modal.css">
   <link rel="stylesheet" href="src/styles/admin/components/toast.css">
+  <link rel="stylesheet" href="src/styles/components/skeleton.css">
   <!-- Page-specific styles (sidebar, header, panels, tables, drawer, dashboard).
        Must load AFTER components so page-level rules override defaults. -->
   <link rel="stylesheet" href="src/styles/admin/pages/admin.css">
@@ -30,6 +31,7 @@
   <script src="src/js/utils.js"></script>
   <script src="src/js/api-base.js"></script>
   <script src="src/js/admin/storage.js"></script>
+  <script src="src/js/skeleton.js"></script>
   <!-- Admin app layer extracted in PR 7. Plain scripts (not type="module") so
        the inline onclick= handlers throughout the markup keep resolving via
        script-scope. Load order: main first (defines shared helpers like

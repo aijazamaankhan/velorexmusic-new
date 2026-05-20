@@ -1,0 +1,115 @@
+/* =============================================================================
+   Velorex Music — skeleton loaders (shared)
+   Used by: index.html + vlx-admin-2026.html
+
+   Replaces "Loading..." text + blank empty-states with shapes that match the
+   final layout (product cards, table rows, order cards, stat cards). The
+   shimmer animation is a moving linear-gradient — pure CSS, no JS.
+
+   API: see src/js/skeleton.js for the helpers that emit these classes. The
+   pattern is render-then-replace:
+     1. container.innerHTML = Skeleton.X(count)    // paint skeletons
+     2. const data = await fetch(...)              // fetch real data
+     3. container.innerHTML = renderReal(data)     // swap in
+   Skeletons are ephemeral DOM — they don't track real state.
+
+   Both light and dark themes are covered. The base color uses a translucent
+   white overlay over var(--surface) so it adapts automatically.
+
+   IMPORTANT: do NOT use ::before/::after on .skeleton — those pseudo-elements
+   are reserved by some component classes (e.g. .btn::after for the hover
+   sheen). Animation is applied directly to the element via background-position.
+   ============================================================================= */
+
+@keyframes vlx-skeleton-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+/* Base — every skeleton shape inherits this. Variants below adjust size only. */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: vlx-skeleton-shimmer 1.6s ease-in-out infinite;
+  border-radius: 6px;
+  display: block;
+  /* Prevents inline-collapse if a sibling line-height squeezes the box. */
+  min-height: 0.8em;
+}
+
+[data-theme="light"] .skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(15, 23, 42, 0.04) 0%,
+    rgba(15, 23, 42, 0.10) 50%,
+    rgba(15, 23, 42, 0.04) 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* Smaller primitives composed by the helpers in src/js/skeleton.js. */
+.skeleton-line     { height: 0.85rem; margin: 0.35rem 0; border-radius: 4px; }
+.skeleton-line-sm  { height: 0.7rem;  width: 60%; }
+.skeleton-line-lg  { height: 1.1rem;  width: 75%; }
+.skeleton-circle   { width: 40px; height: 40px; border-radius: 50%; }
+.skeleton-thumb    { width: 44px; height: 44px; border-radius: 8px; }
+.skeleton-badge    { width: 60px; height: 22px; border-radius: 999px; }
+.skeleton-btn      { width: 100%; height: 38px; border-radius: 8px; margin-top: 0.75rem; }
+
+/* ---- Product card shape (storefront home strips + products page grid) ---- */
+/* Mirrors the structure of createProductCard() so the layout doesn't shift
+   when real data replaces the skeleton. */
+.skeleton-card {
+  background: var(--card-bg, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 16px);
+  overflow: hidden;
+  padding-bottom: 1rem;
+}
+.skeleton-card .skeleton-card-image {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 0; /* image fills the top — square-block */
+}
+.skeleton-card .skeleton-card-body {
+  padding: 1rem 1.25rem 0;
+}
+
+/* ---- Order card (storefront profile → orders tab) ----------------------- */
+.skeleton-order-card {
+  background: var(--card-bg, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 16px);
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+/* ---- Stat card (admin dashboard) ---------------------------------------- */
+.skeleton-stat-card {
+  background: var(--surface-light, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+.skeleton-stat-card .skeleton-stat-label  { width: 50%; height: 0.65rem; }
+.skeleton-stat-card .skeleton-stat-value  { width: 35%; height: 1.75rem; margin-top: 0.75rem; }
+.skeleton-stat-card .skeleton-stat-meta   { width: 60%; height: 0.7rem;  margin-top: 0.75rem; }
+
+/* ---- Table-row shape (admin tables) ------------------------------------- */
+/* Renders inside <tbody> — uses table cells so the column widths align with
+   the real table header. Each cell holds one .skeleton-line. */
+.skeleton-tr td { padding: 1rem; vertical-align: middle; }
+.skeleton-tr .skeleton-line { width: 80%; }
+.skeleton-tr .skeleton-thumb { display: inline-block; vertical-align: middle; margin-right: 0.5rem; }
+
+/* ---- Drawer section (admin customer drawer tabs) ------------------------- */
+.skeleton-drawer-block {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.skeleton-drawer-block:last-child { border-bottom: 0; }
