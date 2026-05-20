@@ -68,18 +68,19 @@
       </div>
 
       <div class="glass-card">
-        <form onsubmit="alert('Message sent! We will get back to you soon.'); return false;">
+        <div id="contact-feedback" class="contact-feedback" style="display:none; margin-bottom:1rem;"></div>
+        <form id="contact-form"
           <div class="form-group">
             <label class="form-label">Full Name</label>
-            <input type="text" class="form-control" placeholder="John Doe" required>
+            <input type="text" name="fullName" class="form-control" placeholder="John Doe" required>
           </div>
           <div class="form-group">
             <label class="form-label">Email Address</label>
-            <input type="email" class="form-control" placeholder="john@example.com" required>
+            <input type="email" name="email" class="form-control" placeholder="john@example.com" required>
           </div>
           <div class="form-group">
             <label class="form-label">Subject</label>
-            <select class="form-control">
+            <select name="subject" class="form-control" required>
               <option>General Inquiry</option>
               <option>Order Issue</option>
               <option>Product Stock</option>
@@ -88,12 +89,15 @@
           </div>
           <div class="form-group">
             <label class="form-label">Message</label>
-            <textarea class="form-control" rows="5" placeholder="How can we help you?" required></textarea>
+            <textarea name="message" class="form-control" rows="5" placeholder="How can we help you?" required></textarea>
           </div>
           <button type="submit" class="btn"><i class="fas fa-paper-plane"></i> Send Message</button>
         </form>
       </div>
     </div>
   </div>
+  <script src="src/js/contact.js" defer></script>
 </body>
 </html>
+
+  <script

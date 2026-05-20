@@ -322,6 +322,7 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 | GET | `/api/categories.php` | — | `string[]` (sorted by `sort_order`) |
 | POST | `/api/auth/signup.php` | `{ email, password, firstName, lastName? }` | `{ ok, token, user }` |
 | POST | `/api/auth/login.php` | `{ email, password }` | `{ ok, token, user }` |
+| POST | `/api/contact.php` | `{ fullName, email, subject, message }` | `{ ok, message }` — sends a support request from the contact page. |
 | POST | `/api/payments/webhook.php` | raw Razorpay event body; auth via `X-Razorpay-Signature` header | `{ ok }` — server-to-server backstop. Verifies HMAC against `RAZORPAY_*_WEBHOOK_SECRET`. Never call this directly. |
 
 ### Customer-authenticated endpoints (require `Authorization: Bearer <token>`)
