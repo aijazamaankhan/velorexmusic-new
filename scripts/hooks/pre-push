@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+#
+# pre-push hook — refuses to push if any asset has changed without a matching
+# cache-bust rewrite in the HTML.
+#
+# Activate once per clone:
+#   git config core.hooksPath scripts/hooks
+#
+# Then every `git push` will run this. If it complains, run
+#   npm run prep-deploy
+# review the diff, commit, and push again.
+
+set -e
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-push: node not found — skipping cache-bust check." >&2
+  exit 0
+fi
+
+node scripts/bump-cache.js --check

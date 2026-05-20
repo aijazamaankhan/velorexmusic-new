@@ -147,6 +147,15 @@ velorexmusic-new/
 ├── package.json                 # Just Playwright + MCP — no app dependencies
 ├── playwright-mcp-server.js     # MCP server (used optionally for admin-panel browser tests)
 ├── test-admin-login.js          # Sanity test for admin login
+├── scripts/
+│   ├── bump-cache.js            # Content-hash cache-bust for HTML asset refs.
+│   │                            # `npm run prep-deploy` rewrites every <script>/<link>
+│   │                            # ?v= to a SHA-1 of the referenced file. See §9.
+│   ├── hooks/pre-push           # Refuses `git push` if cache-bust is stale.
+│   │                            # Activate per clone: `git config core.hooksPath scripts/hooks`
+│   ├── setup.js, start.js,      # Docker-based local dev orchestration (see §8.0)
+│   │   stop.js, logs.js
+│   └── schema.sql               # Authoritative schema dump applied to fresh DBs
 ├── .gitignore                   # node_modules, screenshots, api/config.php, etc.
 ├── .vscode/settings.json        # MCP config for VS Code
 ├── implementation_plan.md       # Historical: Razorpay integration plan
@@ -678,6 +687,7 @@ The site lives on Hostinger shared hosting. There are **two parts** that have to
 ### Code deploy (every push)
 
 ```bash
+npm run prep-deploy        # rewrites cache-bust hashes in every *.html
 git add .
 git commit -m "your message"
 git push origin master
@@ -687,6 +697,14 @@ Then on Hostinger:
 - hPanel → **Advanced** → **Git** → click **Deploy** (or **Pull**) on the registered repo
 
 If you set up the auto-deploy webhook in the repo's Settings → Webhooks, pushes to master deploy automatically with no manual click.
+
+**About `prep-deploy`.** [scripts/bump-cache.js](scripts/bump-cache.js) scans every `*.html` for `<script src=…>` / `<link href=…>` references to local `.js`/`.css` files and rewrites the `?v=…` to the first 8 hex chars of a SHA-1 of the file's contents. Only files that actually changed get a new hash, so customers re-download only what was modified. Skipping this step is what shipped a real customer-facing bug (cart showed "free shipping" while Razorpay charged a different number) — see the postmortem note below.
+
+**One-time setup (per clone) to wire the pre-push safety net:**
+```bash
+git config core.hooksPath scripts/hooks
+```
+After that, `git push` runs [scripts/hooks/pre-push](scripts/hooks/pre-push) which invokes `node scripts/bump-cache.js --check`. If any HTML's cache-bust is stale vs. the assets it references, the push is refused with a "Run `npm run prep-deploy`" message. Without the hook configured, you have to remember to run `prep-deploy` manually — the hook just makes forgetting impossible.
 
 ### When `api/config.php` needs updating
 
@@ -1062,4 +1080,5 @@ See `PLAYWRIGHT_MCP_README.md` for the optional MCP server setup if you want bro
 - **Be careful with `innerHTML`.** Always escape user-controlled strings with `Utils.escape()` (defined in index.html) or the `escapeHTML()` helper in vlx-admin-2026.html. SQL is safe everywhere because every query is prepared.
 - **Server is source of truth.** When in doubt, fetch from the API. localStorage is only a render cache.
 - **Bulk-replace semantics for products/categories.** Don't try to add per-item PATCH endpoints — the existing pattern is "send the whole list, server replaces atomically." Match that for new collection-type entities.
+- **Cache-bust is automatic — don't hand-edit `?v=…`.** Asset version strings on `<script>` / `<link>` tags are SHA-1 content hashes maintained by `npm run prep-deploy`. If you modify a `.js` or `.css` file, run that command before pushing (or rely on the pre-push hook from [§9 Deployment](#code-deploy-every-push) to remind you). Bumping by hand defeats the per-file-only caching and is easy to forget.
 - **Update this doc.** If you change the schema, add an endpoint, or change a major convention, update the relevant section in `CLAUDE.md` in the same commit.

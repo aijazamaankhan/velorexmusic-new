@@ -15,33 +15,33 @@
     rel="stylesheet">
   <!-- Admin design tokens + reset are extracted to standalone CSS files.
        See src/styles/admin/tokens.css and src/styles/admin/base.css. -->
-  <link rel="stylesheet" href="src/styles/admin/tokens.css?v=20260526">
-  <link rel="stylesheet" href="src/styles/admin/base.css?v=20260526">
-  <link rel="stylesheet" href="src/styles/admin/components/buttons.css?v=20260526">
-  <link rel="stylesheet" href="src/styles/admin/components/forms.css?v=20260526">
-  <link rel="stylesheet" href="src/styles/admin/components/modal.css?v=20260526">
-  <link rel="stylesheet" href="src/styles/admin/components/toast.css?v=20260526">
-  <link rel="stylesheet" href="src/styles/components/skeleton.css?v=20260526">
+  <link rel="stylesheet" href="src/styles/admin/tokens.css?v=4af9230f">
+  <link rel="stylesheet" href="src/styles/admin/base.css?v=875f13f9">
+  <link rel="stylesheet" href="src/styles/admin/components/buttons.css?v=ee0d573c">
+  <link rel="stylesheet" href="src/styles/admin/components/forms.css?v=03e0888c">
+  <link rel="stylesheet" href="src/styles/admin/components/modal.css?v=b1c80662">
+  <link rel="stylesheet" href="src/styles/admin/components/toast.css?v=e324991f">
+  <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
   <!-- Page-specific styles (sidebar, header, panels, tables, drawer, dashboard).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/admin/pages/admin.css?v=20260526">
+  <link rel="stylesheet" href="src/styles/admin/pages/admin.css?v=b446bdd4">
   <!-- Admin JS modules extracted in PR 4. Plain scripts (not type="module") so
        the existing inline <script> + onclick= handlers resolve them via
        script-scope. Order: leaves first. -->
-  <script src="src/js/utils.js?v=20260526"></script>
-  <script src="src/js/api-base.js?v=20260526"></script>
-  <script src="src/js/admin/storage.js?v=20260526"></script>
-  <script src="src/js/skeleton.js?v=20260526"></script>
+  <script src="src/js/utils.js?v=15bf1815"></script>
+  <script src="src/js/api-base.js?v=0ce972cf"></script>
+  <script src="src/js/admin/storage.js?v=43f70677"></script>
+  <script src="src/js/skeleton.js?v=6ca28cb2"></script>
   <!-- Admin app layer extracted in PR 7. Plain scripts (not type="module") so
        the inline onclick= handlers throughout the markup keep resolving via
        script-scope. Load order: main first (defines shared helpers like
        adminAuthHeaders, switchPanel), then per-panel files, then toast last
        (the admin showToast — different shape from the storefront's). -->
-  <script src="src/js/admin/main.js?v=20260526"></script>
-  <script src="src/js/admin/customers.js?v=20260526"></script>
-  <script src="src/js/admin/orders.js?v=20260526"></script>
-  <script src="src/js/admin/inventory.js?v=20260526"></script>
-  <script src="src/js/admin/toast.js?v=20260526"></script>
+  <script src="src/js/admin/main.js?v=a3622393"></script>
+  <script src="src/js/admin/customers.js?v=127735c1"></script>
+  <script src="src/js/admin/orders.js?v=fef46ea8"></script>
+  <script src="src/js/admin/inventory.js?v=ba20b189"></script>
+  <script src="src/js/admin/toast.js?v=9a4bf3e8"></script>
 </head>
 
 <body>

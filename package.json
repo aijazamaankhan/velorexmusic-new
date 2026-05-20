@@ -10,6 +10,7 @@
     "logs": "node scripts/logs.js",
     "mcp": "node playwright-mcp-server.js",
     "test:admin": "node test-admin-login.js",
+    "prep-deploy": "node scripts/bump-cache.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
