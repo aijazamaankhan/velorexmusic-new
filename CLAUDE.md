@@ -86,8 +86,20 @@ velorexmusic-new/
 │       │   └── checkout.js      # checkoutSPA + processPayment + guest contact/address form +
 │       │                        # guest-upgrade modal (Phase 1C) + renderCheckoutAddressPicker
 │       └── admin/
-│           └── storage.js       # Admin Storage helper — caches products/orders/categories
-│                                # with the same 3-tier degradation pattern
+│           ├── storage.js       # Admin Storage helper — caches products/orders/categories
+│           │                    # with the same 3-tier degradation pattern
+│           ├── main.js          # adminAuthHeaders + last-save badge + category helpers +
+│           │                    # checkAuth/showAdminLayout/handleLogin/handleLogout +
+│           │                    # theme + toggleAdminSidebar + switchPanel + load listeners
+│           ├── customers.js     # Customers panel (CustState + table + Guests filter) +
+│           │                    # right-side drawer (profile/orders/addresses/sessions/
+│           │                    # notes/danger tabs) + all customer mutations
+│           ├── orders.js        # Orders panel + order detail modal + status taxonomy +
+│           │                    # inline shipment edit + patchOrder + print invoice
+│           ├── inventory.js     # Dashboard + products table + product modal (new + edit) +
+│           │                    # image gallery + bulk CSV upload
+│           └── toast.js         # Admin showToast (single-element pattern, distinct from
+│                                # storefront's container+items toast)
 ├── contact.html, faq.html,      # Static info pages.
 │   shipping.html, returns.html,
 │   track-order.html, maintenance.html
