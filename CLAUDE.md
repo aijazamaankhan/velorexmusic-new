@@ -76,6 +76,15 @@ velorexmusic-new/
 │       ├── cart.js              # CartHelpers — addToCart/updateQty/getCartCount/getCartTotal + stock guards
 │       ├── address-form.js      # openAddressModal + country-aware state/postal/landmark/GSTIN widgets +
 │       │                        # submitAddressForm + confirmDeleteAddress (shared by profile + checkout)
+│       ├── storefront/
+│       │   ├── carriers.js      # CARRIERS_META + carrier helpers (inline SVG logos, tracking URLs)
+│       │   ├── pages.js         # createProductCard + all initPageXxx + page renderers
+│       │   │                    # (login/signup/home/products/product-detail/cart/profile)
+│       │   ├── router.js        # injectNavbar + injectFooter + theme/mobile-nav toggles +
+│       │   │                    # buildPageUrl/parsePageFromUrl/navigate/initPage dispatcher +
+│       │   │                    # currentPage/_detailQty/_detailMax/CURRENT_USER_ORDERS state
+│       │   └── checkout.js      # checkoutSPA + processPayment + guest contact/address form +
+│       │                        # guest-upgrade modal (Phase 1C) + renderCheckoutAddressPicker
 │       └── admin/
 │           └── storage.js       # Admin Storage helper — caches products/orders/categories
 │                                # with the same 3-tier degradation pattern
