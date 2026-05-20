@@ -149,8 +149,39 @@ body { padding-top: 70px; }
 .quick-action-btn:hover { background: var(--secondary); color: white; }
 .product-card-body { padding: 1.25rem; display: flex; flex-direction: column; flex: 1; }
 .product-category-tag { font-size: 0.72rem; color: var(--secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.5rem; }
-.product-title { font-family: var(--font-display); font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; line-height: 1.3; display: -webkit-box; line-clamp: 2; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.product-artist { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+/* Title + artist both clamped to 2 lines AND reserved at the 2-line height.
+   Without the min-height, the CSS Grid (align-items: stretch by default)
+   makes shorter cards balloon out vertically to match the tallest card in
+   the row — most visible when one product has a long actor list (e.g.
+   "Khamoshi/Anupama" with 8 performers): the OTHER cards in that row
+   inherit the height and show a big blank gap between rating and price.
+   Fixing the heights here keeps every card in a row visually identical
+   regardless of content length. */
+.product-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+  line-height: 1.3;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.6em; /* 2 lines × 1.3 line-height */
+}
+.product-artist {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+  line-height: 1.4;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.8em; /* 2 lines × 1.4 line-height */
+}
 .product-rating { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.75rem; min-height: 1.2rem; }
 .stars { color: var(--accent); font-size: 0.75rem; }
 .rating-count { font-size: 0.75rem; color: var(--text-muted); }

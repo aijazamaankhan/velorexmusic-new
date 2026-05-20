@@ -18,43 +18,43 @@
        leaves first, then objects that reference them. All are plain scripts
        (not type="module") so the inline <script> later in the body and
        inline onclick= handlers can resolve them via script-scope. -->
-  <script src="src/js/utils.js?v=20260524"></script>
-  <script src="src/js/api-base.js?v=20260524"></script>
-  <script src="src/js/constants.js?v=20260524"></script>
-  <script src="src/js/storage.js?v=20260524"></script>
-  <script src="src/js/auth.js?v=20260524"></script>
-  <script src="src/js/addresses.js?v=20260524"></script>
-  <script src="src/js/skeleton.js?v=20260524"></script>
+  <script src="src/js/utils.js?v=20260525"></script>
+  <script src="src/js/api-base.js?v=20260525"></script>
+  <script src="src/js/constants.js?v=20260525"></script>
+  <script src="src/js/storage.js?v=20260525"></script>
+  <script src="src/js/auth.js?v=20260525"></script>
+  <script src="src/js/addresses.js?v=20260525"></script>
+  <script src="src/js/skeleton.js?v=20260525"></script>
   <!-- Shared component JS extracted in PR 5. These are the leaves of the
        UI — toast, confirm dialog, cart, address modal. Page-level renderers
        still live in the inline <script> for now (will move in PR 6). -->
-  <script src="src/js/toast.js?v=20260524"></script>
-  <script src="src/js/confirm-dialog.js?v=20260524"></script>
-  <script src="src/js/cart.js?v=20260524"></script>
-  <script src="src/js/address-form.js?v=20260524"></script>
+  <script src="src/js/toast.js?v=20260525"></script>
+  <script src="src/js/confirm-dialog.js?v=20260525"></script>
+  <script src="src/js/cart.js?v=20260525"></script>
+  <script src="src/js/address-form.js?v=20260525"></script>
   <!-- Storefront app layer extracted in PR 6. Load order: carriers (data
        only, no deps) → pages (renderers + initPage*) → router (uses
        initPage*) → checkout (used by router + page handlers). All four
        end up in script-scope; the inline <script> at the bottom of <body>
        just bootstraps DOMContentLoaded. -->
-  <script src="src/js/storefront/carriers.js?v=20260524"></script>
-  <script src="src/js/storefront/pages.js?v=20260524"></script>
-  <script src="src/js/storefront/router.js?v=20260524"></script>
-  <script src="src/js/storefront/checkout.js?v=20260524"></script>
+  <script src="src/js/storefront/carriers.js?v=20260525"></script>
+  <script src="src/js/storefront/pages.js?v=20260525"></script>
+  <script src="src/js/storefront/router.js?v=20260525"></script>
+  <script src="src/js/storefront/checkout.js?v=20260525"></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
        they can be shared between the storefront pages without duplication.
        See src/styles/tokens.css and src/styles/base.css. -->
-  <link rel="stylesheet" href="src/styles/tokens.css?v=20260524">
-  <link rel="stylesheet" href="src/styles/base.css?v=20260524">
-  <link rel="stylesheet" href="src/styles/components/buttons.css?v=20260524">
-  <link rel="stylesheet" href="src/styles/components/forms.css?v=20260524">
-  <link rel="stylesheet" href="src/styles/components/modal.css?v=20260524">
-  <link rel="stylesheet" href="src/styles/components/payment-modal.css?v=20260524">
-  <link rel="stylesheet" href="src/styles/components/toast.css?v=20260524">
-  <link rel="stylesheet" href="src/styles/components/skeleton.css?v=20260524">
+  <link rel="stylesheet" href="src/styles/tokens.css?v=20260525">
+  <link rel="stylesheet" href="src/styles/base.css?v=20260525">
+  <link rel="stylesheet" href="src/styles/components/buttons.css?v=20260525">
+  <link rel="stylesheet" href="src/styles/components/forms.css?v=20260525">
+  <link rel="stylesheet" href="src/styles/components/modal.css?v=20260525">
+  <link rel="stylesheet" href="src/styles/components/payment-modal.css?v=20260525">
+  <link rel="stylesheet" href="src/styles/components/toast.css?v=20260525">
+  <link rel="stylesheet" href="src/styles/components/skeleton.css?v=20260525">
   <!-- Page-specific styles (hero, products, cart, profile, footer, etc.).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=20260524">
+  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=20260525">
 </head>
 
 <body>
