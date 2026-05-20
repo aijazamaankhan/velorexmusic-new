@@ -17,8 +17,10 @@
 // In both paths the server does:
 //   1. Loads each product by id FROM THE DATABASE — this is the price the
 //      customer will be charged. The client cannot influence the price.
-//   2. Recomputes subtotal + shipping server-side. Same rule as the UI
-//      (₹99 shipping below ₹999 subtotal, free above).
+//   2. Recomputes subtotal + shipping server-side. Same zone rule as the UI
+//      (see api/_shipping_helpers.php — mirror of src/js/shipping.js): zone
+//      based on the shipping address (Delhi/NCR ₹49, rest of India ₹99,
+//      remote zones ₹199), free PAN India at ₹5,000+ subtotal.
 //   3. Calls Razorpay's create-order API to mint an order_id bound to that
 //      amount. The browser cannot tamper with the bound amount.
 //   4. Persists a payment_orders row so verify.php can look it up later.
@@ -30,6 +32,7 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../_razorpay.php';
 require_once __DIR__ . '/../_address_helpers.php';
+require_once __DIR__ . '/../_shipping_helpers.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -105,6 +108,22 @@ try {
         ];
     }
 
+    // -------- International gate --------
+    // Velorex doesn't process intl payments through Razorpay today (no IEC /
+    // FEMA setup yet); customers email orders@ for a manual quote + payment
+    // link. The browser already disables Pay Now for non-IN addresses; this
+    // is defense in depth in case anything bypasses the UI. Mirrors the
+    // intl-block messaging in index.html so the frontend can surface it.
+    $addrCountry = strtoupper((string)($addressSnapshot['countryCode'] ?? ''));
+    if ($addrCountry !== '' && $addrCountry !== 'IN') {
+        http_response_code(400);
+        echo json_encode([
+            'error' => 'We ship within India only. For international orders, please email orders@velorexmusic.com — we will quote shipping and share a payment link.',
+            'code'  => 'intl_not_supported',
+        ]);
+        exit;
+    }
+
     // -------- Items + canonical price --------
     // Collapse duplicate-line items (id repeated) and reject malformed entries.
     $quantities = [];
@@ -174,8 +193,9 @@ try {
         ];
     }
 
-    $shipping = $subtotal >= 999 ? 0 : 99;
-    $total    = $subtotal + $shipping;
+    $shipQuote = shipping_calculate((int)$subtotal, $addressSnapshot);
+    $shipping  = $shipQuote['shipping'];
+    $total     = $subtotal + $shipping;
     if ($total < 1) {
         http_response_code(400);
         echo json_encode(['error' => 'Order total must be at least ₹1']);

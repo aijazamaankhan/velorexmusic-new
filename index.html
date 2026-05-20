@@ -24,6 +24,7 @@
   <script src="src/js/storage.js?v=20260526"></script>
   <script src="src/js/auth.js?v=20260526"></script>
   <script src="src/js/addresses.js?v=20260526"></script>
+  <script src="src/js/shipping.js?v=20260526"></script>
   <script src="src/js/skeleton.js?v=20260526"></script>
   <!-- Shared component JS extracted in PR 5. These are the leaves of the
        UI — toast, confirm dialog, cart, address modal. Page-level renderers
@@ -558,6 +559,29 @@
         </div>
         <div class="payment-body">
           <div class="payment-amount" id="payment-amount-display">₹0.00</div>
+          <div id="payment-summary-line" style="text-align:center;font-size:0.78rem;color:var(--text-muted);margin-top:-0.35rem;margin-bottom:1rem;line-height:1.5;"></div>
+
+          <!-- International-order block. Surfaced whenever the currently-selected
+               shipping address (registered) or guest-form country is non-IN.
+               Velorex doesn't ship internationally via the checkout today;
+               customers email orders@ for a manual quote + payment link. The
+               address fields below stay visible so the customer can switch
+               back to an India address without losing context. Server-side
+               defense lives in api/payments/create-order.php. -->
+          <div id="checkout-intl-block" style="display:none;margin-bottom:1rem;padding:1.25rem;text-align:center;background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.3);border-radius:10px;">
+            <div style="font-size:2rem;margin-bottom:0.5rem;line-height:1;">🌍</div>
+            <h3 style="margin:0 0 0.4rem;font-family:var(--font-display);font-size:1.05rem;">We ship within India only</h3>
+            <p style="margin:0 0 0.85rem;color:var(--text-muted);font-size:0.85rem;line-height:1.55;">
+              Your shipping address is in <strong id="checkout-intl-country-name">another country</strong>.
+              For international orders, email us — we'll quote shipping for your country and share a secure payment link.
+            </p>
+            <a href="mailto:orders@velorexmusic.com?subject=International%20order%20enquiry" class="btn btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;gap:0.4em;">
+              <i class="fas fa-envelope"></i> Email orders@velorexmusic.com
+            </a>
+            <p style="margin:0.65rem 0 0;font-size:0.72rem;color:var(--text-muted);">
+              Typical reply within 1 business day. To check out now, switch your address country below to India.
+            </p>
+          </div>
 
           <!-- Guest-only sign-in hint. Hidden when the user is logged in. -->
           <div id="checkout-signin-hint" style="display:none;margin-bottom:1rem;padding:0.65rem 0.85rem;background:rgba(255,107,53,0.06);border:1px solid rgba(255,107,53,0.25);border-radius:8px;font-size:0.85rem;color:var(--text-muted);">

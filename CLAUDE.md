@@ -77,6 +77,10 @@ velorexmusic-new/
 │       │                        # degradation against localStorage quota, per-user cart
 │       ├── auth.js              # Auth — bearer token + session + login/signup/logout
 │       ├── addresses.js         # Addresses CRUD wrapper around /api/addresses.php
+│       ├── shipping.js          # Shipping.calculate(subtotal, address) — zone-based
+│       │                        # tiers (Delhi/NCR ₹49, rest ₹99, remote ₹199; free
+│       │                        # pan-India ≥ ₹5,000). PHP mirror in api/_shipping_helpers.php
+│       │                        # — keep both files in sync.
 │       ├── toast.js             # showToast() — bottom-right pill, auto-dismisses (storefront)
 │       ├── confirm-dialog.js    # openConfirmDialog/closeConfirmDialog — styled window.confirm replacement
 │       ├── cart.js              # CartHelpers — addToCart/updateQty/getCartCount/getCartTotal + stock guards
@@ -131,6 +135,9 @@ velorexmusic-new/
 │   │   ├── customer-detail.php  # GET ?userId=N → orders, addresses, sessions (batched for the admin drawer)
 │   │   └── guest-customers.php  # GET → rolled-up guest checkouts grouped by email (admin Guests filter)
 │   ├── _address_helpers.php     # Shared address validation + snapshot helpers (addresses.php + create-order.php)
+│   ├── _shipping_helpers.php    # shipping_calculate($subtotal,$address) — server mirror of
+│   │                            # src/js/shipping.js. Authoritative at /api/payments/create-order.php
+│   │                            # time; keep both files in sync.
 │   ├── _mailer.php              # PHPMailer wrapper: send_mail($to,$name,$subject,$html,$text). Never throws.
 │   ├── _email_templates.php     # order_receipt_email($orderData) → { subject, html, text }
 │   └── lib/PHPMailer/           # PHPMailer v6.9.1 — three vendored files, no Composer
@@ -340,7 +347,7 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 | POST | `/api/auth/change-password.php` | `{ currentPassword, newPassword }` | `{ ok }` (invalidates all OTHER sessions for this user) |
 | GET | `/api/orders.php` | — | `Order[]` (caller's orders) |
 | ~~POST `/api/orders.php`~~ | — | — | **Disabled** — returns 410. Order creation runs through the verified payment flow below; direct POSTs were a security hole. |
-| POST | `/api/payments/create-order.php` | Registered: `{ items: [{id, qty}], addressId }`. Guest (no Bearer token): `{ items: [{id, qty}], contact: {email, phone}, shippingAddress: {fullName, phone, line1, line2?, landmark?, city, state?, postalCode?, countryCode, gstin?, label?} }`. | `{ ok, keyId, razorpayOrderId, amount, currency, mode, subtotal, shipping, total }` — server recomputes the total from DB prices and mints a Razorpay order bound to that amount. For guest payloads the contact + address are validated inline; the snapshot is persisted on `payment_orders` and copied into `orders.order_data` at finalize time. |
+| POST | `/api/payments/create-order.php` | Registered: `{ items: [{id, qty}], addressId }`. Guest (no Bearer token): `{ items: [{id, qty}], contact: {email, phone}, shippingAddress: {fullName, phone, line1, line2?, landmark?, city, state?, postalCode?, countryCode, gstin?, label?} }`. | `{ ok, keyId, razorpayOrderId, amount, currency, mode, subtotal, shipping, total }` — server recomputes the total from DB prices and mints a Razorpay order bound to that amount. For guest payloads the contact + address are validated inline; the snapshot is persisted on `payment_orders` and copied into `orders.order_data` at finalize time. **India-only:** non-IN `countryCode` returns 400 with `code: 'intl_not_supported'` — intl orders go via email enquiry (see [shipping.html](shipping.html) policy + `checkout-intl-block` in [index.html](index.html)). |
 | POST | `/api/payments/verify.php` | `{ razorpay_order_id, razorpay_payment_id, razorpay_signature }` | `{ ok, orderId, alreadyFinalized }` — verifies HMAC, decrements stock, creates the internal `orders` row. Idempotent. Works for both registered and guest payments — for guest rows (where `payment_orders.user_id IS NULL`) the HMAC signature alone is the gate (only Razorpay and the paying browser ever see it), so no Bearer-token session is required. |
 | GET | `/api/addresses.php` | — | `Address[]` (caller's saved addresses, default first) |
 | POST | `/api/addresses.php` | `{ id?, fullName, phone, line1, line2?, landmark?, city, state?, postalCode?, countryCode, label?, gstin?, isDefault? }` | `{ ok, address }` — `id` present = update, absent = create. Max 10 per user. |
@@ -1038,6 +1045,7 @@ See `PLAYWRIGHT_MCP_README.md` for the optional MCP server setup if you want bro
 |---|---|---|
 | Forgot password (email-based) | Deferred | Currently shows a "contact support" page; admin manually resets via the Customers panel. Implementing email reset requires SMTP creds on Hostinger and PHPMailer. |
 | Email verification on signup | Skipped | Users can log in immediately after signup. Same SMTP dependency as above. |
+| International checkout | Gated by design | The Razorpay checkout flow is India-only today. Non-IN addresses surface a "We ship within India only — email us for a quote" block at checkout (`checkout-intl-block` in [index.html](index.html); `setCheckoutIntlBlocked` in [src/js/storefront/checkout.js](src/js/storefront/checkout.js)) and `api/payments/create-order.php` rejects them with `code: 'intl_not_supported'`. To re-enable: needs IEC code + Razorpay International KYC + a carrier-quote step. The address book still accepts intl addresses (saving is fine; checkout is what's gated). |
 | Address book CRUD | ✅ Shipped | India + international, multi-address per user, default flag, per-country state/postal rules. UI: profile tab + checkout picker. API: `api/addresses.php`. Orders snapshot `shippingAddress` into `orders.order_data` at place-order time. |
 | Wishlist persistence | Stub | The Wishlist tab in profile shows the first 3 products as filler. Would need a `wishlist` table or per-user JSON. |
 | Order status updates | Local-only | Admin can change an order's status in the UI but it only updates localStorage on the admin's browser. Needs a PATCH endpoint on `orders.php`. |

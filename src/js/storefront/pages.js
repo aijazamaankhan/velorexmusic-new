@@ -538,7 +538,7 @@
             </div>
             <div class="product-actions-group">${actionBtns}</div>
             <div class="product-detail-footnote">
-              <div>🚚 Free shipping on orders above ₹999</div>
+              <div>🚚 Free shipping on orders above ₹5,000</div>
               <div>🔒 Secure payment</div>
             </div>
           </div>
@@ -581,8 +581,18 @@
     function initPageCart() {
       var cartItems = CartHelpers.getCartWithDetails(), container = document.getElementById('cart-main'); if (!container) return;
       if (!cartItems.length) { container.innerHTML = '<div class="empty-cart" style="padding:6rem 2rem;"><div class="empty-cart-icon"><i class="fas fa-shopping-cart"></i></div><h3>Your cart is empty</h3><p>Let\'s fix that!</p><a href="#" onclick="navigate(\'products\')" class="btn btn-primary btn-lg"><i class="fas fa-music"></i> Start Shopping</a></div>'; return; }
-      var subtotal = CartHelpers.getCartTotal(), shipping = subtotal >= 999 ? 0 : 99;
-      var total = subtotal + shipping;
+      // On the cart page we don't yet know the customer's address, so the
+      // exact shipping zone is unresolved. Show "Calculated at checkout"
+      // for paid shipping, and "FREE" once the subtotal crosses the
+      // pan-India free-shipping threshold. The actual zone-based rate is
+      // shown in the payment modal once an address is picked, and the
+      // server is authoritative at order-creation time.
+      var subtotal = CartHelpers.getCartTotal();
+      var quote = Shipping.calculate(subtotal, null);
+      // Cart total shows the subtotal only — shipping is either free (≥ threshold)
+      // or unknown until the address is picked at checkout. The order summary's
+      // shipping line reflects that distinction.
+      var total = subtotal;
       var itemsHtml = cartItems.map(item => `
       <div class="cart-item">
         <div class="cart-item-image" onclick="navigate('product',{id:${item.id}})" style="cursor:pointer;">${
@@ -604,7 +614,9 @@
         </div>
         <div class="cart-item-price"><div class="price">₹${(item.price * item.qty).toLocaleString()}</div><div class="unit-price">₹${item.price.toLocaleString()} each</div></div>
       </div>`).join('');
-      var shippingHtml = shipping === 0 ? '🚚 ✅ <strong style="color:var(--success);">Free shipping applied!</strong>' : `🚚 Add ₹${(999 - subtotal).toLocaleString()} more for <strong style="color:var(--success);">FREE shipping</strong>`;
+      var shippingHtml = quote.freeShipping
+        ? '🚚 ✅ <strong style="color:var(--success);">Free shipping applied!</strong>'
+        : `🚚 Add ₹${quote.amountToFree.toLocaleString()} more for <strong style="color:var(--success);">FREE shipping pan-India</strong>`;
       container.innerHTML = `<div class="cart-layout"><div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;"><h2 style="font-family:var(--font-display);font-size:1.25rem;">${cartItems.length} item${cartItems.length > 1 ? 's' : ''} in cart</h2><button class="btn btn-sm btn-danger" onclick="clearCartSPA()"><i class="fas fa-trash-can"></i> Clear Cart</button></div>
         <div class="cart-items-list">${itemsHtml}</div>
@@ -613,8 +625,8 @@
       <div><div class="cart-summary">
         <h3 class="summary-title">Order Summary</h3>
         <div class="summary-row"><span>Subtotal</span><span>₹${subtotal.toLocaleString()}</span></div>
-        <div class="summary-row"><span>Shipping</span><span>${shipping === 0 ? '<span style="color:var(--success);">FREE</span>' : '₹' + shipping}</span></div>
-        <div class="summary-row total"><span>Total</span><span class="amount">₹${total.toLocaleString()}</span></div>
+        <div class="summary-row"><span>Shipping</span><span>${quote.freeShipping ? '<span style="color:var(--success);">FREE</span>' : '<span style="color:var(--text-muted);font-size:0.85em;">Calculated at checkout</span>'}</span></div>
+        <div class="summary-row total"><span>Total</span><span class="amount">₹${total.toLocaleString()}${quote.freeShipping ? '' : '<span style="display:block;font-size:0.7rem;color:var(--text-muted);font-weight:400;margin-top:0.2rem;">+ shipping</span>'}</span></div>
         <button class="btn btn-primary btn-lg btn-block" style="margin-top:1.5rem;" onclick="checkoutSPA()">⚡ Proceed to Checkout</button>
         <a href="#" onclick="navigate('products')" class="btn btn-secondary btn-block" style="margin-top:0.75rem;">← Continue Shopping</a>
       </div></div></div>`;

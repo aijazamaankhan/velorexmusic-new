@@ -33,6 +33,97 @@
     // Selected shipping address id for the current checkout session. Cleared when the modal closes.
     let CHECKOUT_SELECTED_ADDRESS_ID = null;
 
+    // Returns an {countryCode, state, postalCode}-shaped object describing the
+    // address currently selected/entered in the checkout modal, or null when
+    // nothing is selected yet (e.g. guest with empty form). Tolerates partial
+    // input — the Shipping module treats missing fields as "rest of India".
+    function readCurrentCheckoutAddress() {
+      if (Auth.isLoggedIn()) {
+        var picked = (Addresses._cached || []).find(a => a.id === CHECKOUT_SELECTED_ADDRESS_ID);
+        return picked || null;
+      }
+      var countryEl = document.getElementById('guest-addr-country');
+      if (!countryEl || !countryEl.value) return null;
+      return {
+        countryCode: countryEl.value,
+        state: typeof readGuestAddressFormState === 'function' ? readGuestAddressFormState() : '',
+        postalCode: (document.getElementById('guest-addr-postal') || {}).value || '',
+      };
+    }
+
+    // Returns true if the address is non-IN (and country is set). Used to
+    // gate checkout — intl orders are by email enquiry only today.
+    function isCheckoutAddressIntl(addr) {
+      if (!addr) return false;
+      var cc = (addr.countryCode || '').toUpperCase();
+      return cc !== '' && cc !== 'IN';
+    }
+
+    // Toggles the "international order? email us" block + disables the
+    // Pay Now button. Idempotent. Called from every code path that can
+    // change the currently-selected address (registered picker, guest
+    // country select). Server-side gate in create-order.php mirrors this.
+    function setCheckoutIntlBlocked(blocked, countryCode) {
+      var block = document.getElementById('checkout-intl-block');
+      var sumLine = document.getElementById('payment-summary-line');
+      var payBtn = document.getElementById('payment-pay-btn');
+      var nameEl = document.getElementById('checkout-intl-country-name');
+      if (block) block.style.display = blocked ? '' : 'none';
+      if (sumLine) sumLine.style.display = blocked ? 'none' : '';
+      if (payBtn) {
+        payBtn.disabled = !!blocked;
+        payBtn.innerHTML = blocked ? '🌍 International orders: email us' : '⚡ Pay Now';
+        payBtn.style.opacity = blocked ? '0.5' : '';
+        payBtn.style.cursor = blocked ? 'not-allowed' : '';
+      }
+      if (blocked && nameEl) {
+        var label = '';
+        if (Array.isArray(COUNTRIES)) {
+          var row = COUNTRIES.find(function (c) { return c[0] === (countryCode || '').toUpperCase(); });
+          if (row) label = row[1];
+        }
+        nameEl.textContent = label || 'another country';
+      }
+    }
+
+    // Recomputes the preview total + shipping line in the payment modal based
+    // on the cart subtotal and the currently selected/entered address. Safe to
+    // call multiple times; idempotent. The server is authoritative at
+    // /api/payments/create-order.php time — this is preview-only.
+    //
+    // When the address is non-IN, defers to setCheckoutIntlBlocked() for UX —
+    // we don't paint a misleading "Subtotal + Shipping ₹X" preview for an
+    // order we won't actually take through Razorpay.
+    function recomputeCheckoutShipping() {
+      var subtotal = CartHelpers.getCartTotal();
+      var addr = readCurrentCheckoutAddress();
+
+      if (isCheckoutAddressIntl(addr)) {
+        setCheckoutIntlBlocked(true, addr.countryCode);
+        return;
+      }
+      setCheckoutIntlBlocked(false);
+
+      var quote = Shipping.calculate(subtotal, addr);
+      var total = subtotal + quote.shipping;
+
+      var amtEl = document.getElementById('payment-amount-display');
+      if (amtEl) amtEl.textContent = '₹' + total.toLocaleString();
+
+      var lineEl = document.getElementById('payment-summary-line');
+      if (!lineEl) return;
+      var subPart = 'Subtotal ₹' + subtotal.toLocaleString();
+      var shipPart;
+      if (quote.freeShipping) {
+        shipPart = ' · Shipping <span style="color:var(--success);font-weight:600;">FREE</span>';
+      } else if (addr) {
+        shipPart = ' · Shipping (' + Utils.escape(quote.zoneLabel) + ') ₹' + quote.shipping;
+      } else {
+        shipPart = ' · <span style="font-style:italic;">+ shipping once address is set</span>';
+      }
+      lineEl.innerHTML = subPart + shipPart;
+    }
+
     async function checkoutSPA() {
       // Guest checkout is allowed — no login redirect here. The modal swaps
       // between the address-picker (registered) and the inline contact+address
@@ -41,15 +132,13 @@
         showToast('Your cart is empty', 'error');
         return;
       }
-      var subtotal = CartHelpers.getCartTotal();
-      var shipping = subtotal >= 999 ? 0 : 99;
-      var total = subtotal + shipping;
 
-      // Amount shown here is just a preview — the server recomputes the
-      // canonical total from DB prices in /api/payments/create-order.php
-      // before opening Razorpay Checkout. If they differ, the server wins.
-      var amtEl = document.getElementById('payment-amount-display');
-      if (amtEl) amtEl.textContent = '₹' + total.toLocaleString();
+      // Amount + breakdown shown here are a preview — the server recomputes
+      // the canonical total from DB prices in /api/payments/create-order.php
+      // before opening Razorpay Checkout, applying the same zone rules
+      // (mirrored from src/js/shipping.js in api/_shipping_helpers.php). If
+      // they ever differ, the server wins.
+      recomputeCheckoutShipping();
 
       var payBtn = document.getElementById('payment-pay-btn');
       if (payBtn) { payBtn.innerHTML = '⚡ Pay Now'; payBtn.disabled = false; }
@@ -105,6 +194,17 @@
         countrySel.innerHTML = COUNTRIES.map(c => `<option value="${c[0]}">${c[1]}</option>`).join('');
         countrySel.value = 'IN';
       }
+      // Wire change listeners that drive the shipping preview. Idempotent guard
+      // (data-wired) so re-opening the modal doesn't stack duplicate handlers.
+      var stateSel = document.getElementById('guest-addr-state-select');
+      var stateInp = document.getElementById('guest-addr-state-input');
+      var postalInp = document.getElementById('guest-addr-postal');
+      [stateSel, stateInp, postalInp].forEach(function (el) {
+        if (!el || el.dataset.shippingWired === '1') return;
+        el.addEventListener('change', recomputeCheckoutShipping);
+        el.addEventListener('blur', recomputeCheckoutShipping);
+        el.dataset.shippingWired = '1';
+      });
       updateGuestAddressFormForCountry();
     }
 
@@ -137,6 +237,9 @@
       // Landmark is an India-ism — hide elsewhere to keep the form tidy.
       landmark.style.display = code === 'IN' ? '' : 'none';
       if (code !== 'IN') document.getElementById('guest-addr-landmark').value = '';
+
+      // Country change can flip the shipping zone (e.g. IN → intl).
+      recomputeCheckoutShipping();
     }
 
     function readGuestAddressFormState() {
@@ -392,6 +495,10 @@
           </label>`;
       }).join('') + `
         <button type="button" class="btn btn-sm btn-primary" style="margin-top:0.75rem;" onclick="openAddressModal(null,'checkout')">+ Add new address</button>`;
+
+      // Default/just-saved pick may belong to a different zone than the
+      // generic "rest" fallback rendered when the modal first opens.
+      recomputeCheckoutShipping();
     }
 
     // Summary card (showing the current pick) and picker (the radio list of all
@@ -481,6 +588,16 @@
           addressId: picked.id,
         };
         shippingAddress = picked;
+      }
+
+      // Defense in depth — the Pay Now button is already disabled for intl
+      // addresses, but if anything bypasses that, refuse to start the flow
+      // before hitting the server (server-side check in create-order.php
+      // would reject too, but a clean inline error is friendlier).
+      if (isCheckoutAddressIntl(shippingAddress)) {
+        setCheckoutIntlBlocked(true, shippingAddress.countryCode);
+        showToast('We ship to India only — email orders@velorexmusic.com for international orders.', 'error');
+        return;
       }
 
       setBtn('Preparing…', true);
