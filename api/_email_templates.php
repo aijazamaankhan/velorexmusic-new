@@ -362,11 +362,27 @@ function admin_new_order_email(array $orderData): array {
         .       '<tr><td style="padding:20px 24px;font-family:Arial,Helvetica,sans-serif;color:#111;">'
         .         '<div style="font-size:12px;color:#666;letter-spacing:0.06em;text-transform:uppercase;">Order</div>'
         .         '<div style="font-size:18px;font-weight:700;margin-top:2px;">#' . _vv_esc($id) . $guestPill . '</div>'
-        .         '<div style="margin-top:14px;display:flex;gap:20px;flex-wrap:wrap;">'
-        .           '<div><div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.05em;">Total</div><div style="font-size:18px;font-weight:700;color:#ff6b35;margin-top:2px;">' . _vv_money($total) . '</div></div>'
-        .           '<div><div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.05em;">Items</div><div style="font-size:18px;font-weight:700;margin-top:2px;">' . $itemCount . '</div></div>'
-        .           '<div><div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.05em;">Placed</div><div style="font-size:14px;margin-top:4px;">' . _vv_esc($date) . '</div></div>'
-        .         '</div>'
+        // Flexbox doesn't render in Outlook desktop and several Gmail variants
+        // — they strip `display:flex` and the children collapse with no
+        // spacing (Total/Items/Placed values jammed together with no gap).
+        // Stats row is a 3-column <table> instead; cell padding provides the
+        // visual gap and width:33.33% keeps the columns even.
+        .         '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:14px;border-collapse:separate;">'
+        .           '<tr>'
+        .             '<td width="33%" style="padding:0 12px 0 0;vertical-align:top;font-family:Arial,Helvetica,sans-serif;">'
+        .               '<div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.05em;">Total</div>'
+        .               '<div style="font-size:18px;font-weight:700;color:#ff6b35;margin-top:2px;">' . _vv_money($total) . '</div>'
+        .             '</td>'
+        .             '<td width="33%" style="padding:0 12px;vertical-align:top;font-family:Arial,Helvetica,sans-serif;">'
+        .               '<div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.05em;">Items</div>'
+        .               '<div style="font-size:18px;font-weight:700;color:#111;margin-top:2px;">' . $itemCount . '</div>'
+        .             '</td>'
+        .             '<td width="34%" style="padding:0 0 0 12px;vertical-align:top;font-family:Arial,Helvetica,sans-serif;">'
+        .               '<div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.05em;">Placed</div>'
+        .               '<div style="font-size:14px;color:#111;margin-top:4px;">' . _vv_esc($date) . '</div>'
+        .             '</td>'
+        .           '</tr>'
+        .         '</table>'
         .       '</td></tr>'
         // Customer block
         .       '<tr><td style="padding:0 24px 12px;font-family:Arial,Helvetica,sans-serif;color:#111;">'

@@ -332,57 +332,108 @@
       });
       container.innerHTML = tags.map((tag, idx) => `<span class="filter-tag">${tag.label}<span class="filter-tag-remove" onclick="removeFilterProduct(${idx})">✕</span></span>`).join('');
       window._filterTags = tags;
-      // Sync the "Filters" toggle button's count badge with the active set
-      // so users on the drawer-mode (≤1023px) can see at a glance how many
-      // filters they've applied without opening the drawer.
-      var countBadge = document.getElementById('filtersToggleCount');
-      if (countBadge) {
-        if (tags.length > 0) { countBadge.textContent = tags.length; countBadge.removeAttribute('hidden'); }
-        else { countBadge.setAttribute('hidden', ''); }
-      }
+      // Refresh the mobile/tablet chip strip too — count bubbles flip as
+      // filters are toggled. Cheap to re-render the strip on every change.
+      renderFilterChips();
     }
 
-    // ---- Filters drawer (≤1023px) ----
-    // Above 1024px the filter sidebar is sticky-positioned next to the
-    // products grid and these handlers are no-ops in practice — the drawer
-    // CSS only kicks in below that breakpoint, so opening/closing on
-    // desktop is harmless. ESC + backdrop close. Body scroll is locked
-    // while open so the page behind doesn't accidentally scroll under
-    // touch input.
-    function openFiltersDrawer() {
-      var sidebar = document.getElementById('filtersSidebar');
-      var backdrop = document.getElementById('filtersBackdrop');
-      if (!sidebar) return;
-      sidebar.classList.add('open');
-      if (backdrop) backdrop.classList.add('open');
-      document.body.classList.add('filters-drawer-open');
-      // Pre-update the "Show results" label with the current product count.
-      updateFiltersDrawerCta();
-    }
-    function closeFiltersDrawer(scrollToGrid) {
-      var sidebar = document.getElementById('filtersSidebar');
-      var backdrop = document.getElementById('filtersBackdrop');
-      if (sidebar) sidebar.classList.remove('open');
-      if (backdrop) backdrop.classList.remove('open');
-      document.body.classList.remove('filters-drawer-open');
-      if (scrollToGrid) {
-        var grid = document.getElementById('products-grid');
-        if (grid) grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // ============================================================
+    // Mobile/tablet filter UX (chip strip + popover) — pattern D
+    // ============================================================
+    // At ≤1023px the sidebar is display:none. Filtering happens via a
+    // horizontal scrollable chip strip below the page hero. Each chip
+    // corresponds to one .filter-section (Category/Language/Price/Stock/
+    // People) and shows an orange count bubble when that section has
+    // active filters. Tapping a chip moves the matching .filter-section
+    // DOM node into a fixed-position popover and shows it; closing moves
+    // it back into the (hidden) sidebar so applyFilters() — which queries
+    // inputs by name within #page-products — keeps finding them.
+    //
+    // Why DOM-move and not clone: the checkboxes are the same elements
+    // pre/post-move. No state sync needed. applyFilters() just works.
+
+    // Ordered list of filter section ids, the chip label and the input
+    // name used to count active selections. Add a new filter section?
+    // Add a row here too.
+    var FILTER_CHIP_SECTIONS = [
+      { id: 'fsec-cat',    label: '📁 Category',  inputName: 'cat' },
+      { id: 'fsec-lang',   label: '🌐 Language',  inputName: 'lang' },
+      { id: 'fsec-price',  label: '💰 Price',     inputName: 'price' },
+      { id: 'fsec-avail',  label: '📦 Stock',     inputName: 'avail' },
+      { id: 'fsec-people', label: '🎬 People',    inputName: 'people' },
+    ];
+
+    function renderFilterChips() {
+      var bar = document.getElementById('filterChipsBar');
+      var strip = document.getElementById('filterChipsStrip');
+      if (!bar || !strip) return;
+      // The bar is hidden on desktop via CSS, but the chips still render so
+      // the markup is ready the moment the viewport shrinks.
+      bar.removeAttribute('hidden');
+      var totalActive = 0;
+      var html = FILTER_CHIP_SECTIONS.map(function (s) {
+        var checked = document.querySelectorAll('#page-products input[name="' + s.inputName + '"]:checked').length;
+        totalActive += checked;
+        var activeCls = checked > 0 ? ' active' : '';
+        var countBubble = checked > 0 ? '<span class="chip-count">' + checked + '</span>' : '';
+        return '<button type="button" class="filter-chip' + activeCls + '" data-fsec="' + s.id + '" onclick="openFilterPopover(\'' + s.id + '\')">' + s.label + countBubble + ' <span class="chip-arrow">⏷</span></button>';
+      }).join('');
+      // Clear-all chip — shown only when at least one filter is active.
+      if (totalActive > 0) {
+        html += '<button type="button" class="filter-chip filter-chip-clear" onclick="clearAllFilters()">Clear all ✕</button>';
       }
+      strip.innerHTML = html;
     }
-    function updateFiltersDrawerCta() {
-      var label = document.getElementById('filtersDrawerCtaLabel');
-      var countEl = document.getElementById('products-count');
-      if (!label) return;
-      // Best-effort parse of the current count text ("Showing 5 of 67 products").
-      var m = countEl && /Showing\s+(\d+)\s+of/.exec(countEl.textContent || '');
-      label.textContent = m ? 'Show ' + m[1] + ' results' : 'Show results';
+
+    function openFilterPopover(sectionId) {
+      var section = document.getElementById(sectionId);
+      var popover = document.getElementById('filterPopover');
+      var backdrop = document.getElementById('filterPopoverBackdrop');
+      var body = document.getElementById('filterPopoverBody');
+      var titleEl = document.getElementById('filterPopoverTitle');
+      if (!section || !popover || !body) return;
+      // Find the chip definition for this section to get the display label.
+      var def = FILTER_CHIP_SECTIONS.find(function (s) { return s.id === sectionId; });
+      if (titleEl) titleEl.textContent = def ? def.label : 'Filter';
+      // Stash the original parent so closeFilterPopover() can put the
+      // section back exactly where it came from in the sidebar.
+      section.dataset.originalParent = section.parentElement && section.parentElement.id
+        ? '#' + section.parentElement.id
+        : '.filters-sidebar';
+      body.appendChild(section);
+      popover.removeAttribute('hidden');
+      // Two-step add for the CSS transition to animate.
+      requestAnimationFrame(function () {
+        popover.classList.add('open');
+        if (backdrop) backdrop.classList.add('open');
+      });
+      document.body.classList.add('filter-popover-open');
     }
-    // ESC closes the drawer (matches the modal UX everywhere else).
+
+    function closeFilterPopover() {
+      var popover = document.getElementById('filterPopover');
+      var backdrop = document.getElementById('filterPopoverBackdrop');
+      var body = document.getElementById('filterPopoverBody');
+      if (!popover || !body) return;
+      // Move any .filter-section back to the sidebar where it belongs.
+      Array.from(body.querySelectorAll('.filter-section')).forEach(function (section) {
+        var sidebar = document.getElementById('filtersSidebar');
+        if (sidebar) sidebar.appendChild(section);
+      });
+      popover.classList.remove('open');
+      if (backdrop) backdrop.classList.remove('open');
+      document.body.classList.remove('filter-popover-open');
+      // Hide after the transition completes so screen readers don't see it.
+      setTimeout(function () {
+        if (!popover.classList.contains('open')) popover.setAttribute('hidden', '');
+      }, 200);
+    }
+
+    // ESC closes the popover.
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Escape') return;
-      var sidebar = document.getElementById('filtersSidebar');
-      if (sidebar && sidebar.classList.contains('open')) closeFiltersDrawer();
+      var popover = document.getElementById('filterPopover');
+      if (popover && popover.classList.contains('open')) closeFilterPopover();
     });
 
     function removeFilterProduct(idx) {

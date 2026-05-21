@@ -204,17 +204,19 @@ body { padding-top: 70px; }
 
 /* ---- Filters sidebar (products page) ------------------------------------ */
 /* Desktop (≥1024px): sticky left sidebar next to the grid. Mobile/tablet
-   (≤1023px): slide-in drawer triggered by the .filters-toggle button — see
-   the responsive block at the bottom of this file. Up to 1023px the user
-   used to scroll through the entire filter list before seeing a single
-   product card; the drawer pattern eliminates that. */
+   (≤1023px): the sidebar is hidden via display:none on its container, and
+   filtering happens through an inline horizontal chip strip + per-category
+   popover (see the responsive block at the bottom of this file). JS moves
+   the .filter-section DOM nodes from the sidebar into the popover on tap,
+   which keeps applyFilters() — which queries inputs by name — working
+   without any rewiring. */
 .filters-sidebar { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; position: sticky; top: 90px; height: fit-content; }
-/* Filters toggle button + count badge + drawer CTA — hidden on desktop, the
-   responsive block at the bottom of this file flips them on. */
-.filters-toggle { display: none; }
-.filters-toggle-count { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; margin-left: 0.4rem; background: var(--secondary); color: white; border-radius: 999px; font-size: 0.7rem; font-weight: 700; }
-.filters-backdrop { display: none; }
-.filters-drawer-cta { display: none; }
+
+/* Chip strip + popover (D pattern) — hidden by default, the ≤1023px block
+   below switches them on. */
+.filter-chips-bar { display: none; }
+.filter-popover { display: none; }
+.filter-popover-backdrop { display: none; }
 .filter-section { margin-bottom: 2rem; }
 .filter-section:last-child { margin-bottom: 0; }
 .filter-title { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
@@ -672,78 +674,163 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   .page-hero-title { font-size: 1.5rem; }
 }
 
-/* ---- Products page filter DRAWER (≤1023px) -----------------------------
+/* ---- Products page filter CHIP STRIP (≤1023px) -----------------------------
    Above 1024px the .filters-sidebar is a sticky left column — that layout
-   works on laptop+ screens. Below that, the sidebar was being stacked
-   on top of the grid which forced users to scroll through the entire filter
-   list (Category + Language + Price + Availability + People with sub-
-   sections) before they saw a single product card. Bad UX.
+   works on laptop+ screens. Below that, both the original "stack-above-grid"
+   layout and the earlier slide-in-drawer pattern got in the way: users had
+   to either scroll past 600px of filter UI or open a fullscreen drawer just
+   to toggle one option.
 
-   At ≤1023px we convert the sidebar into a slide-in drawer triggered by
-   a "Filters" button in the products toolbar. The grid takes the full
-   width. Drawer opens with a backdrop, slides in from the left, has its
-   own sticky "Show results" CTA at the bottom that closes itself.
+   Pattern D — inline chip strip — replaces both: the sidebar is hidden, a
+   horizontal scrollable chip strip sits below the page hero, and tapping a
+   chip opens a small popover with that category's options only. Etsy /
+   Amazon mobile pattern. Each chip shows the category name + an orange
+   count bubble when filters in that category are active.
 
-   JS toggle lives in src/js/storefront/pages.js — openFiltersDrawer /
-   closeFiltersDrawer. ESC closes too. Body scroll is locked while open. */
+   How filtering still works without rewiring applyFilters():
+   the popover is a relocation target — when a chip is tapped, the matching
+   .filter-section DOM node is MOVED from the hidden sidebar into the
+   popover. The same checkboxes (same `name` attributes) are still inside
+   #page-products, so applyFilters()'s querySelectorAll continues to find
+   them. On close, the section is moved back to its slot in the sidebar.
+
+   JS lives in src/js/storefront/pages.js — renderFilterChips,
+   openFilterPopover, closeFilterPopover. ESC + backdrop click dismiss. */
 @media (max-width: 1023px) {
   .products-layout { grid-template-columns: 1fr; }
 
-  /* Show the toggle pill in the products toolbar. */
-  .filters-toggle { display: inline-flex; align-items: center; gap: 0.4rem; }
+  /* Hide the sidebar entirely. The .filter-section children are still in
+     the DOM so JS can move them into the popover when needed. */
+  .filters-sidebar { display: none; }
 
-  /* Sidebar becomes a fixed left drawer, hidden by default. */
-  .filters-sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: min(360px, 85vw);
-    height: 100vh;
-    max-height: 100vh;
-    margin: 0;
-    border-radius: 0;
-    border: none;
-    border-right: 1px solid var(--border);
-    padding: 1.25rem 1.25rem 5rem; /* room for the sticky CTA at the bottom */
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    transform: translateX(-100%);
-    transition: transform 0.22s ease-out;
-    z-index: 1600;
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
-  }
-  .filters-sidebar.open { transform: translateX(0); }
-
-  /* Backdrop layered behind the drawer but above the page. */
-  .filters-backdrop {
+  /* Chip strip — sits in the page flow directly below the page hero. */
+  .filter-chips-bar {
     display: block;
-    position: fixed;
-    inset: 0;
+    margin-bottom: 1rem;
+  }
+  .filter-chips-strip {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 0.4rem 0;
+    scrollbar-width: none;
+  }
+  .filter-chips-strip::-webkit-scrollbar { display: none; }
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 0.83rem;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.18s;
+    flex-shrink: 0;
+  }
+  .filter-chip:hover { border-color: var(--secondary); }
+  .filter-chip.active {
+    background: rgba(255, 107, 53, 0.12);
+    border-color: var(--secondary);
+    color: var(--secondary);
+    font-weight: 700;
+  }
+  .filter-chip .chip-arrow { font-size: 0.65rem; opacity: 0.7; }
+  .filter-chip .chip-count {
+    background: var(--secondary); color: white;
+    padding: 0 7px; border-radius: 999px;
+    font-size: 0.7rem; font-weight: 700;
+    margin-left: 0.15rem;
+  }
+  /* "Clear all" chip variant — different look so it doesn't blend with the others. */
+  .filter-chip.filter-chip-clear {
+    background: transparent;
+    color: var(--text-muted);
+    border-color: transparent;
+    text-decoration: underline;
+    padding: 0.5rem 0.6rem;
+  }
+
+  /* Popover backdrop — dims everything except the popover. */
+  .filter-popover-backdrop {
+    display: block;
+    position: fixed; inset: 0;
     background: rgba(0, 0, 0, 0.55);
     backdrop-filter: blur(2px);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.2s ease;
+    transition: opacity 0.18s ease;
     z-index: 1500;
   }
-  .filters-backdrop.open { opacity: 1; pointer-events: auto; }
+  .filter-popover-backdrop.open { opacity: 1; pointer-events: auto; }
 
-  /* CTA bar at the bottom of the drawer — sticky so it stays in view when
-     the user scrolls through long filter lists. */
-  .filters-drawer-cta {
+  /* Popover — single shared element. JS positions it via CSS class,
+     populates body with the moved .filter-section. */
+  .filter-popover {
     display: flex;
-    position: sticky;
-    bottom: -5rem; /* anchored against the padding-bottom on .filters-sidebar */
-    margin: 1rem -1.25rem -5rem;
-    border-radius: 0;
-    justify-content: center;
-    gap: 0.4rem;
-    padding: 1rem;
-    box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.35);
+    flex-direction: column;
+    position: fixed;
+    left: 1rem; right: 1rem;
+    top: 100px; /* below the chip strip; refined by JS if needed */
+    max-height: min(70vh, 540px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    z-index: 1600;
+    opacity: 0;
+    transform: translateY(-8px);
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+  }
+  .filter-popover[hidden] { display: none; }
+  .filter-popover.open {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  .filter-popover-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .filter-popover-title {
+    font-family: var(--font-display);
+    font-size: 1rem; font-weight: 700; color: var(--text);
+  }
+  .filter-popover-close {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 32px; height: 32px;
+    color: var(--text-muted);
+    cursor: pointer; font-size: 0.85rem;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .filter-popover-close:hover { color: var(--secondary); border-color: var(--secondary); }
+  .filter-popover-body {
+    padding: 0.85rem 1rem 1rem;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    flex: 1;
+  }
+  /* When a .filter-section is moved into the popover body, drop the heading
+     (the popover header already shows the title) and let the People search
+     box flow naturally without the nested 220px max-height clip. */
+  .filter-popover-body .filter-section { margin: 0; }
+  .filter-popover-body .filter-section .filter-title { display: none; }
+  .filter-popover-body .filter-section-collapsible .filter-options {
+    max-height: none;
+    overflow: visible;
   }
 
-  /* Lock body scroll while the drawer is open (the drawer has its own
-     overflow-y). Class is toggled in JS. */
-  body.filters-drawer-open { overflow: hidden; }
+  /* Lock body scroll while a popover is open. */
+  body.filter-popover-open { overflow: hidden; }
 }

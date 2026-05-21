@@ -39,7 +39,7 @@
        end up in script-scope; the inline <script> at the bottom of <body>
        just bootstraps DOMContentLoaded. -->
   <script src="src/js/storefront/carriers.js?v=488bf189"></script>
-  <script src="src/js/storefront/pages.js?v=ec697873"></script>
+  <script src="src/js/storefront/pages.js?v=72864657"></script>
   <script src="src/js/storefront/router.js?v=4601eecf"></script>
   <script src="src/js/storefront/checkout.js?v=472f3280"></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
@@ -55,7 +55,7 @@
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
   <!-- Page-specific styles (hero, products, cart, profile, footer, etc.).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=dec7cc8a">
+  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=cce8cd2e">
 </head>
 
 <body>
@@ -203,7 +203,7 @@
               </div>
 
               <!-- Category Filter -->
-              <div class="filter-section">
+              <div class="filter-section" id="fsec-cat" data-section="cat" data-label="📁 Category">
                 <p class="filter-title">📁 Category</p>
                 <div class="filter-options">
                   <label class="filter-option"><input type="checkbox" name="cat" value="vinyl" onchange="applyFilters()">💿 Vinyl Records<span class="filter-count" id="count-vinyl">0</span></label>
@@ -215,7 +215,7 @@
               </div>
 
               <!-- Language Filter -->
-              <div class="filter-section">
+              <div class="filter-section" id="fsec-lang" data-section="lang" data-label="🌐 Language">
                 <p class="filter-title">🌐 Language</p>
                 <div class="filter-options">
                   <label class="filter-option"><input type="checkbox" name="lang" value="hindi" onchange="applyFilters()">🇮🇳 Hindi<span class="filter-count" id="count-hindi">0</span></label>
@@ -224,7 +224,7 @@
               </div>
 
               <!-- Price Range Filter -->
-              <div class="filter-section">
+              <div class="filter-section" id="fsec-price" data-section="price" data-label="💰 Price">
                 <p class="filter-title">💰 Price Range</p>
                 <div class="filter-options">
                   <label class="filter-option"><input type="checkbox" name="price" value="0-499" onchange="applyFilters()">Under ₹500</label>
@@ -235,7 +235,7 @@
               </div>
 
               <!-- Availability -->
-              <div class="filter-section">
+              <div class="filter-section" id="fsec-avail" data-section="avail" data-label="📦 Stock">
                 <p class="filter-title">📦 Availability</p>
                 <div class="filter-options">
                   <label class="filter-option"><input type="checkbox" name="avail" value="instock" onchange="applyFilters()">In Stock</label>
@@ -247,7 +247,7 @@
                    PEOPLE FILTER — Music Directors, Artists,
                    Actors & Actresses
                    ============================================= -->
-              <div class="filter-section filter-section-collapsible">
+              <div class="filter-section filter-section-collapsible" id="fsec-people" data-section="people" data-label="🎬 People">
                 <p class="filter-title">🎬 People</p>
                 <input
                   type="text"
@@ -308,29 +308,32 @@
               </div>
               <!-- END PEOPLE FILTER -->
 
-              <!-- Sticky "Show results" CTA inside the drawer. Only visible on
-                   ≤1023px (when the sidebar is repurposed as a slide-in drawer).
-                   It both closes the drawer and scrolls the grid into view. -->
-              <button type="button" class="btn btn-primary filters-drawer-cta" onclick="closeFiltersDrawer(true)">
-                <i class="fas fa-check"></i> <span id="filtersDrawerCtaLabel">Show results</span>
-              </button>
             </aside>
-            <!-- Backdrop for the filters drawer at ≤1023px. -->
-            <div class="filters-backdrop" id="filtersBackdrop" onclick="closeFiltersDrawer()"></div>
+
+            <!-- Mobile/tablet (≤1023px) filter chip strip — Etsy/Amazon
+                 pattern. JS in renderFilterChips() populates this with one
+                 chip per filter category. Tap a chip to open a popover for
+                 that category. Hidden on desktop where the sidebar shows. -->
+            <div class="filter-chips-bar" id="filterChipsBar" hidden>
+              <div class="filter-chips-strip" id="filterChipsStrip"></div>
+            </div>
+
+            <!-- Popover container. JS moves the relevant .filter-section
+                 element into here when a chip is tapped, and moves it back
+                 to .filters-sidebar on close. -->
+            <div class="filter-popover-backdrop" id="filterPopoverBackdrop" onclick="closeFilterPopover()"></div>
+            <div class="filter-popover" id="filterPopover" hidden>
+              <div class="filter-popover-head">
+                <h3 class="filter-popover-title" id="filterPopoverTitle">Filter</h3>
+                <button type="button" class="filter-popover-close" onclick="closeFilterPopover()" aria-label="Close filter">✕</button>
+              </div>
+              <div class="filter-popover-body" id="filterPopoverBody"></div>
+            </div>
 
             <div>
               <div class="active-filters" id="activeFilters"></div>
               <div class="products-toolbar">
-                <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
-                  <!-- Mobile/tablet-only Filters drawer trigger. Hidden on ≥1024px
-                       where the sidebar lives next to the grid. The count badge
-                       is updated by renderActiveFiltersProducts(). -->
-                  <button type="button" class="btn btn-sm btn-secondary filters-toggle" onclick="openFiltersDrawer()" aria-label="Open filters">
-                    <i class="fas fa-sliders"></i> Filters
-                    <span class="filters-toggle-count" id="filtersToggleCount" hidden></span>
-                  </button>
-                  <p class="products-count" id="products-count">Showing all products</p>
-                </div>
+                <p class="products-count" id="products-count">Showing all products</p>
                 <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
                   <select class="sort-select" id="sortSelect" onchange="applyFilters()">
                     <option value="">Sort: Default</option>
