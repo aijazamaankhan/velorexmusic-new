@@ -252,3 +252,160 @@ function order_receipt_email(array $orderData): array {
         'text'    => $text,
     ];
 }
+
+// =============================================================================
+// admin_new_order_email — internal notification to the store owner
+// =============================================================================
+// Different shape from the customer receipt: this is a punchy operational
+// alert, not a thank-you. The subject line carries the key facts so the
+// owner doesn't have to open the email for the basics (order id, total,
+// item count, city). The HTML body adds line-items, shipping address, and
+// a prominent "Open in admin" CTA that deep-links to the order detail
+// modal in the admin panel. Single column, plain styling — this is an
+// internal email, not a marketing artifact.
+//
+// Triggered from api/_payment_finalize.php right after the customer
+// receipt mail. Best-effort like the customer mail (never throws). Skipped
+// when ADMIN_NOTIFY_EMAIL is unset.
+function admin_new_order_email(array $orderData): array {
+    $id        = (string)($orderData['id'] ?? '');
+    $date      = (string)($orderData['date'] ?? '');
+    $items     = is_array($orderData['items'] ?? null) ? $orderData['items'] : [];
+    $subtotal  = (int)($orderData['subtotal'] ?? 0);
+    $shipping  = (int)($orderData['shipping'] ?? 0);
+    $total     = (int)($orderData['total'] ?? 0);
+    $addr      = is_array($orderData['shippingAddress'] ?? null) ? $orderData['shippingAddress'] : [];
+    $contact   = is_array($orderData['contact'] ?? null) ? $orderData['contact'] : [];
+    $custName  = (string)($contact['fullName'] ?? ($addr['fullName'] ?? '—'));
+    $custEmail = (string)($contact['email'] ?? '');
+    $custPhone = (string)($contact['phone'] ?? ($addr['phone'] ?? ''));
+    $city      = (string)($addr['city'] ?? '');
+    $itemCount = 0;
+    foreach ($items as $it) { if (is_array($it)) $itemCount += (int)($it['qty'] ?? 0); }
+    $isGuest   = !empty($contact['isGuest']);
+
+    $base       = _vv_base_url();
+    // Deep-link straight to the order detail in the admin panel. The admin
+    // login gate intercepts unauthenticated requests, so this is safe to
+    // include in email even though the URL is obscure rather than secret.
+    $adminUrl   = $base . '/vlx-admin-2026.html#orders?orderId=' . urlencode($id);
+
+    // Subject line is structured: emoji + id + ₹total + N items + city.
+    // Gmail/iOS Mail show ~70 chars; we stay well under that for everything
+    // except the longest city names.
+    $subject = '🔔 New order #' . $id . ' · ' . _vv_money($total) . ' · ' . $itemCount . ' item' . ($itemCount === 1 ? '' : 's')
+             . ($city !== '' ? ' · ' . $city : '');
+
+    // -------- Plain-text version --------
+    $textLines = [];
+    $textLines[] = 'NEW ORDER #' . $id;
+    $textLines[] = 'Placed ' . $date;
+    $textLines[] = '';
+    $textLines[] = 'Customer:  ' . $custName . ($isGuest ? '  (guest checkout)' : '');
+    if ($custEmail !== '') $textLines[] = 'Email:     ' . $custEmail;
+    if ($custPhone !== '') $textLines[] = 'Phone:     ' . $custPhone;
+    $textLines[] = '';
+    $textLines[] = 'ITEMS (' . $itemCount . ')';
+    foreach ($items as $item) {
+        if (!is_array($item)) continue;
+        $textLines[] = '  ' . ($item['qty'] ?? 1) . ' × ' . ($item['name'] ?? '—')
+                     . '   ' . _vv_money((int)($item['lineTotal'] ?? 0));
+    }
+    $textLines[] = '';
+    $textLines[] = 'Subtotal: ' . _vv_money($subtotal);
+    $textLines[] = 'Shipping: ' . ($shipping === 0 ? 'FREE' : _vv_money($shipping));
+    $textLines[] = 'TOTAL:    ' . _vv_money($total);
+    $textLines[] = '';
+    $textLines[] = 'SHIPPING TO';
+    $textLines[] = _vv_format_address($addr, false);
+    $textLines[] = '';
+    $textLines[] = 'Open in admin: ' . $adminUrl;
+    $text = implode("\n", $textLines);
+
+    // -------- HTML version --------
+    $rowsHtml = '';
+    foreach ($items as $item) {
+        if (!is_array($item)) continue;
+        $name = _vv_esc($item['name'] ?? '');
+        $qty = (int)($item['qty'] ?? 0);
+        $lineTotal = (int)($item['lineTotal'] ?? 0);
+        $rowsHtml .= '<tr>'
+            . '<td style="padding:8px 10px;border-bottom:1px solid #eee;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#111;">' . $qty . ' × ' . $name . '</td>'
+            . '<td align="right" style="padding:8px 10px;border-bottom:1px solid #eee;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#111;font-weight:600;">' . _vv_money($lineTotal) . '</td>'
+            . '</tr>';
+    }
+
+    $guestPill = $isGuest
+        ? '<span style="display:inline-block;background:#fff3e0;color:#b8651a;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;margin-left:8px;">GUEST</span>'
+        : '';
+
+    $html = '<!doctype html>'
+        . '<html lang="en">'
+        . '<head>'
+        .   '<meta charset="UTF-8">'
+        .   '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        .   '<title>' . _vv_esc($subject) . '</title>'
+        . '</head>'
+        . '<body style="margin:0;padding:0;background:#f4f4f7;font-family:Arial,Helvetica,sans-serif;">'
+        . '<span style="display:none !important;visibility:hidden;mso-hide:all;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">'
+        .   'New order #' . _vv_esc($id) . ' for ' . _vv_money($total) . ' from ' . _vv_esc($custName) . '. Open in admin.'
+        . '</span>'
+        . '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f4f4f7;">'
+        .   '<tr><td align="center" style="padding:24px 12px;">'
+        .     '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#ffffff;border-radius:8px;overflow:hidden;border:1px solid #e3e3ea;">'
+        // Header bar — orange like the brand, but condensed
+        .       '<tr><td style="padding:18px 24px;background:#ff6b35;color:#ffffff;font-family:Arial,Helvetica,sans-serif;">'
+        .         '<div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;opacity:0.9;">Velorex Music · Admin Alert</div>'
+        .         '<div style="font-size:20px;font-weight:700;margin-top:4px;">🔔 New order received</div>'
+        .       '</td></tr>'
+        // Big-number block
+        .       '<tr><td style="padding:20px 24px;font-family:Arial,Helvetica,sans-serif;color:#111;">'
+        .         '<div style="font-size:12px;color:#666;letter-spacing:0.06em;text-transform:uppercase;">Order</div>'
+        .         '<div style="font-size:18px;font-weight:700;margin-top:2px;">#' . _vv_esc($id) . $guestPill . '</div>'
+        .         '<div style="margin-top:14px;display:flex;gap:20px;flex-wrap:wrap;">'
+        .           '<div><div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.05em;">Total</div><div style="font-size:18px;font-weight:700;color:#ff6b35;margin-top:2px;">' . _vv_money($total) . '</div></div>'
+        .           '<div><div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.05em;">Items</div><div style="font-size:18px;font-weight:700;margin-top:2px;">' . $itemCount . '</div></div>'
+        .           '<div><div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.05em;">Placed</div><div style="font-size:14px;margin-top:4px;">' . _vv_esc($date) . '</div></div>'
+        .         '</div>'
+        .       '</td></tr>'
+        // Customer block
+        .       '<tr><td style="padding:0 24px 12px;font-family:Arial,Helvetica,sans-serif;color:#111;">'
+        .         '<div style="font-size:11px;color:#666;letter-spacing:0.06em;text-transform:uppercase;">Customer</div>'
+        .         '<div style="font-size:14px;font-weight:600;margin-top:4px;">' . _vv_esc($custName) . '</div>'
+        .         ($custEmail !== '' ? '<div style="font-size:13px;color:#444;margin-top:2px;">' . _vv_esc($custEmail) . '</div>' : '')
+        .         ($custPhone !== '' ? '<div style="font-size:13px;color:#444;margin-top:2px;">' . _vv_esc($custPhone) . '</div>' : '')
+        .       '</td></tr>'
+        // Items table
+        .       '<tr><td style="padding:0 24px;font-family:Arial,Helvetica,sans-serif;">'
+        .         '<div style="font-size:11px;color:#666;letter-spacing:0.06em;text-transform:uppercase;padding:12px 0 6px;">Items</div>'
+        .         '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;">' . $rowsHtml . '</table>'
+        .         '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:8px;">'
+        .           '<tr><td align="right" style="padding:4px 10px;font-size:13px;color:#444;">Subtotal:</td><td align="right" style="padding:4px 10px;font-size:13px;color:#111;width:90px;">' . _vv_money($subtotal) . '</td></tr>'
+        .           '<tr><td align="right" style="padding:4px 10px;font-size:13px;color:#444;">Shipping:</td><td align="right" style="padding:4px 10px;font-size:13px;color:' . ($shipping === 0 ? '#1a8a3a' : '#111') . ';">' . ($shipping === 0 ? 'FREE' : _vv_money($shipping)) . '</td></tr>'
+        .           '<tr><td align="right" style="padding:8px 10px 4px;font-size:14px;font-weight:700;color:#111;border-top:1px solid #eee;">Total:</td><td align="right" style="padding:8px 10px 4px;font-size:14px;font-weight:700;color:#ff6b35;border-top:1px solid #eee;">' . _vv_money($total) . '</td></tr>'
+        .         '</table>'
+        .       '</td></tr>'
+        // Shipping address
+        .       '<tr><td style="padding:12px 24px 0;font-family:Arial,Helvetica,sans-serif;color:#111;">'
+        .         '<div style="font-size:11px;color:#666;letter-spacing:0.06em;text-transform:uppercase;">Shipping to</div>'
+        .         '<div style="font-size:13px;line-height:1.55;color:#222;margin-top:6px;">' . _vv_format_address($addr, true) . '</div>'
+        .       '</td></tr>'
+        // CTA
+        .       '<tr><td align="center" style="padding:24px;">'
+        .         '<a href="' . _vv_esc($adminUrl) . '" style="background:#ff6b35;color:#ffffff;text-decoration:none;display:inline-block;padding:12px 28px;border-radius:6px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;letter-spacing:0.03em;">Open in admin →</a>'
+        .       '</td></tr>'
+        .       '<tr><td style="padding:14px 24px;background:#fafafa;border-top:1px solid #eee;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#888;text-align:center;">'
+        .         'You\'re receiving this because your address is set as ADMIN_NOTIFY_EMAIL in the Velorex Music server config.'
+        .       '</td></tr>'
+        .     '</table>'
+        .   '</td></tr>'
+        . '</table>'
+        . '</body>'
+        . '</html>';
+
+    return [
+        'subject' => $subject,
+        'html'    => $html,
+        'text'    => $text,
+    ];
+}

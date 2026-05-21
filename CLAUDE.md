@@ -817,6 +817,20 @@ Without these defines, `/api/payments/create-order.php` returns 502 with a clear
 
 After deploying the new code, append the SMTP block from [api/secrets.example.php](api/secrets.example.php) to `/home/u286479481/private/velorex_secrets.php`. Step-by-step Brevo setup, DNS records and troubleshooting live in §10 → "Transactional email (Brevo SMTP + PHPMailer)". Until `SMTP_HOST` is non-empty, order-receipt emails are silently skipped (the order is still placed); a line is written to PHP's `error_log` so you can spot misconfiguration during the test phase.
 
+**Pending update — secrets file** (store-owner order alerts):
+
+Add `ADMIN_NOTIFY_EMAIL` to `/home/u286479481/private/velorex_secrets.php` (or `api/secrets.local.php` for dev):
+
+```php
+define('ADMIN_NOTIFY_EMAIL', 'orders@velorexmusic.com');
+// Or notify multiple staff:
+// define('ADMIN_NOTIFY_EMAIL', 'owner@example.com, manager@example.com');
+```
+
+After this defines, every successful payment triggers a second email to the configured address(es) alongside the customer's receipt. The admin email has subject `🔔 New order #VD-… · ₹… · N items · <city>` and a deep link to the order detail in the admin panel. Reuses Brevo (free at current volumes — counts against the 300/day customer-receipt allowance, so capacity is fine).
+
+If the constant is undefined or empty, admin alerts are silently skipped — the customer receipt still fires regardless.
+
 ### Verifying a deploy
 
 After every deploy:
@@ -898,15 +912,23 @@ The payment flow is **server-orchestrated**. The browser never decides the price
 
 ### Transactional email (Brevo SMTP + PHPMailer)
 
-Customers get an order-confirmation email after every successful payment. The pipeline is:
+Two emails fire after every successful payment, both from `finalize_payment()`:
 
 ```
 finalize_payment() (after the DB commit)
-  → order_receipt_email($orderData)   in api/_email_templates.php  →  { subject, html, text }
-  → send_mail($to, $name, $subject, $html, $text)  in api/_mailer.php
-  → PHPMailer (api/lib/PHPMailer/*) opens SMTP to SMTP_HOST:SMTP_PORT
-  → Brevo's relay accepts the message and delivers
+  ├─ order_receipt_email($orderData)        → customer (always)
+  └─ admin_new_order_email($orderData)      → admin (if ADMIN_NOTIFY_EMAIL set)
+     ↓
+  send_mail($to, $name, $subject, $html, $text)  in api/_mailer.php
+     ↓
+  PHPMailer (api/lib/PHPMailer/*) opens SMTP to SMTP_HOST:SMTP_PORT
+     ↓
+  Brevo's relay accepts the message and delivers
 ```
+
+The **customer** gets a branded thank-you receipt with a track-order CTA. The **admin** (store owner/manager) gets an operational alert with the order id, total, item count, customer details, and a deep link to the order detail in the admin panel. Subject line carries the key facts (`🔔 New order #VD-12345 · ₹3,499 · 3 items · Mumbai`) so the owner can triage from the inbox without opening the email.
+
+Set `ADMIN_NOTIFY_EMAIL` in the active secrets file to enable admin alerts. Comma/semicolon-separated for multiple recipients. Undefined or empty → admin alerts silently skipped (customer receipt still fires).
 
 **Why the email is sent from `finalize_payment()` and not from `verify.php`/`webhook.php`:** the verify path and the webhook can both fire for the same payment (browser handshake AND Razorpay's server-to-server callback). Putting the email send inside `finalize_payment()` after the commit means it fires exactly once — the idempotent fast-path (`alreadyFinalized: true`) short-circuits before the email send on the second call. This is *verified* with a `finalize_payment()` called twice in the smoke test; Mailpit receives one message.
 

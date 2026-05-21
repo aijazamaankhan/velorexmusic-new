@@ -197,6 +197,29 @@ function finalize_payment(PDO $pdo, string $razorpayOrderId, string $razorpayPay
             error_log('[finalize] order ' . $internalOrderId . ' has no contact email — receipt skipped');
         }
 
+        // Admin notification — fires once per finalize (the alreadyFinalized
+        // fast-path above prevents verify+webhook double-fire). Best-effort
+        // like the customer mail: never throws, just logs. Skipped when
+        // ADMIN_NOTIFY_EMAIL is undefined/empty so deploys before the
+        // secret is set still work.
+        $adminRecipients = defined('ADMIN_NOTIFY_EMAIL') ? trim((string)ADMIN_NOTIFY_EMAIL) : '';
+        if ($adminRecipients !== '') {
+            try {
+                $tpl = admin_new_order_email($orderData);
+                // Comma- or semicolon-separated list — one mail per recipient
+                // so a bad address can't block the rest. PHPMailer would
+                // also accept multiple addresses, but per-recipient mail
+                // gives us clean error_log lines on partial failure.
+                foreach (preg_split('/[,;]/', $adminRecipients) as $addr) {
+                    $addr = trim($addr);
+                    if ($addr === '') continue;
+                    send_mail($addr, 'Store Manager', $tpl['subject'], $tpl['html'], $tpl['text']);
+                }
+            } catch (Throwable $mailErr) {
+                error_log('[finalize] admin alert mail crashed for ' . $internalOrderId . ': ' . $mailErr->getMessage());
+            }
+        }
+
         return [
             'orderId'          => $internalOrderId,
             'alreadyFinalized' => false,

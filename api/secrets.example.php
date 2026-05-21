@@ -100,3 +100,12 @@ define('SMTP_DEBUG', 0);
 // https://velorexmusic.com. Set this in api/secrets.local.php to point at
 // http://localhost:5500 during development so test emails link locally.
 // define('SITE_BASE_URL', 'http://localhost:5500');
+
+// Store-owner / store-manager order alerts.
+// When set, finalize_payment() sends a "🔔 New order #VD-… · ₹… · N items"
+// email to this address on every successful payment, alongside the
+// customer's receipt. Use a comma- or semicolon-separated list to notify
+// multiple people. Leave undefined or empty to disable admin alerts (the
+// customer receipt still fires either way).
+//   define('ADMIN_NOTIFY_EMAIL', 'orders@velorexmusic.com');
+//   define('ADMIN_NOTIFY_EMAIL', 'owner@example.com, manager@example.com');
