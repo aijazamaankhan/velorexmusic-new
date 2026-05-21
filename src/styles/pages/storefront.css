@@ -703,9 +703,15 @@ textarea.form-control { resize: vertical; min-height: 100px; }
      the DOM so JS can move them into the popover when needed. */
   .filters-sidebar { display: none; }
 
-  /* Chip strip — sits in the page flow directly below the page hero. */
+  /* Chip strip — sits in the page flow directly below the page hero.
+     min-width:0 is critical: as a grid child of .products-layout, the
+     default min-width:auto would let the chip flex container push the
+     whole grid cell (and therefore the whole page) wider than the
+     viewport. min-width:0 lets the inner overflow:auto clip + scroll
+     within the bar instead of bleeding out to the document. */
   .filter-chips-bar {
     display: block;
+    min-width: 0;
     margin-bottom: 1rem;
   }
   .filter-chips-strip {
