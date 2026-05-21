@@ -703,16 +703,30 @@ textarea.form-control { resize: vertical; min-height: 100px; }
      the DOM so JS can move them into the popover when needed. */
   .filters-sidebar { display: none; }
 
-  /* Chip strip — sits in the page flow directly below the page hero.
+  /* Chip strip — sits in the page flow directly below the page hero
+     and sticks under the fixed navbar as the user scrolls down so they
+     can refine filters without scrolling back to the top.
+
      min-width:0 is critical: as a grid child of .products-layout, the
      default min-width:auto would let the chip flex container push the
      whole grid cell (and therefore the whole page) wider than the
      viewport. min-width:0 lets the inner overflow:auto clip + scroll
-     within the bar instead of bleeding out to the document. */
+     within the bar instead of bleeding out to the document.
+
+     Solid var(--bg) background + subtle border + soft shadow: products
+     scrolling up under the bar disappear cleanly (no see-through
+     muddling); the shadow gives a faint elevation lift so the bar
+     reads as a layer above the grid, not glued to it. */
   .filter-chips-bar {
     display: block;
     min-width: 0;
     margin-bottom: 1rem;
+    position: sticky;
+    top: 70px; /* directly beneath the 70px fixed navbar */
+    z-index: 90; /* above products + active-filter tags, below popover (1600) and modals */
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 4px 12px -6px rgba(0, 0, 0, 0.5);
   }
   .filter-chips-strip {
     display: flex;
@@ -783,7 +797,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
     flex-direction: column;
     position: fixed;
     left: 1rem; right: 1rem;
-    top: 100px; /* below the chip strip; refined by JS if needed */
+    top: 132px; /* clears the 70px navbar + ~46px sticky chip strip + breathing room */
     max-height: min(70vh, 540px);
     background: var(--surface);
     border: 1px solid var(--border);
