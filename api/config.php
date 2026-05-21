@@ -48,6 +48,27 @@ if (!$__velorex_secrets_loaded
     exit;
 }
 
+// ---- Uploads symlink self-heal ----
+// Hostinger's git auto-deploy wipes anything in public_html/ that isn't in
+// the git tree, including our `uploads/` symlink. If the customer's storefront
+// hits this PHP code (it always does — /api/products.php is the first request
+// the SPA fires on load), we silently re-create the symlink before any image
+// fetch goes out. That means a deploy can take the symlink down, but the very
+// next page load restores it before customers notice anything.
+//
+// UPLOADS_PERSIST_DIR is set in the secrets file (see secrets.example.php).
+// It must point to a directory OUTSIDE public_html (otherwise deploys can
+// nuke the storage itself). On Hostinger that's typically /home/<user>/uploads.
+// If the constant is not defined (e.g. local dev where there's no aggressive
+// deploy), this block is a no-op.
+if (defined('UPLOADS_PERSIST_DIR') && UPLOADS_PERSIST_DIR !== '') {
+    $__uploads_link = __DIR__ . '/../uploads';
+    if (!is_link($__uploads_link) && !file_exists($__uploads_link) && is_dir(UPLOADS_PERSIST_DIR)) {
+        @symlink(UPLOADS_PERSIST_DIR, $__uploads_link);
+    }
+    unset($__uploads_link);
+}
+
 header('Content-Type: application/json; charset=utf-8');
 
 // API responses are dynamic — never cache (prevents stale reads after writes).

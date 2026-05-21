@@ -24,6 +24,24 @@ define('DB_PASS', 'REPLACE_WITH_REAL_PASSWORD');
 define('ADMIN_PASS', 'REPLACE_WITH_ADMIN_PASSWORD');
 
 // =============================================
+// Persistent uploads storage
+// =============================================
+// Path to a directory OUTSIDE public_html where uploaded product images live.
+// api/config.php creates a symlink from public_html/uploads → this path on
+// each PHP request. Why: Hostinger's git auto-deploy wipes anything under
+// public_html that isn't tracked in the repo (including our uploads/
+// symlink), so storing the actual files outside public_html is the only way
+// they survive deploys.
+//
+// On Hostinger, use a path under your home directory (Hostinger's open_basedir
+// allows /home/<your-user>/ even outside public_html). On local dev, leave
+// this UNDEFINED — the local /uploads/ dir doesn't need a symlink. The
+// self-heal in config.php is a no-op when this constant isn't set.
+//
+// MUST be set on the production server before customers can upload images.
+define('UPLOADS_PERSIST_DIR', '/home/u286479481/uploads');
+
+// =============================================
 // Razorpay payment gateway
 // =============================================
 // Two sets of credentials so we can flip between sandbox and production

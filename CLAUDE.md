@@ -808,12 +808,32 @@ ALTER TABLE payment_orders ADD COLUMN guest_contact JSON NULL AFTER user_id;
 
 For guest rows, `user_id` stays `NULL` and `guest_contact` holds `{email, phone, fullName}` so `finalize_payment()` can copy that into `orders.order_data.contact` at capture time. The existing `ON DELETE CASCADE` on the `user_id` foreign key is unaffected — NULL rows simply skip the cascade.
 
-**Pending step — product image migration** (run once on Hostinger after deploying Phase 1; **without it, the storefront's existing products show no images** because the list endpoint stopped shipping base64 inline). This converts the existing `products.image` / `products.images` base64 data: URLs into real files under `public_html/uploads/products/<hash>.<ext>` and rewrites the DB columns to URLs. Idempotent and re-runnable; failures on individual rows don't abort the run.
+**Pending step — product image migration** (run once on Hostinger after deploying Phase 1; **without it, the storefront's existing products show no images** because the list endpoint stopped shipping base64 inline). This converts the existing `products.image` / `products.images` base64 data: URLs into real files and rewrites the DB columns to URLs. Idempotent and re-runnable; failures on individual rows don't abort the run.
+
+**CRITICAL — read [§10 "Uploaded images live OUTSIDE public_html"](#uploaded-images-live-outside-publichtml-hostinger-deploy-wipes-anything-inside-it) before running this.** The files MUST land outside `public_html/`, accessed via a symlink, or Hostinger's next git deploy will wipe them. The full setup looks like:
 
 ```bash
 # SSH into Hostinger (hPanel → Advanced → SSH Access)
-cd /home/u286479481/domains/velorexmusic.com/public_html
-mkdir -p uploads/products && chmod 755 uploads uploads/products
+
+# 1. Create the persistent uploads directory OUTSIDE public_html
+mkdir -p ~/uploads/products
+chmod 755 ~/uploads ~/uploads/products
+
+# 2. Add UPLOADS_PERSIST_DIR to the secrets file so config.php's self-heal can find it
+#    Edit /home/u286479481/domains/velorexmusic.com/velorex_secrets.php and add:
+#       define('UPLOADS_PERSIST_DIR', '/home/u286479481/uploads');
+
+# 3. Take a backup of the products table BEFORE running the migration (cheap insurance)
+mysqldump -u u286479481_velorex_admin -p u286479481_velorex products \
+  > ~/products-pre-migration-$(date +%Y%m%d).sql
+
+# 4. Hit any /api endpoint once to let config.php create the symlink
+#    (or just create it manually: cd public_html && ln -s ~/uploads uploads)
+curl -s -o /dev/null https://velorexmusic.com/api/categories.php
+
+# 5. Run the migration. Files are written via the symlink so they land
+#    in ~/uploads/products/ (safe from deploys).
+cd ~/domains/velorexmusic.com/public_html
 php scripts/migrate-product-images.php
 ```
 
@@ -823,6 +843,8 @@ php scripts/migrate-product-images.php
 - Customers see images via the browser's native `<img>` fetch instead of base64-inline JSON. Browser/CDN can cache them; URL is content-addressed so a re-upload changes the URL (never stale)
 
 **Day-2 ops:** new product images uploaded through the admin panel after Phase 1 deploy already go straight to filesystem via `/api/upload-product-image.php` — no need to re-run the migration. The script is only for the existing base64 backlog.
+
+**If the migration's `Per-image failures` count is non-zero:** the products listed in stderr kept their original base64 in place (no data loss) — just re-upload those images through the admin panel.
 
 **Pending update — secrets file** (the Razorpay integration adds new constants):
 
@@ -889,6 +911,33 @@ If you ever see staleness again, the next step is hPanel → Performance → Cac
 ### `api/config.php` is the bridge between code and infrastructure
 
 It's gitignored on purpose — real DB passwords don't belong in git. But that means **the file lives only on the server and your local machine, and the two are independent**. If you add a helper function to `config.example.php` and push, you ALSO need to manually update `config.php` on Hostinger or every endpoint that calls the new helper will 500.
+
+### Uploaded images live OUTSIDE public_html (Hostinger deploy wipes anything inside it)
+
+Hostinger's Git auto-deploy nukes any file under `public_html/` that isn't tracked in the repo. That includes `public_html/uploads/` (where Phase 1 writes product images), which is gitignored on purpose. We learned this the hard way in May 2026 — after one deploy, every customer saw fallback placeholders instead of product photos.
+
+**How it works now:**
+- Actual files live at `/home/u286479481/uploads/products/<hash>.<ext>` (outside the deploy zone, never touched by git).
+- `public_html/uploads` is a symlink pointing there.
+- `api/config.php` checks for that symlink on every PHP request and re-creates it if missing — see the "Uploads symlink self-heal" block in [api/config.php](api/config.php). So even if Hostinger wipes the symlink on deploy, the very first `/api/products.php` call (which fires on every storefront load) restores it before any image fetch goes out.
+- The persistent path is configured via `UPLOADS_PERSIST_DIR` in the secrets file (see [api/secrets.example.php](api/secrets.example.php)).
+
+**One-time setup on a new server:**
+```bash
+ssh u286479481@<host>
+mkdir -p ~/uploads/products
+chmod 755 ~/uploads ~/uploads/products
+# Add to /home/u286479481/domains/velorexmusic.com/velorex_secrets.php:
+#   define('UPLOADS_PERSIST_DIR', '/home/u286479481/uploads');
+```
+
+After that, the symlink self-heal handles everything automatically.
+
+**If images vanish again after a deploy** (i.e. customers see placeholder icons):
+1. Check `~/uploads/products/` — the files should still be there. If yes, the symlink is just missing and the next page load will fix it. Hard-refresh your browser to confirm.
+2. If the files are gone too (catastrophic): restore from the most recent `mysqldump` of the products table, set up the persistent dir + symlink, and re-run `scripts/migrate-product-images.php`. The migration is idempotent and writes content-addressed filenames, so URLs in customer browsers stay identical — anyone with the old URLs cached gets an instant render.
+
+**Don't undo any of this** — see [§13 Conventions](#13-conventions-for-ai-assistants-editing-this-repo) "Product images live on disk, not in the DB."
 
 ### Admin auth = admin password = API token
 
@@ -1131,7 +1180,7 @@ See `PLAYWRIGHT_MCP_README.md` for the optional MCP server setup if you want bro
 - **Server is source of truth.** When in doubt, fetch from the API. localStorage is only a render cache.
 - **Bulk-replace semantics for products/categories.** Don't try to add per-item PATCH endpoints — the existing pattern is "send the whole list, server replaces atomically." Match that for new collection-type entities.
 - **Cache-bust is automatic — don't hand-edit `?v=…`.** Asset version strings on `<script>` / `<link>` tags are SHA-1 content hashes maintained by `npm run prep-deploy`. If you modify a `.js` or `.css` file, run that command before pushing (or rely on the pre-push hook from [§9 Deployment](#code-deploy-every-push) to remind you). Bumping by hand defeats the per-file-only caching and is easy to forget.
-- **Product images live on disk, not in the DB.** Phase 1 of the perf rewrite (May 2026) moved images from base64 LONGTEXT columns to files under `public_html/uploads/products/<hash>.<ext>`. The DB stores only the URL. Admin uploads go through `/api/upload-product-image.php`. The list endpoint (`/api/products.php`) is intentionally lean — no description/gallery/specs — and the detail page fetches the rest from `/api/product.php?id=N`. Don't put base64 image strings into `products.image` or `products.images` again.
+- **Product images live on disk, not in the DB.** Phase 1 of the perf rewrite (May 2026) moved images from base64 LONGTEXT columns to filesystem storage. On Hostinger the actual files live at `/home/u286479481/uploads/products/<hash>.<ext>` (OUTSIDE `public_html`) and are exposed via a self-healing symlink — see [§10 "Uploaded images live OUTSIDE public_html"](#uploaded-images-live-outside-publichtml-hostinger-deploy-wipes-anything-inside-it). The DB stores only the URL. Admin uploads go through `/api/upload-product-image.php`. The list endpoint (`/api/products.php`) is intentionally lean — no description/gallery/specs — and the detail page fetches the rest from `/api/product.php?id=N`. Don't put base64 image strings into `products.image` or `products.images` again, and don't move the actual files into `public_html/` (Hostinger's deploy will eat them).
 - **Update this doc.** If you change the schema, add an endpoint, or change a major convention, update the relevant section in `CLAUDE.md` in the same commit.
 
 ## 14. Storefront performance roadmap
