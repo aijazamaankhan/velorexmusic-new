@@ -1117,6 +1117,7 @@ See `PLAYWRIGHT_MCP_README.md` for the optional MCP server setup if you want bro
 | Wishlist persistence | Stub | The Wishlist tab in profile shows the first 3 products as filler. Would need a `wishlist` table or per-user JSON. |
 | Order status updates | Local-only | Admin can change an order's status in the UI but it only updates localStorage on the admin's browser. Needs a PATCH endpoint on `orders.php`. |
 | Razorpay integration | ✅ Shipped | Server-side order creation + HMAC signature verification + webhook backstop. Both test and live keys live in the secrets file, switched via `RAZORPAY_MODE`. See [§10 Razorpay payment flow](#razorpay-payment-flow). |
+| Storefront perf rewrite | Phase 1 ✅ shipped; Phases 2–3 pending | Phase 1 (May 2026) moved product images out of DB-base64 into `public_html/uploads/products/` + split list/detail endpoints. Cut `/api/products.php` from 27 MB / 15 s to 17 KB / 0.7 s. Phases 2 (thumbnails), 3 (CDN), and HTTP cache headers are documented in [§14 Storefront performance roadmap](#14-storefront-performance-roadmap) — none urgent, all independent. |
 | Frontend test coverage | Minimal | Only `test-admin-login.js` exists. Worth expanding when there's time. |
 
 ## 13. Conventions for AI assistants editing this repo
@@ -1132,3 +1133,88 @@ See `PLAYWRIGHT_MCP_README.md` for the optional MCP server setup if you want bro
 - **Cache-bust is automatic — don't hand-edit `?v=…`.** Asset version strings on `<script>` / `<link>` tags are SHA-1 content hashes maintained by `npm run prep-deploy`. If you modify a `.js` or `.css` file, run that command before pushing (or rely on the pre-push hook from [§9 Deployment](#code-deploy-every-push) to remind you). Bumping by hand defeats the per-file-only caching and is easy to forget.
 - **Product images live on disk, not in the DB.** Phase 1 of the perf rewrite (May 2026) moved images from base64 LONGTEXT columns to files under `public_html/uploads/products/<hash>.<ext>`. The DB stores only the URL. Admin uploads go through `/api/upload-product-image.php`. The list endpoint (`/api/products.php`) is intentionally lean — no description/gallery/specs — and the detail page fetches the rest from `/api/product.php?id=N`. Don't put base64 image strings into `products.image` or `products.images` again.
 - **Update this doc.** If you change the schema, add an endpoint, or change a major convention, update the relevant section in `CLAUDE.md` in the same commit.
+
+## 14. Storefront performance roadmap
+
+Why this section exists: in May 2026 the storefront's listing endpoint was serving 27 MB of JSON (60+ products × ~400 KB of base64-encoded images each), blocking the products page for 15+ seconds. Phase 1 fixed the underlying architecture; Phases 2 and 3 are polish on top. **None are urgent — Phase 1 is the structural win.** Each phase is independent and can be done in any order, though the listed order is roughly cheapest-first.
+
+The freshness invariant carries through all phases: **JSON is always fresh from DB; images are aggressively cached but their URLs change the instant the image content changes** (content-addressed hash in the filename). No phase below relaxes this.
+
+### ✅ Phase 1 — Filesystem images + list/detail split (shipped May 2026)
+
+**What it did**
+- Moved product images out of `products.image` / `products.images` (base64 LONGTEXT) and onto disk under `public_html/uploads/products/<hash>.<ext>`.
+- Split `/api/products.php` into a **lean list** (id, title, artist, price, cover URL, etc.) + a new `/api/product.php?id=N` for **full detail** (description, full gallery, specs, track listing, people).
+- Added `/api/upload-product-image.php` for admin multipart uploads. Content-addressed: identical bytes → same hash → same URL → single file on disk.
+- One-shot `scripts/migrate-product-images.php` converted the existing base64 backlog on Hostinger to filesystem URLs. Idempotent and re-runnable.
+
+**Result** (measured on live):
+- `/api/products.php`: **27,449 KB → 17 KB** (~1,580× smaller)
+- `/api/products.php` time: **15.6 s → 0.7 s** (~23× faster)
+
+**Don't undo any of these** — see §13 "Product images live on disk, not in the DB."
+
+### ⏳ Phase 2 — Thumbnails for listing covers
+
+**What it would do**
+- On image upload (in `api/upload-product-image.php`), generate a 200×200 (or 400×400 for retina) square thumb alongside the full image. Store as `<hash>.thumb.<ext>` next to the original. Use PHP GD or Imagick — both are available on Hostinger.
+- `row_to_product_lean()` in `api/_products_helpers.php` returns the thumb URL in the `image` field. The full URL remains accessible via `/api/product.php?id=N` for the detail-page gallery.
+- One-shot script (`scripts/generate-thumbnails.php`) generates thumbs for existing images on the server.
+
+**When to do it**
+- When listing covers feel slow on mobile. With ~66 products today and ~150 KB per cover, the listing page still downloads ~10 MB of images post-Phase-1. A 200×200 thumb is typically ~15 KB → another ~10× reduction.
+- Definitely before hitting ~150 products.
+
+**Rough effort:** half a day. The upload endpoint already runs all the validation we need; this just adds an image-resize call after the file is saved. The thumb script is a near-copy of `scripts/migrate-product-images.php` with `imagecopyresampled` instead of base64-decode.
+
+**Files that would change:** [api/upload-product-image.php](api/upload-product-image.php), [api/_products_helpers.php](api/_products_helpers.php) (`row_to_product_lean` returns thumb URL), one new `scripts/generate-thumbnails.php`.
+
+### ⏳ Phase 3 — CDN (Cloudflare free tier)
+
+**What it would do**
+- Put Cloudflare's free tier in front of velorexmusic.com (DNS-level — change nameservers at your domain registrar). Edge-caches `/uploads/*` aggressively across ~310 global POPs (Mumbai, Delhi, Bangalore, Chennai all present). Bypass cache for `/api/*`. HTML revalidates lightly.
+- Customers globally hit a POP near them instead of Hostinger India. Images load ~10× faster outside India; ~2× faster inside.
+
+**When to do it**
+- Anytime after Phase 2 (or even now — works fine without Phase 2). Definitely **before** any marketing push to non-India audiences.
+
+**Rough effort:** ~1 hour. Sign up at cloudflare.com, point velorexmusic.com's nameservers at the two Cloudflare nameservers, wait for DNS propagation, configure 3 cache rules in the Cloudflare dashboard:
+- `velorexmusic.com/api/*` → Bypass cache
+- `velorexmusic.com/uploads/*` → Cache everything
+- Everything else → Default
+
+**Zero code changes.** **Free** at this site's traffic level — the unlimited-bandwidth free tier covers everything a small Indian D2C store needs. Paid features (Image Resizing $5/mo, Pro plan $20/mo, Argo $5/mo) are opt-in for specific features you likely don't need; do not pay for them speculatively.
+
+**Honest trade-offs:**
+- Cloudflare outages take your site down (rare — 1–2× a year for ~30 min). Mitigation: revert nameservers in 24 h if needed.
+- `$_SERVER['REMOTE_ADDR']` becomes a Cloudflare IP; use `$_SERVER['HTTP_CF_CONNECTING_IP']` if you need the real visitor IP (e.g. for analytics or fraud checks). Small change to `api/config.php`.
+- Use Cloudflare's "Full (Strict)" SSL mode so it uses your Hostinger cert end-to-end. Don't pick "Flexible" — that does HTTP between Cloudflare and origin.
+
+### ⏳ HTTP cache headers for `/uploads/`
+
+**What it would do**
+- Add an `.htaccess` block under `public_html/uploads/` that sets `Cache-Control: public, max-age=31536000, immutable` on every image response. Tells browsers and any CDN to cache for a year without revalidation.
+- Safe because every image URL is content-addressed — different image content always yields a different URL, so "cached forever" can never serve stale.
+
+**When to do it**
+- Before Phase 3 (CDN benefits massively from this header — Cloudflare uses it to decide edge-cache lifetime).
+- Or anytime if you want returning visitors to instantly re-render the cached site without re-fetching images.
+
+**Rough effort:** 5 minutes. Create `public_html/uploads/.htaccess`:
+
+```
+<IfModule mod_headers.c>
+  Header set Cache-Control "public, max-age=31536000, immutable"
+</IfModule>
+```
+
+Apache/LiteSpeed on Hostinger both support this.
+
+### Trigger conditions worth remembering
+
+| When this happens | Reach for |
+|---|---|
+| Hit ~150 products | Phase 2 (thumbnails — listing image bandwidth scales with catalog size) |
+| Marketing push outside India | Phase 3 (CDN — your India server is far from US/EU customers) |
+| Customers say "second visit feels slow" | HTTP cache headers (cheapest fix; do this even without Phases 2/3) |
+| Phase 2 + 3 are both done and you want more | Lazy-load images below the fold (browser-native `loading="lazy"` — already used elsewhere; add to product cards) |
