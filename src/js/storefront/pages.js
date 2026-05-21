@@ -442,21 +442,59 @@
 
     function openProduct(id) { navigate('product', { id: id }); return false; }
 
-    function initPageProduct(params) {
+    // Phase 1: the products list endpoint no longer ships description / specs /
+    // gallery / track listing — those fields live behind /api/product.php?id=N.
+    // So this page does a two-step render:
+    //   1. If we have a lean entry in Storage cache, paint header + cover image
+    //      immediately so the page feels instant (~0 ms perceived latency).
+    //   2. Fetch full detail from /api/product.php and re-render with the
+    //      heavy fields (~100–300 ms typical).
+    // If the customer hits this URL cold (no lean cache, e.g. shared link or
+    // bookmark), step 1 falls back to a skeleton.
+    async function initPageProduct(params) {
+      var container = document.getElementById('product-detail-container');
       if (!params || !params.id) {
-        var c = document.getElementById('product-detail-container');
-        if (c) c.innerHTML = '<div class="empty-cart"><div class="empty-cart-icon">😔</div><h3>No product selected</h3><a href="#" onclick="navigate(\'products\')" class="btn btn-primary">Browse Products</a></div>';
+        if (container) container.innerHTML = '<div class="empty-cart"><div class="empty-cart-icon">😔</div><h3>No product selected</h3><a href="#" onclick="navigate(\'products\')" class="btn btn-primary">Browse Products</a></div>';
         return;
       }
-      var id = parseInt(params.id), products = Storage.getProducts(), product = products.find(p => p.id === id);
-      if (!product) {
-        var c2 = document.getElementById('product-detail-container');
-        if (c2) c2.innerHTML = '<div class="empty-cart"><div class="empty-cart-icon">😔</div><h3>Product not found</h3><a href="#" onclick="navigate(\'products\')" class="btn btn-primary">Browse Products</a></div>';
-        return;
+      var id = parseInt(params.id);
+      var products = Storage.getProducts();
+      var leanProduct = products.find(p => p.id === id) || null;
+
+      if (leanProduct) {
+        // Paint the lean version immediately. renderProductDetail tolerates
+        // missing description/specs/people/trackListing — they just render as
+        // empty sections until the full fetch arrives.
+        var dt = document.getElementById('detail-title'); if (dt) dt.textContent = leanProduct.title;
+        renderProductDetail(Object.assign({}, leanProduct, {
+          description: '',
+          images: leanProduct.image ? [leanProduct.image] : [],
+          specs: null,
+          people: [],
+          trackListing: '',
+        }));
+      } else if (container) {
+        container.innerHTML = '<div style="padding:4rem 2rem;text-align:center;color:var(--text-muted);">Loading product…</div>';
       }
-      var dt = document.getElementById('detail-title'); if (dt) dt.textContent = product.title;
-      renderProductDetail(product);
-      renderRelatedProducts(product, products);
+
+      try {
+        var res = await fetch(API_BASE + '/product.php?id=' + encodeURIComponent(id), { cache: 'no-store' });
+        if (res.status === 404) {
+          if (container) container.innerHTML = '<div class="empty-cart"><div class="empty-cart-icon">😔</div><h3>Product not found</h3><a href="#" onclick="navigate(\'products\')" class="btn btn-primary">Browse Products</a></div>';
+          return;
+        }
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        var product = await res.json();
+        var dtFinal = document.getElementById('detail-title'); if (dtFinal) dtFinal.textContent = product.title;
+        renderProductDetail(product);
+        renderRelatedProducts(product, products);
+      } catch (e) {
+        if (container && !leanProduct) {
+          container.innerHTML = '<div class="empty-cart"><div class="empty-cart-icon">😔</div><h3>Could not load product</h3><p style="color:var(--text-muted);font-size:0.85rem;">' + Utils.escape(e.message || 'Network error') + '</p><a href="#" onclick="navigate(\'products\')" class="btn btn-primary">Browse Products</a></div>';
+        }
+        // If a lean version was already painted, leave it visible — better
+        // than blowing away a usable page on a transient fetch failure.
+      }
     }
 
     function renderProductDetail(product) {

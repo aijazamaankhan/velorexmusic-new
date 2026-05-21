@@ -95,3 +95,27 @@ function row_to_product(array $r): array {
         'people' => $r['people'] ? json_decode($r['people'], true) : [],
     ];
 }
+
+// Lean shape for the products list endpoint. Excludes the heavy fields
+// (description, full image gallery, track_listing, specs, people) that are
+// only needed on the product detail page — those are served by /api/product.php
+// keyed by id. This is the reason /api/products.php drops from ~27 MB to ~30 KB
+// for a 66-product catalog after migration: the per-product cover URL is
+// short (~50 bytes) instead of a base64 payload (~400 KB).
+function row_to_product_lean(array $r): array {
+    return [
+        'id' => (int)$r['id'],
+        'title' => $r['title'],
+        'artist' => $r['artist'],
+        'category' => $r['category'],
+        'language' => $r['language'],
+        'price' => (int)$r['price'],
+        'originalPrice' => $r['original_price'] !== null ? (int)$r['original_price'] : null,
+        'image' => $r['image'], // primary/cover only — gallery is fetched via /api/product.php
+        'rating' => $r['rating'] !== null ? (float)$r['rating'] : 0,
+        'reviews' => (int)$r['reviews'],
+        'badge' => $r['badge'],
+        'stock' => (int)$r['stock'],
+        'musicDirector' => $r['music_director'],
+    ];
+}

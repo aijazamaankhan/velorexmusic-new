@@ -7,9 +7,22 @@ $pdo = db();
 
 try {
     if ($method === 'GET') {
-        $stmt = $pdo->query('SELECT * FROM products ORDER BY id');
+        // Lean list shape — see row_to_product_lean() in _products_helpers.php
+        // for why the heavy columns (description, images gallery, track_listing,
+        // specs, people) are NOT fetched here. Heavy detail is served by
+        // /api/product.php?id=N on demand from the product detail page.
+        //
+        // Selecting an explicit column list (rather than `SELECT *`) means
+        // MySQL doesn't ship the multi-MB LONGTEXT columns over the
+        // DB → PHP wire either. Without this, even though we'd drop them
+        // from the JSON, PHP would still pull them into memory per row.
+        $stmt = $pdo->query(
+            'SELECT id, title, artist, category, language, price, original_price, '
+          . 'image, rating, reviews, badge, stock, music_director '
+          . 'FROM products ORDER BY id'
+        );
         $rows = $stmt->fetchAll();
-        $products = array_map('row_to_product', $rows);
+        $products = array_map('row_to_product_lean', $rows);
         echo json_encode($products);
         exit;
     }

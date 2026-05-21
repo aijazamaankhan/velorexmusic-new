@@ -120,7 +120,11 @@ velorexmusic-new/
 │   ├── .htaccess                # Deny direct access to config*.php, disable LiteSpeed cache
 │   ├── config.php               # GITIGNORED. Real DB creds + ADMIN_PASS + shared helpers
 │   ├── config.example.php       # Template (tracked in git). Copy to config.php on server.
-│   ├── products.php             # GET (list) / POST (bulk replace, admin-only) / DELETE
+│   ├── products.php             # GET (lean list — id/title/artist/price/cover URL/etc., NO heavy
+│   │                            # description/gallery/specs) / POST (bulk replace, admin-only) / DELETE
+│   ├── product.php              # GET ?id=N → full product detail (heavy fields). Phase 1 split.
+│   ├── upload-product-image.php # POST multipart (admin-only). Writes image to
+│   │                            # public_html/uploads/products/<hash>.<ext>; returns URL.
 │   ├── categories.php           # GET / POST (admin-only, replaces full list)
 │   ├── orders.php               # GET (admin: all, user: own) / POST (user-only)
 │   ├── auth/
@@ -153,6 +157,11 @@ velorexmusic-new/
 │   │                            # ?v= to a SHA-1 of the referenced file. See §9.
 │   ├── hooks/pre-push           # Refuses `git push` if cache-bust is stale.
 │   │                            # Activate per clone: `git config core.hooksPath scripts/hooks`
+│   ├── migrate-product-images.php  # One-shot, idempotent: converts existing
+│   │                               # base64 data: URLs in products.image / images
+│   │                               # to files under public_html/uploads/products/
+│   │                               # and rewrites the DB to point at URLs.
+│   │                               # Run once on Hostinger after Phase 1 deploy.
 │   ├── setup.js, start.js,      # Docker-based local dev orchestration (see §8.0)
 │   │   stop.js, logs.js
 │   └── schema.sql               # Authoritative schema dump applied to fresh DBs
@@ -339,7 +348,8 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 
 | Method | Path | Body / Query | Returns |
 |---|---|---|---|
-| GET | `/api/products.php` | — | `Product[]` |
+| GET | `/api/products.php` | — | `ProductLean[]` — listing shape only (id, title, artist, category, language, price, originalPrice, image, rating, reviews, badge, stock, musicDirector). Heavy fields (description, full gallery, track listing, specs, people) are NOT included; fetch them via `/api/product.php?id=N`. This drops the list payload from ~27 MB to ~30 KB on a 66-product catalog. |
+| GET | `/api/product.php?id=N` | — | Full `Product` for that id (or 404 if missing). Heavy fields included. Called on the product-detail page only. |
 | GET | `/api/categories.php` | — | `string[]` (sorted by `sort_order`) |
 | POST | `/api/auth/signup.php` | `{ email, password, firstName, lastName? }` | `{ ok, token, user }` |
 | POST | `/api/auth/login.php` | `{ email, password }` | `{ ok, token, user }` |
@@ -368,6 +378,7 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 |---|---|---|---|
 | POST | `/api/products.php` | `{ products: Product[] }` (full list) | `{ ok, count }` — transactional replace |
 | POST | `/api/products-bulk-upsert.php` | `{ products: Product[] }` (partial list) | `{ ok, inserted, updated, errors[], products[] }` — **additive** upsert; does NOT wipe untouched rows. Rows without an `id` get auto-assigned `MAX(id)+1`. Used by the admin Bulk Upload CSV flow. |
+| POST | `/api/upload-product-image.php` | multipart `image` field (JPG/PNG/WebP, ≤5 MB) | `{ ok, url, bytes, mime }` — writes the file to `public_html/uploads/products/<hash>.<ext>` and returns the URL. Content-addressed and idempotent (same bytes → same hash → same URL → single file on disk). Called by the admin product modal in place of the old base64 FileReader path. |
 | DELETE | `/api/products.php?id=N` | — | `{ ok }` |
 | POST | `/api/categories.php` | `{ categories: string[] }` (full list) | `{ ok, count }` — transactional replace |
 | GET | `/api/orders.php` | — | `Order[]` (all orders, joined with user info) |
@@ -797,6 +808,22 @@ ALTER TABLE payment_orders ADD COLUMN guest_contact JSON NULL AFTER user_id;
 
 For guest rows, `user_id` stays `NULL` and `guest_contact` holds `{email, phone, fullName}` so `finalize_payment()` can copy that into `orders.order_data.contact` at capture time. The existing `ON DELETE CASCADE` on the `user_id` foreign key is unaffected — NULL rows simply skip the cascade.
 
+**Pending step — product image migration** (run once on Hostinger after deploying Phase 1; **without it, the storefront's existing products show no images** because the list endpoint stopped shipping base64 inline). This converts the existing `products.image` / `products.images` base64 data: URLs into real files under `public_html/uploads/products/<hash>.<ext>` and rewrites the DB columns to URLs. Idempotent and re-runnable; failures on individual rows don't abort the run.
+
+```bash
+# SSH into Hostinger (hPanel → Advanced → SSH Access)
+cd /home/u286479481/domains/velorexmusic.com/public_html
+mkdir -p uploads/products && chmod 755 uploads uploads/products
+php scripts/migrate-product-images.php
+```
+
+**What changes after the migration runs:**
+- `products.image` rows shrink from ~400 KB base64 strings to ~50 byte URLs (`/uploads/products/abc123de.jpg`)
+- `/api/products.php` response drops from tens-of-MB to tens-of-KB
+- Customers see images via the browser's native `<img>` fetch instead of base64-inline JSON. Browser/CDN can cache them; URL is content-addressed so a re-upload changes the URL (never stale)
+
+**Day-2 ops:** new product images uploaded through the admin panel after Phase 1 deploy already go straight to filesystem via `/api/upload-product-image.php` — no need to re-run the migration. The script is only for the existing base64 backlog.
+
 **Pending update — secrets file** (the Razorpay integration adds new constants):
 
 After deploying the new code, edit `/home/u286479481/private/velorex_secrets.php` on Hostinger and append the Razorpay block from [api/secrets.example.php](api/secrets.example.php). At minimum:
@@ -1103,4 +1130,5 @@ See `PLAYWRIGHT_MCP_README.md` for the optional MCP server setup if you want bro
 - **Server is source of truth.** When in doubt, fetch from the API. localStorage is only a render cache.
 - **Bulk-replace semantics for products/categories.** Don't try to add per-item PATCH endpoints — the existing pattern is "send the whole list, server replaces atomically." Match that for new collection-type entities.
 - **Cache-bust is automatic — don't hand-edit `?v=…`.** Asset version strings on `<script>` / `<link>` tags are SHA-1 content hashes maintained by `npm run prep-deploy`. If you modify a `.js` or `.css` file, run that command before pushing (or rely on the pre-push hook from [§9 Deployment](#code-deploy-every-push) to remind you). Bumping by hand defeats the per-file-only caching and is easy to forget.
+- **Product images live on disk, not in the DB.** Phase 1 of the perf rewrite (May 2026) moved images from base64 LONGTEXT columns to files under `public_html/uploads/products/<hash>.<ext>`. The DB stores only the URL. Admin uploads go through `/api/upload-product-image.php`. The list endpoint (`/api/products.php`) is intentionally lean — no description/gallery/specs — and the detail page fetches the rest from `/api/product.php?id=N`. Don't put base64 image strings into `products.image` or `products.images` again.
 - **Update this doc.** If you change the schema, add an endpoint, or change a major convention, update the relevant section in `CLAUDE.md` in the same commit.

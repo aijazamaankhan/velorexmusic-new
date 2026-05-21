@@ -591,21 +591,44 @@
       }).join('');
     }
 
-    function processImageFile(file) {
-      return new Promise(function (resolve, reject) {
-        if (!file || !file.type || !file.type.startsWith('image/')) {
-          reject(new Error('invalid_type'));
-          return;
-        }
-        if (file.size > 5 * 1024 * 1024) {
-          reject(new Error('too_large'));
-          return;
-        }
-        var reader = new FileReader();
-        reader.onload = function (e) { resolve(e.target.result); };
-        reader.onerror = function () { reject(new Error('read_error')); };
-        reader.readAsDataURL(file);
-      });
+    // Upload an image file to the server and resolve to its public URL.
+    // Phase 1 of the perf rewrite — previously this resolved to a base64
+    // data: URL via FileReader, which made product saves 10× larger than
+    // necessary and bloated /api/products.php to 27 MB. Now the bytes go to
+    // /api/upload-product-image.php which writes them to disk under
+    // /uploads/products/<hash>.<ext> and returns that URL. The rest of the
+    // admin UI (gallery preview, save) doesn't care whether the string is
+    // a data: URL or an https URL — <img src="..."> handles both.
+    //
+    // Same 5 MB / image-mime client check as before, kept so the user gets
+    // an immediate error before paying the network cost.
+    async function processImageFile(file) {
+      if (!file || !file.type || !file.type.startsWith('image/')) {
+        throw new Error('invalid_type');
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('too_large');
+      }
+      var fd = new FormData();
+      fd.append('image', file);
+      var res;
+      try {
+        res = await fetch(API_BASE + '/upload-product-image.php', {
+          method: 'POST',
+          // X-Admin-Pass only — DO NOT set Content-Type. The browser sets
+          // multipart boundary automatically; setting it manually breaks the
+          // upload because the boundary in the header won't match the body.
+          headers: { 'X-Admin-Pass': sessionStorage.getItem('admin_pass') || '' },
+          body: fd,
+        });
+      } catch (e) {
+        throw new Error('network_error');
+      }
+      var data = await res.json().catch(function () { return {}; });
+      if (!res.ok || !data.ok || !data.url) {
+        throw new Error(data.error || ('upload_failed_' + res.status));
+      }
+      return data.url;
     }
 
     async function addFilesToGallery(fileList) {
