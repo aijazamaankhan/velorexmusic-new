@@ -48,20 +48,21 @@ if (!$__velorex_secrets_loaded
     exit;
 }
 
-// ---- Uploads symlink self-heal ----
+// ---- Uploads symlink self-heal (best-effort, NOT the primary mechanism) ----
 // Hostinger's git auto-deploy wipes anything in public_html/ that isn't in
-// the git tree, including our `uploads/` symlink. If the customer's storefront
-// hits this PHP code (it always does — /api/products.php is the first request
-// the SPA fires on load), we silently re-create the symlink before any image
-// fetch goes out. That means a deploy can take the symlink down, but the very
-// next page load restores it before customers notice anything.
+// the git tree, including our `uploads/` symlink. Ideally we'd re-create the
+// symlink right here whenever a PHP request lands. BUT — Hostinger ships its
+// web PHP with `symlink` (and `exec`, `shell_exec`, `system`, `popen`) in
+// `disable_functions` for security, so this @symlink call is a silent no-op
+// on Hostinger. We discovered this the hard way in May 2026.
 //
-// UPLOADS_PERSIST_DIR is set in the secrets file (see secrets.example.php).
-// It must point to a directory OUTSIDE public_html (otherwise deploys can
-// nuke the storage itself). On Hostinger that's typically /home/<user>/uploads.
-// If the constant is not defined (e.g. local dev where there's no aggressive
-// deploy), this block is a no-op.
-if (defined('UPLOADS_PERSIST_DIR') && UPLOADS_PERSIST_DIR !== '') {
+// The ACTUAL recovery mechanism on Hostinger is a 1-minute cron job that
+// shells out `ln -s …` — see scripts/ensure-uploads-symlink.sh and
+// [§10 "Uploaded images live OUTSIDE public_html"] in CLAUDE.md for setup.
+// This block is kept because (a) it's harmless when symlink() is disabled,
+// and (b) it DOES work on environments without that disable_functions
+// restriction (self-hosted VPS, future migrations, local dev parity).
+if (defined('UPLOADS_PERSIST_DIR') && UPLOADS_PERSIST_DIR !== '' && function_exists('symlink')) {
     $__uploads_link = __DIR__ . '/../uploads';
     if (!is_link($__uploads_link) && !file_exists($__uploads_link) && is_dir(UPLOADS_PERSIST_DIR)) {
         @symlink(UPLOADS_PERSIST_DIR, $__uploads_link);

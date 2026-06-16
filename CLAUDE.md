@@ -162,6 +162,9 @@ velorexmusic-new/
 │   │                               # to files under public_html/uploads/products/
 │   │                               # and rewrites the DB to point at URLs.
 │   │                               # Run once on Hostinger after Phase 1 deploy.
+│   ├── ensure-uploads-symlink.sh   # Cron-driven safety net that recreates the
+│   │                               # public_html/uploads → ~/uploads symlink
+│   │                               # if a deploy wipes it. See §10 ops gotcha.
 │   ├── setup.js, start.js,      # Docker-based local dev orchestration (see §8.0)
 │   │   stop.js, logs.js
 │   └── schema.sql               # Authoritative schema dump applied to fresh DBs
@@ -827,9 +830,8 @@ chmod 755 ~/uploads ~/uploads/products
 mysqldump -u u286479481_velorex_admin -p u286479481_velorex products \
   > ~/products-pre-migration-$(date +%Y%m%d).sql
 
-# 4. Hit any /api endpoint once to let config.php create the symlink
-#    (or just create it manually: cd public_html && ln -s ~/uploads uploads)
-curl -s -o /dev/null https://velorexmusic.com/api/categories.php
+# 4. Create the symlink manually (Hostinger's PHP can't, see §10 ops gotcha):
+cd ~/domains/velorexmusic.com/public_html && ln -s ~/uploads uploads && cd -
 
 # 5. Run the migration. Files are written via the symlink so they land
 #    in ~/uploads/products/ (safe from deploys).
@@ -919,23 +921,42 @@ Hostinger's Git auto-deploy nukes any file under `public_html/` that isn't track
 **How it works now:**
 - Actual files live at `/home/u286479481/uploads/products/<hash>.<ext>` (outside the deploy zone, never touched by git).
 - `public_html/uploads` is a symlink pointing there.
-- `api/config.php` checks for that symlink on every PHP request and re-creates it if missing — see the "Uploads symlink self-heal" block in [api/config.php](api/config.php). So even if Hostinger wipes the symlink on deploy, the very first `/api/products.php` call (which fires on every storefront load) restores it before any image fetch goes out.
-- The persistent path is configured via `UPLOADS_PERSIST_DIR` in the secrets file (see [api/secrets.example.php](api/secrets.example.php)).
+- A **cron job** runs every minute and recreates the symlink if missing. The cron command is the one-liner version of [scripts/ensure-uploads-symlink.sh](scripts/ensure-uploads-symlink.sh). Worst case: 60 seconds of broken images post-deploy, but only on the rare deploy that actually wipes the symlink.
+
+**Why cron and not PHP self-heal?** The first cut of this had a self-heal in [api/config.php](api/config.php) that recreated the symlink on every API request — ideally would close the gap to ~zero. But **Hostinger's web PHP disables `symlink()`** (along with `exec`, `shell_exec`, `system`, `popen`) via `disable_functions` for security. There is no way to create a symlink from PHP on this host. The self-heal block is still in `config.php` because it's harmless when disabled and DOES work on environments without that restriction (local dev, future VPS migration), but on Hostinger the cron is the actual recovery mechanism.
+
+**Persistent path is configured via `UPLOADS_PERSIST_DIR`** in the secrets file (see [api/secrets.example.php](api/secrets.example.php)). The constant isn't strictly needed once the cron is in place (the cron has hard-coded paths), but the upload-product-image endpoint and migration script both write through `public_html/uploads/...` which resolves through the symlink, so the constant is more of an indicator that the operator did the deployment-resilience setup.
 
 **One-time setup on a new server:**
+
 ```bash
+# 1. SSH in and create the persistent dir
 ssh u286479481@<host>
 mkdir -p ~/uploads/products
 chmod 755 ~/uploads ~/uploads/products
-# Add to /home/u286479481/domains/velorexmusic.com/velorex_secrets.php:
+
+# 2. Create the symlink for immediate use
+ln -s ~/uploads ~/domains/velorexmusic.com/public_html/uploads
+
+# 3. Add UPLOADS_PERSIST_DIR to the secrets file
+nano ~/domains/velorexmusic.com/velorex_secrets.php
 #   define('UPLOADS_PERSIST_DIR', '/home/u286479481/uploads');
+
+# 4. Install the cron — hPanel → Advanced → Cron Jobs → Add new
+#    Schedule: every minute (* * * * *)
+#    Command:
+#      [ -L /home/u286479481/domains/velorexmusic.com/public_html/uploads ] || \
+#        ln -s /home/u286479481/uploads /home/u286479481/domains/velorexmusic.com/public_html/uploads
+#    (or alternatively call the tracked script:
+#      bash /home/u286479481/domains/velorexmusic.com/public_html/scripts/ensure-uploads-symlink.sh)
 ```
 
-After that, the symlink self-heal handles everything automatically.
+**Verifying the cron works:** SSH in, intentionally break the symlink (`rm public_html/uploads`), wait 60s, run `ls -la public_html/uploads` — the symlink should reappear.
 
 **If images vanish again after a deploy** (i.e. customers see placeholder icons):
-1. Check `~/uploads/products/` — the files should still be there. If yes, the symlink is just missing and the next page load will fix it. Hard-refresh your browser to confirm.
-2. If the files are gone too (catastrophic): restore from the most recent `mysqldump` of the products table, set up the persistent dir + symlink, and re-run `scripts/migrate-product-images.php`. The migration is idempotent and writes content-addressed filenames, so URLs in customer browsers stay identical — anyone with the old URLs cached gets an instant render.
+1. **First check the symlink** — `ls -la ~/domains/velorexmusic.com/public_html/uploads`. If missing, the cron should restore it within a minute. If you can't wait, run `ln -s ~/uploads ~/domains/velorexmusic.com/public_html/uploads` manually.
+2. **Check `~/uploads/products/`** — the files should still be there. If yes, you're fine; only the symlink was wiped.
+3. **If the persistent files are ALSO gone** (catastrophic — should never happen because that dir isn't in the deploy zone, but just in case): restore from the most recent `mysqldump` of the products table, set up the persistent dir + symlink + cron, and re-run `scripts/migrate-product-images.php`. The migration is idempotent and writes content-addressed filenames, so URLs in customer browsers stay identical — anyone with the old URLs cached gets an instant render.
 
 **Don't undo any of this** — see [§13 Conventions](#13-conventions-for-ai-assistants-editing-this-repo) "Product images live on disk, not in the DB."
 
