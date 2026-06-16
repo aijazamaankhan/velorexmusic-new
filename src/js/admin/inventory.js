@@ -926,9 +926,9 @@
       if (!Array.isArray(window.editUploadedImagesData)) window.editUploadedImagesData = [];
     }
 
-    function openProductEditModal(id) {
-      const product = Storage.getProducts().find(p => p.id === id);
-      if (!product) {
+    async function openProductEditModal(id) {
+      const cached = Storage.getProducts().find(p => p.id === id);
+      if (!cached) {
         showToast('⚠️ Product not found. Refresh and try again.', 'danger');
         return;
       }
@@ -940,10 +940,29 @@
       if (!modal) return;
       modal.style.display = 'flex';
 
-      // Reset any stale state from a previous edit session.
+      // Reset any stale state from a previous edit session. (Runs before the
+      // detail fetch below so the form is blank — not showing a prior product's
+      // values — during the brief load.)
       const form = document.getElementById('product-edit-form');
       if (form) form.reset();
       resetEditImageGallery();
+
+      // The cached record comes from the LEAN /api/products.php list, which omits
+      // heavy fields (description, specs, trackListing, full image gallery — see
+      // the Phase 1 list/detail split). Fetch the full product so those fields
+      // populate with the real saved values instead of showing blank.
+      let product = cached;
+      try {
+        const res = await fetch(API_BASE + '/product.php?id=' + encodeURIComponent(id), { cache: 'no-store' });
+        if (res.ok) {
+          const full = await res.json();
+          if (full && full.id != null) product = Object.assign({}, cached, full);
+        } else {
+          showToast('⚠️ Couldn\'t load full product details — specs & track listing may be blank.', 'danger');
+        }
+      } catch (e) {
+        showToast('⚠️ Couldn\'t load full product details — specs & track listing may be blank.', 'danger');
+      }
 
       document.getElementById('e-id').value = product.id;
       document.getElementById('e-title').value = product.title || '';
