@@ -826,6 +826,33 @@
       border-color: rgba(255, 255, 255, 0.25);
     }
 
+    /* Corner ✕ to delete an image from the gallery. Sits top-right, always
+       visible so the action is discoverable; routes through a confirm popup. */
+    .img-delete-btn {
+      position: absolute;
+      top: 0.4rem;
+      right: 0.4rem;
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(239, 68, 68, 0.85);
+      color: #fff;
+      border-radius: 50%;
+      font-size: 0.7rem;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+      transition: var(--transition);
+      backdrop-filter: blur(6px);
+    }
+    .img-delete-btn:hover {
+      background: #ef4444;
+      transform: scale(1.08);
+    }
+
     /* Orders */
     .btn-view-order {
       background: rgba(255, 107, 53, 0.12);

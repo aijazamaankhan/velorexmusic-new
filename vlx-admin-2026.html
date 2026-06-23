@@ -17,14 +17,14 @@
        See src/styles/admin/tokens.css and src/styles/admin/base.css. -->
   <link rel="stylesheet" href="src/styles/admin/tokens.css?v=4af9230f">
   <link rel="stylesheet" href="src/styles/admin/base.css?v=875f13f9">
-  <link rel="stylesheet" href="src/styles/admin/components/buttons.css?v=ee0d573c">
+  <link rel="stylesheet" href="src/styles/admin/components/buttons.css?v=2e544cc4">
   <link rel="stylesheet" href="src/styles/admin/components/forms.css?v=03e0888c">
   <link rel="stylesheet" href="src/styles/admin/components/modal.css?v=b1c80662">
   <link rel="stylesheet" href="src/styles/admin/components/toast.css?v=e324991f">
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
   <!-- Page-specific styles (sidebar, header, panels, tables, drawer, dashboard).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/admin/pages/admin.css?v=b446bdd4">
+  <link rel="stylesheet" href="src/styles/admin/pages/admin.css?v=3b2ed602">
   <!-- Admin JS modules extracted in PR 4. Plain scripts (not type="module") so
        the existing inline <script> + onclick= handlers resolve them via
        script-scope. Order: leaves first. -->
@@ -40,7 +40,7 @@
   <script src="src/js/admin/main.js?v=a3622393"></script>
   <script src="src/js/admin/customers.js?v=127735c1"></script>
   <script src="src/js/admin/orders.js?v=fef46ea8"></script>
-  <script src="src/js/admin/inventory.js?v=58a5db5c"></script>
+  <script src="src/js/admin/inventory.js?v=4320068c"></script>
   <script src="src/js/admin/toast.js?v=9a4bf3e8"></script>
 </head>
 
@@ -512,7 +512,7 @@
         </div>
         <div style="margin-top: 2rem; display: flex; gap: 1rem;">
           <button type="submit" class="btn btn-primary" id="modal-submit-btn">💾 Save Product</button>
-          <button type="button" class="btn" style="background: var(--surface);"
+          <button type="button" class="btn btn-cancel"
             onclick="closeProductModal()">Cancel</button>
         </div>
       </form>
@@ -569,28 +569,18 @@
             <input type="number" step="0.1" class="form-control" id="e-rating" value="4.5">
           </div>
           <div class="form-group full-width">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
-              <label class="form-label" style="margin:0;">Image URLs</label>
-              <button type="button" class="btn btn-sm" style="background: var(--surface); border: 1px solid var(--border);"
-                onclick="addEditImageUrlRow()">+ Add URL</button>
-            </div>
-            <div id="image-url-list-edit" class="image-url-list" style="margin-top:0.75rem;">
-              <div class="image-url-row">
-                <input type="url" class="form-control" placeholder="https://...">
-                <button type="button" class="btn btn-sm btn-danger" title="Remove URL" onclick="removeImageUrlRow(this)" style="height:42px;">✕</button>
-              </div>
-            </div>
-          </div>
-          <div class="form-group full-width">
-            <label class="form-label">Upload Images</label>
+            <label class="form-label">Images</label>
+            <small style="display:block;color:var(--text-muted);font-size:0.75rem;margin-bottom:0.75rem;">
+              The first image is the cover. Hover an image to set it as cover, or use ✕ to delete it.
+            </small>
             <div class="image-upload-section">
+              <div class="image-grid-preview" id="image-preview-grid-edit" style="display:none;"></div>
               <input type="file" id="e-image-upload" accept="image/*" multiple style="display: none;">
               <div class="upload-area" onclick="document.getElementById('e-image-upload').click()">
                 <div class="upload-icon">📁</div>
                 <div class="upload-text">Click to upload images or drag & drop</div>
                 <div class="upload-hint">PNG, JPG, GIF up to 5MB each</div>
               </div>
-              <div class="image-grid-preview" id="image-preview-grid-edit" style="display:none;"></div>
             </div>
           </div>
 
@@ -667,10 +657,27 @@
         </div>
         <div style="margin-top: 2rem; display: flex; gap: 1rem;">
           <button type="submit" class="btn btn-primary">💾 Update Product</button>
-          <button type="button" class="btn" style="background: var(--surface);"
+          <button type="button" class="btn btn-cancel"
             onclick="closeProductEditModal()">Cancel</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Generic confirmation popup (driven by adminConfirm() in inventory.js).
+       Used by the edit-modal image-delete flow; reusable for other confirms.
+       z-index above other modals so it sits on top of the edit modal. -->
+  <div class="modal-overlay" id="admin-confirm-modal" style="z-index: 1300;">
+    <div class="modal-content" style="max-width: 420px;">
+      <div class="modal-header">
+        <h2 class="modal-title" id="admin-confirm-title">Are you sure?</h2>
+        <div class="modal-close" id="admin-confirm-close">✕</div>
+      </div>
+      <p id="admin-confirm-message" style="color: var(--text-muted); line-height: 1.6;"></p>
+      <div style="margin-top: 1.5rem; display:flex; justify-content:flex-end; gap: 0.75rem;">
+        <button type="button" class="btn btn-cancel" id="admin-confirm-cancel" style="width:auto;">Cancel</button>
+        <button type="button" class="btn btn-danger" id="admin-confirm-ok" style="width:auto;">Confirm</button>
+      </div>
     </div>
   </div>
 
@@ -835,7 +842,7 @@
         <input type="email" class="form-control" id="delete-user-confirm-input" autocomplete="off" oninput="updateDeleteUserButton()" placeholder="customer@example.com">
       </div>
       <div style="margin-top: 1.5rem; display:flex; justify-content:flex-end; gap: 0.75rem;">
-        <button type="button" class="btn" style="background: var(--surface); border: 1px solid var(--border); width:auto;" onclick="closeDeleteUserModal()">Cancel</button>
+        <button type="button" class="btn btn-cancel" style="width:auto;" onclick="closeDeleteUserModal()">Cancel</button>
         <button type="button" class="btn btn-danger" id="delete-user-confirm-btn" style="width:auto;" disabled onclick="confirmDeleteUser()">
           <i class="fas fa-trash"></i> Permanently delete
         </button>

@@ -981,22 +981,18 @@
       setEditTrackListingSidesData(product);
       setEditSpecificationsData(product.specs || {});
 
-      // Images: split data: vs URL into their respective UI lists.
+      // Images: load every existing image (uploaded files AND any legacy
+      // data:/external URLs) into the single visual gallery. New uploads append
+      // to the same list. The first item is the cover. There is no separate
+      // "Image URLs" text list in the edit modal anymore — everything is shown
+      // as a thumbnail the admin can reorder (Set cover) or delete.
       ensureEditImageState();
       let imgs = [];
       if (Array.isArray(product.images) && product.images.length) imgs = product.images.slice();
       else if (product.image) imgs = [product.image];
-      const dataImgs = imgs.filter(u => String(u || '').startsWith('data:'));
-      const urlImgs = imgs.filter(u => !String(u || '').startsWith('data:'));
-      window.editUploadedImagesData = dataImgs.slice();
+      window.editUploadedImagesData = imgs.filter(Boolean)
+        .filter((u, idx, arr) => arr.indexOf(u) === idx);
       renderEditImagePreviewGrid();
-
-      const list = document.getElementById('image-url-list-edit');
-      if (list) {
-        list.innerHTML = '';
-        if (!urlImgs.length) addEditImageUrlRow('');
-        else urlImgs.forEach(u => addEditImageUrlRow(u));
-      }
 
       setupEditDiscountListeners();
       calculateEditDiscount();
@@ -1006,40 +1002,6 @@
       const modal = document.getElementById('product-edit-modal');
       if (modal) modal.style.display = 'none';
       resetEditImageGallery();
-    }
-
-    function addEditImageUrlRow(value) {
-      const list = document.getElementById('image-url-list-edit');
-      if (!list) return;
-      const row = document.createElement('div');
-      row.className = 'image-url-row';
-
-      const input = document.createElement('input');
-      input.type = 'url';
-      input.className = 'form-control';
-      input.placeholder = 'https://...';
-      input.value = value ? String(value) : '';
-
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'btn btn-sm btn-danger';
-      btn.title = 'Remove URL';
-      btn.style.height = '42px';
-      btn.textContent = '✕';
-      btn.onclick = function () { removeImageUrlRow(btn); };
-
-      row.appendChild(input);
-      row.appendChild(btn);
-      list.appendChild(row);
-    }
-
-    function getEditImageUrlsFromForm() {
-      const list = document.getElementById('image-url-list-edit');
-      if (!list) return [];
-      const urls = Array.from(list.querySelectorAll('input[type="url"]'))
-        .map(i => (i.value || '').trim())
-        .filter(Boolean);
-      return urls.filter((u, idx) => urls.indexOf(u) === idx);
     }
 
     function renderEditImagePreviewGrid() {
@@ -1055,14 +1017,14 @@
       grid.innerHTML = window.editUploadedImagesData.map((src, idx) => {
         const isCover = idx === 0;
         const coverBtn = isCover
-          ? '<button type="button" class="img-action-btn" disabled style="opacity:0.7;cursor:default;">Cover</button>'
+          ? '<button type="button" class="img-action-btn" disabled style="opacity:0.7;cursor:default;">★ Cover</button>'
           : '<button type="button" class="img-action-btn" onclick="setEditCoverImageByIndex(' + idx + ')">Set cover</button>';
         return (
           '<div class="img-tile">' +
           '<img src="' + src + '" alt="Image ' + (idx + 1) + '">' +
+          '<button type="button" class="img-delete-btn" title="Delete image" aria-label="Delete image" onclick="confirmRemoveEditImage(' + idx + ')">✕</button>' +
           '<div class="img-actions">' +
           coverBtn +
-          '<button type="button" class="img-action-btn" onclick="removeEditUploadedImageByIndex(' + idx + ')" style="border-color: rgba(239,68,68,0.35);">Remove</button>' +
           '</div>' +
           '</div>'
         );
@@ -1082,6 +1044,23 @@
       if (idx < 0 || idx >= window.editUploadedImagesData.length) return;
       window.editUploadedImagesData.splice(idx, 1);
       renderEditImagePreviewGrid();
+    }
+
+    // Delete an image from the edit gallery, but only after the admin confirms.
+    // The removal is staged in-memory — it isn't persisted until the admin
+    // clicks "Update Product" (so the underlying file on disk is untouched and
+    // a Cancel discards the change).
+    async function confirmRemoveEditImage(idx) {
+      ensureEditImageState();
+      if (idx < 0 || idx >= window.editUploadedImagesData.length) return;
+      const wasCover = idx === 0;
+      const ok = await adminConfirm({
+        title: 'Delete this image?',
+        message: 'It will be removed from this product when you click "Update Product".'
+          + (wasCover ? ' This is the current cover — the next image will become the cover.' : ''),
+        confirmLabel: 'Delete image',
+      });
+      if (ok) removeEditUploadedImageByIndex(idx);
     }
 
     async function addEditFilesToGallery(fileList) {
@@ -1107,11 +1086,6 @@
       if (upload) upload.value = '';
       window.editUploadedImagesData = [];
       renderEditImagePreviewGrid();
-      const list = document.getElementById('image-url-list-edit');
-      if (list) {
-        list.innerHTML = '';
-        addEditImageUrlRow('');
-      }
     }
 
     function getEditSpecificationsData() {
@@ -1226,12 +1200,10 @@
         .join('\n');
 
       ensureEditImageState();
-      const urlImages = getEditImageUrlsFromForm();
-      const uploadedImages = (window.editUploadedImagesData || []).slice();
-      const images = uploadedImages.concat(urlImages).filter(Boolean)
+      const images = (window.editUploadedImagesData || []).slice().filter(Boolean)
         .filter((u, idx, arr) => arr.indexOf(u) === idx);
       const fallbackImg = 'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=400&h=400&fit=crop';
-      const primaryImage = images[0] || urlImages[0] || products[existingIdx].image || fallbackImg;
+      const primaryImage = images[0] || products[existingIdx].image || fallbackImg;
 
       const stockVal = parseInt(document.getElementById('e-stock').value);
       const updates = {
@@ -1275,4 +1247,42 @@
         recordSaveResult({ status: 'error', op: 'delete', error: err.message });
         showToast('❌ Delete failed: ' + err.message, 'danger');
       }
+    }
+
+    // Promise-based styled confirmation popup. Resolves true on confirm, false
+    // on cancel / overlay-click / ✕. Falls back to window.confirm() if the
+    // #admin-confirm-modal markup is missing (defensive). Generic — currently
+    // used by the image-delete flow; reuse for other admin confirmations.
+    function adminConfirm(opts) {
+      opts = opts || {};
+      return new Promise(function (resolve) {
+        const modal = document.getElementById('admin-confirm-modal');
+        if (!modal) { resolve(window.confirm(opts.message || 'Are you sure?')); return; }
+        const titleEl = document.getElementById('admin-confirm-title');
+        const msgEl = document.getElementById('admin-confirm-message');
+        const okBtn = document.getElementById('admin-confirm-ok');
+        const cancelBtn = document.getElementById('admin-confirm-cancel');
+        const closeX = document.getElementById('admin-confirm-close');
+        if (titleEl) titleEl.textContent = opts.title || 'Are you sure?';
+        if (msgEl) msgEl.textContent = opts.message || '';
+        if (okBtn) {
+          okBtn.textContent = opts.confirmLabel || 'Confirm';
+          okBtn.className = 'btn ' + (opts.danger === false ? 'btn-primary' : 'btn-danger');
+          okBtn.style.width = 'auto';
+        }
+
+        function cleanup(result) {
+          modal.style.display = 'none';
+          if (okBtn) okBtn.onclick = null;
+          if (cancelBtn) cancelBtn.onclick = null;
+          if (closeX) closeX.onclick = null;
+          modal.onclick = null;
+          resolve(result);
+        }
+        if (okBtn) okBtn.onclick = function () { cleanup(true); };
+        if (cancelBtn) cancelBtn.onclick = function () { cleanup(false); };
+        if (closeX) closeX.onclick = function () { cleanup(false); };
+        modal.onclick = function (e) { if (e.target === modal) cleanup(false); };
+        modal.style.display = 'flex';
+      });
     }
