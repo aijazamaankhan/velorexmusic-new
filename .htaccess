@@ -33,10 +33,22 @@ DirectoryIndex index.html index.php
   # unset even on a genuinely secure request. Testing only %{HTTPS} there
   # produces an infinite redirect loop.
   # ---------------------------------------------------------------------------
-  RewriteCond %{HTTPS} !=on
-  RewriteCond %{HTTP:X-Forwarded-Proto} !=https
-  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+  # NO http→https rule here, deliberately.
+  #
+  # velorexmusic.com sits behind Hostinger's CDN (Server: hcdn) and the edge
+  # already 301s http→https correctly — verified before this file shipped.
+  # Adding our own rule would be redundant at best. At worst it is an outage:
+  # if the edge terminates TLS and forwards to the origin over plain HTTP
+  # without X-Forwarded-Proto, the origin would see "insecure", redirect to
+  # https, the edge would re-fetch, and the site would enter a redirect loop.
+  #
+  # If HTTPS forcing ever stops working upstream, fix it in hPanel rather than
+  # here — the panel setting runs at the edge, where it can see the real scheme.
 
+  # www → non-www IS needed. Both hosts currently serve the site, which splits
+  # ranking signals across two origins for identical content. This is safe from
+  # looping: after the redirect the Host header no longer starts with "www.",
+  # so the condition cannot match again.
   RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
   RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
 
@@ -112,9 +124,20 @@ DirectoryIndex index.html index.php
   <FilesMatch "\.(css|js|jpg|jpeg|png|webp|gif|svg|ico|woff2?)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
-  <FilesMatch "\.(html|php)$">
+  <FilesMatch "\.html$">
     Header set Cache-Control "public, max-age=300, must-revalidate"
   </FilesMatch>
+  # NOTE: .php is deliberately NOT given a cache header here.
+  #
+  # A FilesMatch on "php" in this root file also matches /api/*.php. It would
+  # then be racing api/.htaccess (which sets no-store) and relying on child-
+  # directory directives winning the merge. If that assumption is ever wrong on
+  # LiteSpeed, every API response becomes publicly cacheable for 5 minutes —
+  # which is exactly the "I deleted a product and it came back" bug documented
+  # in §10. Not worth the risk for zero SEO benefit.
+  #
+  # The two PHP endpoints that DO want caching set it themselves in code:
+  # seo-render.php sends max-age=300, sitemap.php sends max-age=3600.
   # Defence-in-depth headers. Not ranking factors, but HTTPS hygiene is a
   # documented (light) signal and these cost nothing.
   Header always set X-Content-Type-Options "nosniff"
