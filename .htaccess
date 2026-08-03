@@ -23,15 +23,29 @@ DirectoryIndex index.html index.php
   RewriteBase /
 
   # ---------------------------------------------------------------------------
+  # 0. Deny repo scaffolding — MUST BE THE FIRST RULE
+  #
+  # Hostinger's git deploy puts the whole repo under public_html, so build
+  # scripts and node_modules physically exist and are served like any other
+  # static file.
+  #
+  # This rule has to run BEFORE the "%{REQUEST_FILENAME} -f → [L]" bailout in
+  # section 2. That bailout stops all rewrite processing for any file that
+  # exists on disk — and these files DO exist — so a deny rule placed after it
+  # is simply never reached. That is exactly what happened on the first deploy:
+  # /scripts/bump-cache.js came back 200.
+  #
+  # The .sh/.sql/.md/.json members of these directories are additionally caught
+  # by the FilesMatch in section 5, but .js and .php are not (the site needs
+  # both extensions served from elsewhere), so the path-based rule is the one
+  # doing the real work here.
+  #
+  # "old.admin" — the directory name contains a literal space; "." matches it
+  # whether the request arrives raw, plus-encoded or %20-encoded.
+  RewriteRule ^(scripts|node_modules|test-results|old.admin)/ - [F,L]
+
+  # ---------------------------------------------------------------------------
   # 1. Canonical origin
-  #
-  # Google treats http/https and www/non-www as four separate sites. Collapse
-  # to exactly one: https://velorexmusic.com
-  #
-  # The HTTPS check tests X-Forwarded-Proto as well as %{HTTPS} because on
-  # shared hosting TLS is frequently terminated at a proxy, leaving %{HTTPS}
-  # unset even on a genuinely secure request. Testing only %{HTTPS} there
-  # produces an infinite redirect loop.
   # ---------------------------------------------------------------------------
   # NO http→https rule here, deliberately.
   #
@@ -175,11 +189,7 @@ DirectoryIndex index.html index.php
   </IfModule>
 </Files>
 
-<IfModule mod_rewrite.c>
-  RewriteEngine On
-  # Directories that exist on disk but must not be crawled or fetched.
-  # "old admin" contains a literal space; `.` matches it whether the request
-  # arrives raw, plus-encoded or %20-encoded, without fighting .htaccess
-  # whitespace tokenisation.
-  RewriteRule ^(scripts|node_modules|test-results|old.admin)/ - [F,L]
-</IfModule>
+# (The directory deny rule that used to live here has moved to section 0, at the
+#  very top of the rewrite block. It was dead code down here: the "file exists →
+#  [L]" bailout in section 2 halts rewrite processing before reaching this far,
+#  so /scripts/*.js was served with a 200 on the first deploy.)
