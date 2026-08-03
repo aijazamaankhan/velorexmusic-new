@@ -46,7 +46,7 @@
   <script src="src/js/admin/main.js?v=a3622393"></script>
   <script src="src/js/admin/customers.js?v=127735c1"></script>
   <script src="src/js/admin/orders.js?v=fef46ea8"></script>
-  <script src="src/js/admin/inventory.js?v=4320068c"></script>
+  <script src="src/js/admin/inventory.js?v=87220596"></script>
   <script src="src/js/admin/toast.js?v=9a4bf3e8"></script>
 </head>
 
@@ -421,6 +421,23 @@
             <label class="form-label">Rating (0-5)</label>
             <input type="number" step="0.1" class="form-control" id="f-rating" value="4.5">
           </div>
+          <!-- Homepage placement. Writes products.badge, which is what
+               initPageIndex() filters the three homepage strips on
+               (see src/js/storefront/pages.js). Values must stay
+               '' | hot | new | upcoming — the storefront, the CSV importer
+               and the .badge-* CSS all key off exactly these strings. -->
+          <div class="form-group">
+            <label class="form-label">Homepage Placement</label>
+            <select class="form-control" id="f-badge">
+              <option value="">Not featured</option>
+              <option value="hot">🔥 Best Selling</option>
+              <option value="new">✨ New Releases</option>
+              <option value="upcoming">⏳ Upcoming</option>
+            </select>
+            <small style="display:block;margin-top:0.4rem;color:var(--text-muted);font-size:0.72rem;">
+              Shows this product in that homepage section (max 4 per section).
+            </small>
+          </div>
           <div class="form-group full-width">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
               <label class="form-label" style="margin:0;">Image URLs</label>
@@ -573,6 +590,19 @@
           <div class="form-group">
             <label class="form-label">Rating (0-5)</label>
             <input type="number" step="0.1" class="form-control" id="e-rating" value="4.5">
+          </div>
+          <!-- Mirrors #f-badge in the New Product modal — see the note there. -->
+          <div class="form-group">
+            <label class="form-label">Homepage Placement</label>
+            <select class="form-control" id="e-badge">
+              <option value="">Not featured</option>
+              <option value="hot">🔥 Best Selling</option>
+              <option value="new">✨ New Releases</option>
+              <option value="upcoming">⏳ Upcoming</option>
+            </select>
+            <small style="display:block;margin-top:0.4rem;color:var(--text-muted);font-size:0.72rem;">
+              Shows this product in that homepage section (max 4 per section).
+            </small>
           </div>
           <div class="form-group full-width">
             <label class="form-label">Images</label>

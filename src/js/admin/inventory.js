@@ -890,6 +890,16 @@
         trackListing: flattenedTrackListing,
         trackListingSides: trackListingSides,
         reviews: 0,
+        // Homepage placement. Empty string is normalised to null so the DB
+        // stores NULL rather than '' — initPageIndex() compares with === 'hot'
+        // etc., and upsert_product() writes whatever it is given.
+        //
+        // This field was previously absent from the payload entirely, which
+        // silently WIPED the badge every time a product was saved: the server
+        // does REPLACE INTO with `badge => $p['badge'] ?? null`, so a missing
+        // key blanked the column. Any product featured via CSV lost its
+        // placement the first time someone edited it in the admin UI.
+        badge: (document.getElementById('f-badge') || {}).value || null,
         specs: getSpecificationsData()
       };
 
@@ -975,6 +985,11 @@
       document.getElementById('e-original-price').value = product.originalPrice || '';
       document.getElementById('e-stock').value = Number.isFinite(product.stock) ? product.stock : 0;
       document.getElementById('e-rating').value = product.rating != null ? product.rating : 4.5;
+      // Pre-select the product's current homepage placement. Without this the
+      // select would always open on "Not featured", so saving an unrelated edit
+      // would quietly demote a featured product.
+      var eBadge = document.getElementById('e-badge');
+      if (eBadge) eBadge.value = product.badge || '';
       document.getElementById('e-description').value = product.description || '';
       document.getElementById('e-music-director').value = product.musicDirector || '';
 
@@ -1222,6 +1237,11 @@
         musicDirector: Utils.escape(document.getElementById('e-music-director').value.trim()),
         trackListing: flattenedTrackListing,
         trackListingSides: trackSides,
+        // See the note on `badge` in handleProductSubmit. It must be present in
+        // this payload too: `merged` spreads updates over the existing row, so
+        // omitting the key would leave the OLD badge in place and an admin
+        // changing the value to "Not featured" would silently do nothing.
+        badge: (document.getElementById('e-badge') || {}).value || null,
         specs: getEditSpecificationsData(),
       };
 
