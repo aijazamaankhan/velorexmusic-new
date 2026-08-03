@@ -884,3 +884,83 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   /* Lock body scroll while a popover is open. */
   body.filter-popover-open { overflow: hidden; }
 }
+
+/* =============================================================
+   Blog — listing grid + article body
+   ============================================================= */
+.blog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 2rem;
+}
+.blog-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: var(--transition);
+}
+.blog-card:hover { transform: translateY(-4px); box-shadow: 0 18px 50px rgba(0,0,0,0.45); }
+.blog-card-media { display: block; aspect-ratio: 16 / 9; overflow: hidden; background: var(--surface2); }
+.blog-card-media img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
+.blog-card:hover .blog-card-media img { transform: scale(1.05); }
+.blog-card-noimg {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); font-size: 2rem;
+}
+.blog-card-body { padding: 1.35rem; display: flex; flex-direction: column; flex: 1; }
+.blog-card-date {
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--secondary); font-weight: 600; margin-bottom: 0.5rem;
+}
+.blog-card-title { font-family: var(--font-display); font-size: 1.2rem; line-height: 1.35; margin-bottom: 0.6rem; }
+.blog-card-title a { color: inherit; text-decoration: none; }
+.blog-card-title a:hover { color: var(--secondary); }
+.blog-card-excerpt { color: var(--text-muted); font-size: 0.9rem; line-height: 1.65; flex: 1; margin-bottom: 1rem; }
+.blog-card-more { color: var(--secondary); font-weight: 600; font-size: 0.88rem; text-decoration: none; }
+.blog-card-more:hover { text-decoration: underline; }
+
+/* Article. Constrained to ~70ch because long measures are the single biggest
+   readability problem on a text page. */
+.blog-post { max-width: 74ch; margin: 0 auto; }
+.blog-post-cover { border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 1.75rem; }
+.blog-post-cover img { width: 100%; height: auto; display: block; }
+.blog-post-meta {
+  color: var(--text-muted); font-size: 0.85rem;
+  padding-bottom: 1.25rem; margin-bottom: 1.75rem;
+  border-bottom: 1px solid var(--border);
+}
+.blog-post-body { font-size: 1.03rem; line-height: 1.8; color: var(--text); }
+.blog-post-body p { margin-bottom: 1.25rem; }
+.blog-post-body h2 { font-family: var(--font-display); font-size: 1.6rem; margin: 2.25rem 0 0.9rem; }
+.blog-post-body h3 { font-family: var(--font-display); font-size: 1.28rem; margin: 1.85rem 0 0.7rem; }
+.blog-post-body h4 { font-size: 1.08rem; margin: 1.5rem 0 0.6rem; font-weight: 700; }
+.blog-post-body ul, .blog-post-body ol { margin: 0 0 1.25rem 1.5rem; }
+.blog-post-body li { margin-bottom: 0.5rem; }
+.blog-post-body a { color: var(--secondary); text-decoration: underline; }
+.blog-post-body img { max-width: 100%; height: auto; border-radius: var(--radius); margin: 1.5rem 0; display: block; }
+.blog-post-body figure { margin: 1.5rem 0; }
+.blog-post-body figcaption { color: var(--text-muted); font-size: 0.82rem; text-align: center; margin-top: 0.5rem; }
+.blog-post-body blockquote {
+  margin: 1.5rem 0; padding: 0.75rem 0 0.75rem 1.25rem;
+  border-left: 3px solid var(--secondary);
+  color: var(--text-muted); font-style: italic;
+}
+.blog-post-body pre {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 1rem; overflow-x: auto; margin-bottom: 1.25rem;
+}
+.blog-post-body code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
+.blog-post-body hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+.blog-post-footer {
+  display: flex; gap: 0.75rem; flex-wrap: wrap;
+  margin-top: 2.5rem; padding-top: 1.75rem; border-top: 1px solid var(--border);
+}
+@media (max-width: 768px) {
+  .blog-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+  .blog-post-body { font-size: 1rem; }
+  .blog-post-body h2 { font-size: 1.4rem; }
+}

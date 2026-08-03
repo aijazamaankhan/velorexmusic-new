@@ -1875,3 +1875,69 @@
     }
 
     /* The 1024px iOS-zoom-prevention rule moved to admin/components/forms.css. */
+
+/* =============================================================
+   Blog editor (Blog panel → New/Edit Post)
+   ============================================================= */
+.blog-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  align-items: center;
+  padding: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+}
+.blog-toolbar button {
+  min-width: 34px;
+  height: 30px;
+  padding: 0 0.5rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.blog-toolbar button:hover { background: rgba(255, 255, 255, 0.08); border-color: var(--border); }
+.blog-toolbar-sep { width: 1px; height: 20px; background: var(--border); margin: 0 0.3rem; }
+
+.blog-editor {
+  min-height: 320px;
+  max-height: 55vh;
+  overflow-y: auto;
+  padding: 1rem 1.1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 0 0 8px 8px;
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1.7;
+  outline: none;
+}
+.blog-editor:focus { border-color: var(--primary, #ff6b35); }
+/* Placeholder for a contenteditable — :empty is the only hook available, and it
+   only holds while the node has no children at all. */
+.blog-editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.blog-editor h2 { font-size: 1.3rem; margin: 1.2rem 0 0.6rem; font-weight: 700; }
+.blog-editor h3 { font-size: 1.1rem; margin: 1rem 0 0.5rem; font-weight: 700; }
+.blog-editor p { margin: 0 0 0.9rem; }
+.blog-editor ul, .blog-editor ol { margin: 0 0 0.9rem 1.4rem; }
+.blog-editor li { margin-bottom: 0.3rem; }
+.blog-editor a { color: var(--primary, #ff6b35); text-decoration: underline; }
+.blog-editor img { max-width: 100%; height: auto; border-radius: 8px; margin: 0.6rem 0; display: block; }
+.blog-editor blockquote {
+  margin: 0 0 0.9rem;
+  padding: 0.5rem 0 0.5rem 1rem;
+  border-left: 3px solid var(--primary, #ff6b35);
+  color: var(--text-muted);
+  font-style: italic;
+}

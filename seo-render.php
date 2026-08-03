@@ -432,5 +432,164 @@ if ($route === 'category' || $route === 'products') {
     exit;
 }
 
+// -----------------------------------------------------------------------------
+// Route: blog listing and single post
+// -----------------------------------------------------------------------------
+if ($route === 'blog' || $route === 'blogpost') {
+    require_once __DIR__ . '/api/_blog_helpers.php';
+    try {
+        blog_ensure_table(db());
+    } catch (Throwable $e) {
+        error_log('[seo-render] blog table bootstrap failed: ' . $e->getMessage());
+    }
+
+    // ---- single post ----
+    if ($route === 'blogpost') {
+        $slug = isset($_GET['slug']) ? (string)$_GET['slug'] : '';
+        if ($slug === '') velorex_send_404('Post not found');
+        try {
+            $st = db()->prepare("SELECT * FROM blog_posts WHERE slug = :s AND status = 'published' LIMIT 1");
+            $st->execute([':s' => $slug]);
+            $post = $st->fetch();
+        } catch (Throwable $e) {
+            error_log('[seo-render] blog post query failed: ' . $e->getMessage());
+            $post = false;
+        }
+        if (!$post) velorex_send_404('Post not found');
+
+        $canonical = VELOREX_SITE_URL . '/blog/' . $post['slug'];
+        $desc = $post['excerpt'] ?: blog_auto_excerpt($post['content']);
+
+        $head  = velorex_meta_block([
+            'title'       => $post['title'] . ' | Velorex Journal',
+            'description' => $desc,
+            'canonical'   => $canonical,
+            'image'       => $post['cover_image'] ? velorex_absolute_image($post['cover_image']) : VELOREX_DEFAULT_OG_IMAGE,
+            'imageAlt'    => $post['title'],
+            'type'        => 'article',
+        ]);
+        $head .= velorex_jsonld_site();
+        $head .= velorex_jsonld_article($post);
+        $head .= velorex_jsonld_breadcrumbs([
+            ['name' => 'Home', 'url' => VELOREX_SITE_URL . '/'],
+            ['name' => 'Blog', 'url' => VELOREX_SITE_URL . '/blog'],
+            ['name' => $post['title']],
+        ]);
+
+        $meta = [];
+        if ($post['published_at']) {
+            $ts = strtotime($post['published_at']);
+            if ($ts) $meta[] = date('j F Y', $ts);
+        }
+        if ($post['author']) $meta[] = velorex_e($post['author']);
+        $meta[] = blog_read_minutes($post['content']) . ' min read';
+
+        $cover = $post['cover_image']
+            ? '<div class="blog-post-cover"><img src="' . velorex_e(velorex_absolute_image($post['cover_image']))
+              . '" alt="' . velorex_e($post['title']) . '" fetchpriority="high" decoding="async"></div>'
+            : '';
+
+        // The body is emitted RAW. It is safe because blog_sanitize_html()
+        // ran against a tag allowlist before this ever reached the database —
+        // escaping it here would print the markup as visible text instead.
+        $inner = '<article class="blog-post">'
+            . $cover
+            . '<div class="blog-post-meta">' . implode(' · ', $meta) . '</div>'
+            . '<div class="blog-post-body">' . $post['content'] . '</div>'
+            . '<div class="blog-post-footer">'
+            . '<a href="/blog" class="btn btn-secondary">← All posts</a>'
+            . '<a href="/products" class="btn btn-primary">Browse the shop</a>'
+            . '</div></article>';
+
+        $html = velorex_shell();
+        $html = velorex_inject_head($html, $head);
+        $html = velorex_show_section($html, 'page-blog-post');
+        $html = velorex_set_text($html, '<h1 class="page-hero-title" id="blog-post-title">', 'h1', velorex_e($post['title']));
+        $html = velorex_set_div_inner($html, '<div id="blog-post-container">', $inner);
+        echo $html;
+        exit;
+    }
+
+    // ---- listing ----
+    try {
+        $rows = db()->query(
+            "SELECT id, slug, title, excerpt, cover_image, author, published_at
+               FROM blog_posts WHERE status = 'published'
+              ORDER BY published_at DESC, id DESC"
+        )->fetchAll();
+    } catch (Throwable $e) {
+        error_log('[seo-render] blog list query failed: ' . $e->getMessage());
+        $rows = [];
+    }
+
+    $canonical = VELOREX_SITE_URL . '/blog';
+    // An empty blog is a thin page — crawlable so link equity still flows, but
+    // not indexable until there is something worth ranking.
+    $robots = $rows
+        ? 'index, follow, max-image-preview:large, max-snippet:-1'
+        : 'noindex, follow';
+
+    $head  = velorex_meta_block([
+        'title'       => 'Velorex Journal | Vinyl, Hindi Film Music & Collecting',
+        'description' => 'Notes on vinyl records, Hindi film music and the pressings worth collecting — from the Velorex Music team in India.',
+        'canonical'   => $canonical,
+        'image'       => $rows && $rows[0]['cover_image']
+            ? velorex_absolute_image($rows[0]['cover_image']) : VELOREX_DEFAULT_OG_IMAGE,
+        'robots'      => $robots,
+    ]);
+    $head .= velorex_jsonld_site();
+    $head .= velorex_jsonld_breadcrumbs([
+        ['name' => 'Home', 'url' => VELOREX_SITE_URL . '/'],
+        ['name' => 'Blog'],
+    ]);
+    if ($rows) {
+        $items = [];
+        $pos = 1;
+        foreach ($rows as $r) {
+            $items[] = ['@type' => 'ListItem', 'position' => $pos++,
+                        'url' => VELOREX_SITE_URL . '/blog/' . $r['slug'], 'name' => $r['title']];
+        }
+        $head .= velorex_jsonld([
+            '@context' => 'https://schema.org', '@type' => 'Blog',
+            '@id' => $canonical . '#blog', 'url' => $canonical,
+            'name' => 'Velorex Journal',
+            'publisher' => ['@id' => VELOREX_SITE_URL . '/#organization'],
+            'blogPost' => $items,
+        ]);
+    }
+
+    $cards = '';
+    foreach ($rows as $r) {
+        $href = '/blog/' . $r['slug'];
+        $img = $r['cover_image']
+            ? '<img src="' . velorex_e(velorex_absolute_image($r['cover_image'])) . '" alt="'
+              . velorex_e($r['title']) . '" loading="lazy" decoding="async">'
+            : '<div class="blog-card-noimg">♪</div>';
+        $date = '';
+        if ($r['published_at']) {
+            $ts = strtotime($r['published_at']);
+            if ($ts) $date = '<div class="blog-card-date">' . date('j F Y', $ts) . '</div>';
+        }
+        $cards .= '<article class="blog-card">'
+            . '<a class="blog-card-media" href="' . velorex_e($href) . '">' . $img . '</a>'
+            . '<div class="blog-card-body">' . $date
+            . '<h2 class="blog-card-title"><a href="' . velorex_e($href) . '">' . velorex_e($r['title']) . '</a></h2>'
+            . ($r['excerpt'] ? '<p class="blog-card-excerpt">' . velorex_e($r['excerpt']) . '</p>' : '')
+            . '<a class="blog-card-more" href="' . velorex_e($href) . '">Read more →</a>'
+            . '</div></article>';
+    }
+    if (!$cards) {
+        $cards = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:3rem 1rem;">'
+               . '<p>No posts published yet. Check back soon.</p></div>';
+    }
+
+    $html = velorex_shell();
+    $html = velorex_inject_head($html, $head);
+    $html = velorex_show_section($html, 'page-blog');
+    $html = velorex_set_div_inner($html, '<div class="blog-grid" id="blog-grid">', $cards);
+    echo $html;
+    exit;
+}
+
 // Unknown _route — someone hit seo-render.php directly.
 velorex_send_404('Page not found');

@@ -495,6 +495,38 @@ function velorex_jsonld_item_list(array $products, string $name, string $url): s
     ]);
 }
 
+// Article JSON-LD for a blog post. This is what lets a post qualify for the
+// article treatment in results (headline, date, image) rather than a bare link.
+function velorex_jsonld_article(array $p): string {
+    $url = VELOREX_SITE_URL . '/blog/' . $p['slug'];
+    $img = !empty($p['cover_image'])
+        ? velorex_absolute_image($p['cover_image'])
+        : VELOREX_DEFAULT_OG_IMAGE;
+
+    $data = [
+        '@context'         => 'https://schema.org',
+        '@type'            => 'BlogPosting',
+        '@id'              => $url . '#article',
+        'headline'         => velorex_trim_text($p['title'] ?? '', 110), // Google truncates past ~110
+        'description'      => velorex_trim_text($p['excerpt'] ?? '', 200),
+        'image'            => [$img],
+        'url'              => $url,
+        'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $url],
+        'inLanguage'       => 'en-IN',
+        'author'    => ['@type' => 'Organization', 'name' => $p['author'] ?: VELOREX_SITE_NAME],
+        'publisher' => ['@id' => VELOREX_SITE_URL . '/#organization'],
+    ];
+    if (!empty($p['published_at'])) {
+        $ts = strtotime($p['published_at']);
+        if ($ts) $data['datePublished'] = date('c', $ts);
+    }
+    if (!empty($p['updated_at'])) {
+        $ts = strtotime($p['updated_at']);
+        if ($ts) $data['dateModified'] = date('c', $ts);
+    }
+    return velorex_jsonld($data);
+}
+
 function velorex_category_label_for_key(string $key): string {
     foreach (velorex_categories() as $meta) {
         if ($meta['key'] === $key) return $meta['label'];

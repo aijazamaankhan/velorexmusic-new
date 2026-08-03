@@ -104,7 +104,7 @@
   <script src="src/js/api-base.js?v=0ce972cf"></script>
   <!-- URL vocabulary + live metadata. Must load before router.js and pages.js,
        both of which call Seo.buildPath()/Seo.productPath() to render hrefs. -->
-  <script src="src/js/seo.js?v=f355358a"></script>
+  <script src="src/js/seo.js?v=a29f7f79"></script>
   <script src="src/js/constants.js?v=b0f974a1"></script>
   <script src="src/js/storage.js?v=3f882b69"></script>
   <script src="src/js/auth.js?v=79e7221e"></script>
@@ -125,7 +125,10 @@
        just bootstraps DOMContentLoaded. -->
   <script src="src/js/storefront/carriers.js?v=488bf189"></script>
   <script src="src/js/storefront/pages.js?v=a4fbb8e3"></script>
-  <script src="src/js/storefront/router.js?v=647d61a1"></script>
+  <!-- Blog views. Must load before router.js, whose initPage dispatcher calls
+       initPageBlog / initPageBlogPost. -->
+  <script src="src/js/storefront/blog.js?v=38e36528"></script>
+  <script src="src/js/storefront/router.js?v=ca47860b"></script>
   <script src="src/js/storefront/checkout.js?v=472f3280"></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
        they can be shared between the storefront pages without duplication.
@@ -140,7 +143,7 @@
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
   <!-- Page-specific styles (hero, products, cart, profile, footer, etc.).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=4155b896">
+  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=b7fa7fe6">
 </head>
 
 <body>
@@ -457,6 +460,37 @@
             </div>
             <div class="products-grid" id="related-grid"></div>
           </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- BLOG LISTING -->
+    <div id="page-blog" class="page-section">
+      <div class="page-hero">
+        <div class="container">
+          <h1 class="page-hero-title">Velorex Journal</h1>
+          <p style="color:var(--text-muted);margin-top:0.5rem;max-width:60ch;">
+            Notes on vinyl, Hindi film music and the records worth collecting.
+          </p>
+        </div>
+      </div>
+      <section class="section" style="padding-top:0;">
+        <div class="container">
+          <div class="blog-grid" id="blog-grid"><div class="loading-spinner"></div></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- BLOG POST -->
+    <div id="page-blog-post" class="page-section">
+      <div class="page-hero">
+        <div class="container">
+          <h1 class="page-hero-title" id="blog-post-title">Article</h1>
+        </div>
+      </div>
+      <section class="section" style="padding-top:0;">
+        <div class="container">
+          <div id="blog-post-container"><div class="loading-spinner"></div></div>
         </div>
       </section>
     </div>

@@ -1438,6 +1438,42 @@ Two things worth knowing:
 brand red; the site chrome does not. Aligning the tokens is a site-wide visual change and
 was left alone deliberately — decide it as a design call, not as a side effect of SEO work.
 
+### Blog
+
+Admin → **Blog** panel. Posts are written by pasting into a contenteditable
+editor (bold/headings/lists/links/images survive a Word or Google Docs paste),
+with a cover image and draft/published status. They render at `/blog` and
+`/blog/<slug>`, server-rendered by `seo-render.php` with `BlogPosting` JSON-LD,
+and published posts are added to the sitemap automatically.
+
+| Piece | File |
+|---|---|
+| Schema bootstrap, sanitiser, shaping | [api/_blog_helpers.php](api/_blog_helpers.php) |
+| CRUD endpoint | [api/blog.php](api/blog.php) |
+| Image upload | [api/upload-blog-image.php](api/upload-blog-image.php) |
+| Admin panel + editor | [src/js/admin/blog.js](src/js/admin/blog.js) |
+| Storefront views | [src/js/storefront/blog.js](src/js/storefront/blog.js) |
+
+**The `blog_posts` table is created on first API hit**, unlike every other table
+here — there is no phpMyAdmin step. The DDL lives in `blog_ensure_table()`.
+
+**Post bodies are sanitised server-side on WRITE, and that is the security
+boundary.** The body is stored as HTML and rendered with `innerHTML` on a public
+page, so it is a stored-XSS sink. `blog_sanitize_html()` parses with DOMDocument
+and rebuilds against a tag/attribute allowlist: unknown tags are unwrapped
+(text kept), `script`/`style`/`iframe`/`form` are destroyed outright, every
+attribute not on the tag's allowlist is dropped (this is what kills `on*`
+handlers and `style`), and `href`/`src` are checked against a scheme denylist
+that tolerates `java\0script:` and `java\tscript:` obfuscation. The admin
+editor's paste handler also cleans HTML, but **that is cosmetic only** — never
+move the trust boundary into the browser.
+
+Because the stored HTML is already safe, both the storefront renderer and
+`seo-render.php` emit it raw. Escaping it there would print tags as visible text.
+
+Drafts are invisible to the public API, excluded from the sitemap, and an empty
+blog listing sets `noindex` so a thin page never enters the index.
+
 ### Still to do (needs a person, not code)
 
 1. **Google Search Console** — add the property, verify via DNS TXT, submit

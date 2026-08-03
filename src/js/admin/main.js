@@ -347,6 +347,7 @@
         dashboard: { t: 'Inventory Management', s: 'Overview of your music empire' },
         orders: { t: 'Customer Orders', s: 'Track customer purchases and fulfillment' },
         categories: { t: 'Categories', s: 'Manage product categories' },
+        blog: { t: 'Blog', s: 'Write and publish posts for the storefront' },
         users: { t: 'Customer Management', s: 'Search, edit, support and remove customer accounts' },
         settings: { t: 'Store Configuration', s: 'Configure store-wide preferences' }
       };
@@ -376,6 +377,10 @@
       if (panelId === 'dashboard') initDashboard();
       if (panelId === 'orders') renderOrdersTable();
       if (panelId === 'users') loadUsersTable();
+      // Blog posts are fetched fresh on each visit rather than cached in
+      // Storage — they change rarely and the list is small, so a round-trip is
+      // cheaper than another cache to keep in sync.
+      if (panelId === 'blog') loadBlogPosts();
     }
 
     // Paint skeleton placeholders into the loading-aware containers of the

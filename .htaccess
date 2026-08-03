@@ -93,6 +93,11 @@ DirectoryIndex index.html index.php
   # /products — the full catalogue
   RewriteRule ^products/?$ seo-render.php?_route=products [L,QSA]
 
+  # /blog and /blog/<slug>. The slug charset is restricted to what
+  # velorex_slugify() can emit, so no other shape reaches the front controller.
+  RewriteRule ^blog/?$ seo-render.php?_route=blog [L,QSA]
+  RewriteRule ^blog/([A-Za-z0-9-]+)/?$ seo-render.php?_route=blogpost&slug=$1 [L,QSA]
+
   # Client-routed, non-indexable SPA views. These need to resolve to the shell
   # on a hard refresh or the user gets a 404 after, say, reloading /cart.
   # They are marked noindex by src/js/seo.js once the SPA boots.

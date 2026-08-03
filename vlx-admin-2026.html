@@ -30,7 +30,7 @@
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
   <!-- Page-specific styles (sidebar, header, panels, tables, drawer, dashboard).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/admin/pages/admin.css?v=3b2ed602">
+  <link rel="stylesheet" href="src/styles/admin/pages/admin.css?v=4767ac8a">
   <!-- Admin JS modules extracted in PR 4. Plain scripts (not type="module") so
        the existing inline <script> + onclick= handlers resolve them via
        script-scope. Order: leaves first. -->
@@ -43,10 +43,11 @@
        script-scope. Load order: main first (defines shared helpers like
        adminAuthHeaders, switchPanel), then per-panel files, then toast last
        (the admin showToast — different shape from the storefront's). -->
-  <script src="src/js/admin/main.js?v=a3622393"></script>
+  <script src="src/js/admin/main.js?v=84abacf6"></script>
   <script src="src/js/admin/customers.js?v=127735c1"></script>
   <script src="src/js/admin/orders.js?v=fef46ea8"></script>
   <script src="src/js/admin/inventory.js?v=87220596"></script>
+  <script src="src/js/admin/blog.js?v=7a085310"></script>
   <script src="src/js/admin/toast.js?v=9a4bf3e8"></script>
 </head>
 
@@ -103,6 +104,11 @@
         <li class="nav-item">
           <a href="#" class="nav-link" onclick="switchPanel('categories', this)">
             <i class="fas fa-chart-pie"></i> Categories
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#" class="nav-link" onclick="switchPanel('blog', this)">
+            <i class="fas fa-pen-nib"></i> Blog
           </a>
         </li>
         <li class="nav-item">
@@ -291,6 +297,39 @@
               <button type="button" class="btn btn-primary" onclick="addCategory()">Add Category</button>
             </div>
             <div id="admin-category-list" class="category-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Blog panel. Posts live in blog_posts (created on first API hit) and
+           render on the storefront at /blog and /blog/<slug>. -->
+      <div id="panel-blog" class="panel">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem;">
+            <div>
+              <h3 style="font-family: var(--font-display);margin-bottom:0.25rem;">Blog Posts</h3>
+              <p style="color:var(--text-muted);font-size:0.85rem;margin:0;">
+                Paste a written post, add images, publish. Published posts appear at
+                <code>/blog</code> and in the storefront navigation.
+              </p>
+            </div>
+            <button type="button" class="btn btn-primary" onclick="openBlogEditor(null)">
+              <i class="fas fa-plus"></i> New Post
+            </button>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width:74px;">Cover</th>
+                  <th>Title</th>
+                  <th style="width:110px;">Status</th>
+                  <th style="width:130px;">Date</th>
+                  <th style="width:215px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="blog-tbody"></tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -543,6 +582,112 @@
   </div>
 
   <!-- Edit Release Modal (separate from Add New Release; pre-fills with existing product) -->
+  <!-- Blog editor.
+       #blog-content is a contenteditable div, not a textarea, so pasted
+       formatting (bold, headings, lists, links) survives. Whatever is pasted is
+       tidied client-side by blogHandlePaste() and then sanitised authoritatively
+       server-side by blog_sanitize_html() before it is ever stored. -->
+  <div class="modal-overlay" id="blog-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="blog-modal-title">New Post</h2>
+        <div class="modal-close" onclick="closeBlogEditor()">✕</div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group full-width">
+          <label class="form-label">Post Title *</label>
+          <input type="text" class="form-control" id="blog-title" placeholder="The Golden Era of Bollywood Vinyl">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">URL Slug</label>
+          <input type="text" class="form-control" id="blog-slug" placeholder="auto-generated from the title">
+          <small style="display:block;margin-top:0.4rem;color:var(--text-muted);font-size:0.72rem;">
+            Leave blank to generate it. Changing it on a published post breaks its existing links.
+          </small>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-control" id="blog-status">
+            <option value="published">Published — visible on the site</option>
+            <option value="draft">Draft — only you can see it</option>
+          </select>
+        </div>
+
+        <div class="form-group full-width">
+          <label class="form-label">Cover Image</label>
+          <div style="display:flex;gap:0.75rem;align-items:flex-start;flex-wrap:wrap;">
+            <div>
+              <input type="file" id="blog-cover-input" accept="image/*" style="display:none;"
+                onchange="handleBlogCoverUpload(this)">
+              <button type="button" class="btn btn-sm"
+                style="background:var(--surface);border:1px solid var(--border);"
+                onclick="document.getElementById('blog-cover-input').click()">
+                <i class="fas fa-upload"></i> Upload cover
+              </button>
+            </div>
+            <div id="blog-cover-preview" style="flex:1;min-width:180px;"></div>
+          </div>
+          <input type="hidden" id="blog-cover-url">
+          <small style="display:block;margin-top:0.4rem;color:var(--text-muted);font-size:0.72rem;">
+            Used on the blog listing card and as the social-share image.
+          </small>
+        </div>
+
+        <div class="form-group full-width">
+          <label class="form-label">Post Content *</label>
+          <div class="blog-toolbar">
+            <button type="button" onclick="blogExec('bold')" title="Bold"><b>B</b></button>
+            <button type="button" onclick="blogExec('italic')" title="Italic"><i>I</i></button>
+            <button type="button" onclick="blogExec('underline')" title="Underline"><u>U</u></button>
+            <span class="blog-toolbar-sep"></span>
+            <button type="button" onclick="blogFormatBlock('h2')" title="Heading">H2</button>
+            <button type="button" onclick="blogFormatBlock('h3')" title="Sub-heading">H3</button>
+            <button type="button" onclick="blogFormatBlock('p')" title="Normal text">P</button>
+            <span class="blog-toolbar-sep"></span>
+            <button type="button" onclick="blogExec('insertUnorderedList')" title="Bullet list">&bull; List</button>
+            <button type="button" onclick="blogExec('insertOrderedList')" title="Numbered list">1. List</button>
+            <button type="button" onclick="blogFormatBlock('blockquote')" title="Quote">&ldquo;&rdquo;</button>
+            <span class="blog-toolbar-sep"></span>
+            <button type="button" onclick="blogInsertLink()" title="Insert link"><i class="fas fa-link"></i></button>
+            <button type="button" onclick="document.getElementById('blog-inline-input').click()" title="Insert image">
+              <i class="fas fa-image"></i>
+            </button>
+            <button type="button" onclick="blogExec('removeFormat')" title="Clear formatting">
+              <i class="fas fa-eraser"></i>
+            </button>
+          </div>
+          <input type="file" id="blog-inline-input" accept="image/*" style="display:none;"
+            onchange="handleBlogInlineUpload(this)">
+          <div id="blog-content" class="blog-editor" contenteditable="true"
+            onpaste="blogHandlePaste(event)" data-placeholder="Paste or write your post here…"></div>
+          <small style="display:block;margin-top:0.4rem;color:var(--text-muted);font-size:0.72rem;">
+            Paste straight from Word or Google Docs — bold, headings, lists and links are kept; fonts and colours are stripped.
+          </small>
+        </div>
+
+        <div class="form-group full-width">
+          <label class="form-label">Excerpt</label>
+          <textarea class="form-control" id="blog-excerpt" rows="2"
+            placeholder="Leave blank to generate from the opening lines"></textarea>
+          <small style="display:block;margin-top:0.4rem;color:var(--text-muted);font-size:0.72rem;">
+            Shown on the blog listing and used as the search-result description.
+          </small>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1.5rem;flex-wrap:wrap;">
+        <button type="button" class="btn" style="background:var(--surface);border:1px solid var(--border);"
+          onclick="closeBlogEditor()">Cancel</button>
+        <button type="button" class="btn" style="background:var(--surface);border:1px solid var(--border);"
+          onclick="saveBlogPost('draft')">Save as Draft</button>
+        <button type="button" class="btn btn-primary" onclick="saveBlogPost('published')">
+          <i class="fas fa-paper-plane"></i> Publish
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="product-edit-modal">
     <div class="modal-content">
       <div class="modal-header">

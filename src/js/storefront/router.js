@@ -66,6 +66,7 @@
             <li class="nav-item"><a href="${P('products', {cat:'bluray'})}" onclick="navigate('products', {cat:'bluray'}); return false;" class="nav-link ${activePage === 'bluray' ? 'active' : ''}">Blu-rays</a></li>
             <li class="nav-item"><a href="${P('products', {cat:'dvd'})}" onclick="navigate('products', {cat:'dvd'}); return false;" class="nav-link ${activePage === 'dvd' ? 'active' : ''}">DVDs</a></li>
             <li class="nav-item"><a href="/products" onclick="navigate('products'); return false;" class="nav-link ${activePage === 'products' ? 'active' : ''}">All Products</a></li>
+            <li class="nav-item"><a href="/blog" onclick="navigate('blog'); return false;" class="nav-link ${activePage === 'blog' || activePage === 'blog-post' ? 'active' : ''}">Blog</a></li>
           `}
         </ul>
         ${isAdmin ? '' : `<div class="navbar-search"><span class="search-icon"><i class="fas fa-magnifying-glass"></i></span><input type="text" id="globalSearch" placeholder="Search albums, artists..." autocomplete="off"></div>`}
@@ -132,6 +133,7 @@
             <div>
               <p class="footer-col-title">Help</p>
               <div class="footer-links">
+                <a href="/blog" onclick="navigate('blog'); return false;" class="footer-link">Blog</a>
                 <a href="/shipping.html" class="footer-link">Shipping Policy</a>
                 <a href="/returns.html" class="footer-link">Returns &amp; Refunds</a>
                 <a href="/track-order.html" rel="nofollow" class="footer-link">Track Order</a>
@@ -276,6 +278,12 @@
         const title = (document.getElementById('detail-title') || {}).textContent;
         items.push({ name: title && title !== 'Product Details' ? title : 'Details', active: true });
       }
+      else if (page === 'blog') items.push({ name: 'Blog', active: true });
+      else if (page === 'blog-post') {
+        items.push({ name: 'Blog', page: 'blog', params: {} });
+        var bt = (document.getElementById('blog-post-title') || {}).textContent;
+        items.push({ name: bt && bt !== 'Article' ? bt : 'Post', active: true });
+      }
       else if (page === 'cart') items.push({ name: 'Shopping Cart', active: true });
       else if (page === 'profile') items.push({ name: 'My Profile', active: true });
       else items.push({ name: page.charAt(0).toUpperCase() + page.slice(1), active: true });
@@ -297,5 +305,7 @@
       else if (page === 'profile') initPageProfile();
       else if (page === 'login') initPageLogin();
       else if (page === 'signup') initPageSignup();
+      else if (page === 'blog') initPageBlog();
+      else if (page === 'blog-post') initPageBlogPost(params);
       else if (page === 'forgot') { /* static page, nothing to init */ }
     }

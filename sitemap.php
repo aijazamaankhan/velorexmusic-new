@@ -92,6 +92,31 @@ try {
     error_log('[sitemap] product query failed: ' . $e->getMessage());
 }
 
+// ---- Blog -------------------------------------------------------------------
+// Only published posts. Drafts are noindex by construction (the public API
+// won't serve them), so listing one would be a contradictory signal.
+try {
+    require_once __DIR__ . '/api/_blog_helpers.php';
+    blog_ensure_table(db());
+    $posts = db()->query(
+        "SELECT slug, published_at, updated_at FROM blog_posts
+          WHERE status = 'published' ORDER BY published_at DESC"
+    )->fetchAll();
+    if ($posts) {
+        $xml .= velorex_sitemap_url(VELOREX_SITE_URL . '/blog', $posts[0]['published_at'] ?? null, 'weekly', '0.7');
+        foreach ($posts as $p) {
+            $xml .= velorex_sitemap_url(
+                VELOREX_SITE_URL . '/blog/' . $p['slug'],
+                $p['updated_at'] ?: ($p['published_at'] ?? null),
+                'monthly',
+                '0.6'
+            );
+        }
+    }
+} catch (Throwable $e) {
+    error_log('[sitemap] blog query failed: ' . $e->getMessage());
+}
+
 // ---- Static information pages ----------------------------------------------
 // Lower priority: useful for trust and long-tail policy queries ("velorex
 // music return policy"), but never the pages we want ranking for head terms.

@@ -50,6 +50,10 @@ var Seo = (function () {
       title: 'Buy Vinyl Records, CDs & Cassettes Online India | Velorex Music',
       description: 'Browse the full Velorex Music catalogue — vinyl records, audio CDs, cassettes, Blu-rays and DVDs. Hindi and English titles shipped across India.'
     },
+    blog: {
+      title: 'Velorex Journal | Vinyl, Hindi Film Music & Collecting',
+      description: 'Notes on vinyl records, Hindi film music and the pressings worth collecting — from the Velorex Music team in India.'
+    },
     cart:    { title: 'Your Cart | Velorex Music',            description: 'Review the items in your Velorex Music cart before checkout.', robots: 'noindex, follow' },
     profile: { title: 'My Account | Velorex Music',           description: 'Manage your Velorex Music orders, addresses and account details.', robots: 'noindex, nofollow' },
     login:   { title: 'Sign In | Velorex Music',              description: 'Sign in to your Velorex Music account to track orders and manage addresses.', robots: 'noindex, follow' },
@@ -126,6 +130,9 @@ var Seo = (function () {
       return path + (qs.length ? '?' + qs.join('&') : '');
     }
 
+    if (page === 'blog') return '/blog';
+    if (page === 'blog-post') return params.slug ? '/blog/' + params.slug : '/blog';
+
     if (page === 'index') return '/';
     return '/' + page;
   }
@@ -144,6 +151,10 @@ var Seo = (function () {
     if (m) { params.id = parseInt(m[1], 10); return { page: 'product', params: params }; }
 
     if (path === '/products') return { page: 'products', params: params };
+
+    if (path === '/blog') return { page: 'blog', params: params };
+    var bm = path.match(/^\/blog\/([A-Za-z0-9-]+)$/);
+    if (bm) { params.slug = bm[1]; return { page: 'blog-post', params: params }; }
 
     var parts = path.slice(1).split('/');
     if (SLUG_TO_CAT[parts[0]]) {
@@ -325,9 +336,27 @@ var Seo = (function () {
     } catch (e) { /* replaceState can throw in exotic sandboxes; tags are what matter */ }
   }
 
+  // Called from renderBlogPost() once the post has been fetched. The listing
+  // page and the SPA shell can't know a post's title or cover in advance, so
+  // this is what gives a JS-rendering crawler correct per-article metadata.
+  function syncBlogPost(post) {
+    if (!post || !post.slug) return;
+    var url = ORIGIN + '/blog/' + post.slug;
+    var desc = String(post.excerpt || '').replace(/\s+/g, ' ').trim();
+    if (desc.length > 160) desc = desc.slice(0, 157).replace(/\s+\S*$/, '') + '…';
+    applyTags({
+      title: post.title + ' | Velorex Journal',
+      description: desc,
+      canonical: url,
+      image: post.coverImage ? absoluteImage(post.coverImage) : undefined,
+      type: 'article'
+    });
+  }
+
   return {
     ORIGIN: ORIGIN,
     slugify: slugify,
+    syncBlogPost: syncBlogPost,
     productPath: productPath,
     buildPath: buildPath,
     parsePath: parsePath,
