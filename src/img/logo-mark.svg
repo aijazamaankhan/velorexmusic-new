@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 496" role="img" aria-label="Velorex Music">
+  <!-- The Velorex Music mark on its own — no plate, transparent background.
+       Paths lifted verbatim from src/img/logo.svg (the 31-07-2026 master).
+       This is the variant for placing ON a surface: navbar, footer, buttons.
+       favicon.svg is the same mark on a white plate, because a browser tab
+       has no controllable backdrop.
+
+       TWO DELIBERATE DEPARTURES FROM THE MASTER, both for legibility at ~44px:
+
+       1. OUTER RING. The record body is solid black, so on the dark navbar the
+          silhouette vanished completely and all that read was a floating red
+          squiggle — verified by rendering it. A translucent white ring restores
+          the edge on dark surfaces and is effectively invisible on light ones,
+          so a single file serves both themes.
+
+       2. THICKER GROOVES. The master strokes them at 0.75, which disappears
+          entirely below ~48px. At 2 they survive the downscale.
+
+       Brand colours: #ed2c15 (primary red), #ec411e (centre label). -->
+  <title>Velorex Music</title>
+  <g transform="translate(-378 -32) scale(0.98)">
+    <!-- Record body + silhouette ring -->
+    <circle cx="627.6" cy="282.58" r="200.83" fill="#141414"
+            stroke="rgba(255,255,255,0.7)" stroke-width="10"/>
+    <!-- Grooves -->
+    <g fill="none" stroke="#fff" stroke-width="2" stroke-miterlimit="10">
+      <circle cx="627.6" cy="282.58" r="103.92"/>
+      <circle cx="627.6" cy="282.58" r="139"/>
+      <circle cx="627.6" cy="282.58" r="175.01"/>
+    </g>
+    <!-- Centre label + spindle hole -->
+    <circle cx="627.6" cy="282.58" r="53.08" fill="#ec411e"/>
+    <circle cx="627.6" cy="282.58" r="12.43" fill="#fff"/>
+    <!-- V + music note -->
+    <path fill="#ed2c15" stroke="#fff" stroke-width="7" stroke-miterlimit="10"
+          d="M500.51,124.2l134.55,283.67L789.85,11.1s8.65,31.43,35.6,51.27c26.94,19.84,48.01,40.17,51.92,72.25,3.92,32.09-20.82,54.86-37.96,54.62-17.15-.24-29.64-7.35-32.58-18.86-2.94-11.51,6.12-21.55,14.94-24.49,8.82-2.94,26.45-5.63,41.39,8.57.56-12.35-3.01-23.12-12.57-32.14-11.92-9.34-24.5-14.64-32.99-19.91l-19.59-13.59-151.37,394.58h-34.78l-149.9-324.04,38.54-35.17Z"/>
+  </g>
+</svg>

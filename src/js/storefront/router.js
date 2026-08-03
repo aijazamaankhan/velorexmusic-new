@@ -33,7 +33,10 @@
       nav.innerHTML = `
       <nav class="navbar">
         <a href="/" onclick="navigate('index'); return false;" class="navbar-brand">
-          <div class="logo-icon"><i class="fas fa-music"></i></div>
+          <!-- alt="" on purpose: the brand name is right beside it as real text,
+               so giving the image alt text too makes a screen reader announce
+               "Velorex Music Velorex Music". The mark is decorative here. -->
+          <img src="/src/img/logo-mark.svg" class="logo-icon" alt="" width="44" height="44">
           <span class="brand-name">Velorex Music</span>
           ${isAdmin ? '<span style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-left:0.5rem;border-left:1px solid var(--border);padding-left:0.5rem;">Admin</span>' : ''}
         </a>
@@ -89,7 +92,11 @@
         <div class="container">
           <div class="footer-grid">
             <div class="footer-brand">
-              <span class="brand-name"><i class="fas fa-music"></i> Velorex Music</span>
+              <!-- The mark is a SIBLING of .brand-name, not a child. .brand-name
+                   uses -webkit-background-clip:text for its gradient fill, which
+                   clips child elements to the text glyphs in WebKit — an <img>
+                   inside it can render blank. -->
+              <span class="footer-brand-row"><img src="/src/img/logo-mark.svg" class="footer-logo-mark" alt="" width="32" height="32"><span class="brand-name">Velorex Music</span></span>
               <p class="footer-desc">Your ultimate destination for premium vinyl records, audio CDs, and cassettes. Curated collections spanning Hindi & English music across all genres.</p>
               <div class="social-links">
                 <a href="https://www.facebook.com/share/1H7s3i2jui/" class="social-link" target="_blank"><i class="fab fa-facebook"></i></a>

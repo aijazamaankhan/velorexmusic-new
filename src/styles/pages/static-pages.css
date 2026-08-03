@@ -34,15 +34,13 @@ body { padding-top: 80px; }
   gap: 1rem;
   text-decoration: none;
 }
+/* Now an <img> of the real brand mark (src/img/logo-mark.svg) rather than a
+   Font Awesome glyph in a gradient disc — the artwork carries its own shape. */
 .logo-icon {
-  width: 32px;
-  height: 32px;
-  background: var(--orange-gradient);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
+  width: 40px;
+  height: 40px;
+  display: block;
+  flex-shrink: 0;
 }
 .brand-name {
   font-family: var(--font-display);
