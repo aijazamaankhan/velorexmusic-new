@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1304.57 808.29">
+  <defs>
+    <style>
+      .cls-1, .cls-2, .cls-3, .cls-4, .cls-5, .cls-6 {
+        fill: #fff;
+      }
+
+      .cls-2 {
+        letter-spacing: -.02em;
+      }
+
+      .cls-3 {
+        letter-spacing: -.09em;
+      }
+
+      .cls-7, .cls-5 {
+        letter-spacing: 0em;
+      }
+
+      .cls-7, .cls-8 {
+        fill: #ed2c15;
+      }
+
+      .cls-4 {
+        letter-spacing: -.03em;
+      }
+
+      .cls-9 {
+        fill: #ec411e;
+      }
+
+      .cls-10 {
+        stroke-width: .75px;
+      }
+
+      .cls-10, .cls-11, .cls-12, .cls-8 {
+        stroke-miterlimit: 10;
+      }
+
+      .cls-10, .cls-11, .cls-8 {
+        stroke: #fff;
+      }
+
+      .cls-10, .cls-12 {
+        fill: none;
+      }
+
+      .cls-6 {
+        font-family: Poppins-Light, Poppins;
+        font-size: 32.99px;
+        font-weight: 300;
+      }
+
+      .cls-13 {
+        letter-spacing: 0em;
+      }
+
+      .cls-12 {
+        stroke: #ed2c15;
+        stroke-width: 10px;
+      }
+
+      .cls-14 {
+        font-family: AktivGrotesk-Bold, 'Aktiv Grotesk';
+        font-size: 197.07px;
+        font-weight: 700;
+      }
+
+      .cls-8 {
+        stroke-width: 7px;
+      }
+    </style>
+  </defs>
+  <g id="Layer_1-2" data-name="Layer 1">
+    <g>
+      <text class="cls-14" transform="translate(0 644.53)"><tspan class="cls-3" x="0" y="0">V</tspan><tspan class="cls-1" x="119.62" y="0">elo</tspan><tspan class="cls-2" x="409.5" y="0">r</tspan><tspan class="cls-4" x="487.15" y="0">e</tspan><tspan class="cls-5" x="597.3" y="0">x</tspan><tspan class="cls-13" x="705.1" y="0"> </tspan><tspan class="cls-7" x="749.04" y="0">Music</tspan></text>
+      <text class="cls-6" transform="translate(384.14 714.33)"><tspan x="0" y="0">FEEL THE MUSIC. OWN THE LEGACY.</tspan></text>
+      <line class="cls-12" x1="221.94" y1="701.27" x2="336.7" y2="701.27"/>
+      <line class="cls-12" x1="967.87" y1="701.27" x2="1082.63" y2="701.27"/>
+      <g>
+        <circle class="cls-11" cx="627.6" cy="282.58" r="200.83"/>
+        <circle class="cls-9" cx="627.6" cy="282.58" r="53.08"/>
+        <circle class="cls-1" cx="627.6" cy="282.58" r="12.43"/>
+        <circle class="cls-10" cx="627.6" cy="282.58" r="83.2"/>
+        <circle class="cls-10" cx="627.6" cy="282.58" r="103.92"/>
+        <circle class="cls-10" cx="627.6" cy="282.58" r="126.15"/>
+        <circle class="cls-10" cx="627.6" cy="282.58" r="150.74"/>
+        <circle class="cls-10" cx="627.6" cy="282.58" r="175.01"/>
+      </g>
+      <path class="cls-8" d="M500.51,124.2l134.55,283.67L789.85,11.1s8.65,31.43,35.6,51.27c26.94,19.84,48.01,40.17,51.92,72.25,3.92,32.09-20.82,54.86-37.96,54.62-17.15-.24-29.64-7.35-32.58-18.86-2.94-11.51,6.12-21.55,14.94-24.49,8.82-2.94,26.45-5.63,41.39,8.57.56-12.35-3.01-23.12-12.57-32.14-11.92-9.34-24.5-14.64-32.99-19.91l-19.59-13.59-151.37,394.58h-34.78l-149.9-324.04,38.54-35.17Z"/>
+    </g>
+  </g>
+</svg>

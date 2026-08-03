@@ -39,9 +39,13 @@
     body { padding-top: 80px; }
     [data-theme="light"] .navbar { background: rgba(255, 255, 255, 0.95); }
     .brand { display: flex; align-items: center; gap: 0.75rem; text-decoration: none; }
-    /* Real brand mark image, not a Font Awesome glyph in a gradient disc. */
-    .logo-icon { width: 40px; height: 40px; display: block; flex-shrink: 0; }
-    .brand-name { font-family: var(--font-display); font-weight: 900; font-size: 1.25rem; color: var(--text); }
+    /* Brand lockup (mark + wordmark), one file per theme. This page has its own
+       stylesheet rather than static-pages.css, so the rules are duplicated here. */
+    .brand-lockup { height: 42px; width: auto; flex-shrink: 0; }
+    .brand-lockup-dark { display: block; }
+    .brand-lockup-light { display: none; }
+    [data-theme="light"] .brand-lockup-dark { display: none; }
+    [data-theme="light"] .brand-lockup-light { display: block; }
     .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.75rem 1.5rem; background: var(--secondary); color: white; border-radius: 8px; text-decoration: none; transition: 0.2s; border: none; font-size: 0.95rem; font-weight: 600; cursor: pointer; }
     .btn:hover { transform: translateY(-1px); box-shadow: 0 5px 15px rgba(255,107,53,0.35); }
     .btn-block { width: 100%; }
@@ -137,8 +141,8 @@
 <body>
   <nav class="navbar">
     <a href="index.html" class="brand">
-      <img src="/src/img/logo-mark.svg" class="logo-icon" alt="" width="40" height="40">
-      <span class="brand-name">Velorex Music</span>
+      <img src="/src/img/logo-lockup-dark.png" class="brand-lockup brand-lockup-dark" alt="Velorex Music" width="760" height="216">
+      <img src="/src/img/logo-lockup-light.png" class="brand-lockup brand-lockup-light" alt="Velorex Music" width="760" height="215">
     </a>
     <a href="index.html" style="color:var(--text-muted); text-decoration:none; font-size:0.9rem;">Back to Shop</a>
   </nav>

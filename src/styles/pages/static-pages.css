@@ -34,14 +34,21 @@ body { padding-top: 80px; }
   gap: 1rem;
   text-decoration: none;
 }
-/* Now an <img> of the real brand mark (src/img/logo-mark.svg) rather than a
-   Font Awesome glyph in a gradient disc — the artwork carries its own shape. */
-.logo-icon {
-  width: 40px;
-  height: 40px;
-  display: block;
+/* Brand lockup (mark + wordmark), one file per theme — the wordmark is baked
+   into the image, so these pages no longer render a separate .brand-name.
+   Dark is the default, matching the inline theme script in each page's <head>.
+
+   The sizing rule sets no `display` on purpose — if it did, its specificity
+   would override the theme rules below and both lockups would render at once. */
+.brand-lockup {
+  height: 42px;
+  width: auto;
   flex-shrink: 0;
 }
+.brand-lockup-dark { display: block; }
+.brand-lockup-light { display: none; }
+[data-theme="light"] .brand-lockup-dark { display: none; }
+[data-theme="light"] .brand-lockup-light { display: block; }
 .brand-name {
   font-family: var(--font-display);
   font-weight: 900;

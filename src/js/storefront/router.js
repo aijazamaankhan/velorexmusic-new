@@ -33,11 +33,15 @@
       nav.innerHTML = `
       <nav class="navbar">
         <a href="/" onclick="navigate('index'); return false;" class="navbar-brand">
-          <!-- alt="" on purpose: the brand name is right beside it as real text,
-               so giving the image alt text too makes a screen reader announce
-               "Velorex Music Velorex Music". The mark is decorative here. -->
-          <img src="/src/img/logo-mark.svg" class="logo-icon" alt="" width="44" height="44">
-          <span class="brand-name">Velorex Music</span>
+          <!-- Full brand lockup (mark + wordmark), in both theme variants.
+               Which one shows is decided in CSS by [data-theme]; the other is
+               display:none, which also removes it from the accessibility tree,
+               so the duplicate alt text is never announced twice.
+               These are the designer's PNG exports, NOT the SVG masters — the
+               masters set the wordmark as live <text> in Aktiv Grotesk and
+               Poppins, fonts no browser has. See src/img/README.md. -->
+          <img src="/src/img/logo-lockup-dark.png" class="brand-lockup brand-lockup-dark" alt="Velorex Music" width="760" height="216">
+          <img src="/src/img/logo-lockup-light.png" class="brand-lockup brand-lockup-light" alt="Velorex Music" width="760" height="215">
           ${isAdmin ? '<span style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-left:0.5rem;border-left:1px solid var(--border);padding-left:0.5rem;">Admin</span>' : ''}
         </a>
         <ul class="navbar-nav" id="mainNav">
@@ -92,11 +96,11 @@
         <div class="container">
           <div class="footer-grid">
             <div class="footer-brand">
-              <!-- The mark is a SIBLING of .brand-name, not a child. .brand-name
-                   uses -webkit-background-clip:text for its gradient fill, which
-                   clips child elements to the text glyphs in WebKit — an <img>
-                   inside it can render blank. -->
-              <span class="footer-brand-row"><img src="/src/img/logo-mark.svg" class="footer-logo-mark" alt="" width="32" height="32"><span class="brand-name">Velorex Music</span></span>
+              <!-- Theme-aware, same as the navbar. The footer uses var(--surface),
+                   which is #1a1a2e in the dark theme but #ffffff in the light one —
+                   so a white-wordmark lockup alone would be invisible on light. -->
+              <img src="/src/img/logo-lockup-dark.png" class="footer-lockup brand-lockup-dark" alt="Velorex Music" width="760" height="216">
+              <img src="/src/img/logo-lockup-light.png" class="footer-lockup brand-lockup-light" alt="Velorex Music" width="760" height="215">
               <p class="footer-desc">Your ultimate destination for premium vinyl records, audio CDs, and cassettes. Curated collections spanning Hindi & English music across all genres.</p>
               <div class="social-links">
                 <a href="https://www.facebook.com/share/1H7s3i2jui/" class="social-link" target="_blank"><i class="fab fa-facebook"></i></a>
