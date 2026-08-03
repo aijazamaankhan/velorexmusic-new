@@ -16,9 +16,13 @@ try {
         // MySQL doesn't ship the multi-MB LONGTEXT columns over the
         // DB → PHP wire either. Without this, even though we'd drop them
         // from the JSON, PHP would still pull them into memory per row.
+        // item_condition is only named in the SELECT when it exists — the helper
+        // adds it on first call, but if that ALTER ever failed we must not
+        // hard-error the storefront's main listing over a cosmetic column.
+        $condCol = products_has_condition_column($pdo) ? 'item_condition, ' : '';
         $stmt = $pdo->query(
             'SELECT id, title, artist, category, language, price, original_price, '
-          . 'image, rating, reviews, badge, stock, music_director '
+          . 'image, rating, reviews, badge, stock, ' . $condCol . 'music_director '
           . 'FROM products ORDER BY id'
         );
         $rows = $stmt->fetchAll();

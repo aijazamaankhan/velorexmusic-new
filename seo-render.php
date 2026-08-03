@@ -314,17 +314,22 @@ if ($route === 'category' || $route === 'products') {
     $isAll = ($route === 'products');
     $meta  = $isAll ? null : $cats[$catSlug];
 
+    // Only name item_condition in the SELECT when the column exists (the helper
+    // adds it on first call). If that ALTER ever failed, degrade to the old
+    // column list rather than 500-ing a public category page.
+    $condCol = products_has_condition_column(db()) ? 'item_condition, ' : '';
+
     try {
         if ($isAll) {
             $stmt = db()->query(
                 'SELECT id, title, artist, category, language, price, original_price, image, '
-              . 'rating, reviews, badge, stock, music_director FROM products ORDER BY id DESC'
+              . 'rating, reviews, badge, stock, ' . $condCol . 'music_director FROM products ORDER BY id DESC'
             );
             $rows = $stmt->fetchAll();
         } elseif ($langSlug !== null) {
             $stmt = db()->prepare(
                 'SELECT id, title, artist, category, language, price, original_price, image, '
-              . 'rating, reviews, badge, stock, music_director FROM products '
+              . 'rating, reviews, badge, stock, ' . $condCol . 'music_director FROM products '
               . 'WHERE category = :c AND language = :l ORDER BY id DESC'
             );
             $stmt->execute([':c' => $meta['key'], ':l' => $langSlug]);
@@ -332,7 +337,7 @@ if ($route === 'category' || $route === 'products') {
         } else {
             $stmt = db()->prepare(
                 'SELECT id, title, artist, category, language, price, original_price, image, '
-              . 'rating, reviews, badge, stock, music_director FROM products '
+              . 'rating, reviews, badge, stock, ' . $condCol . 'music_director FROM products '
               . 'WHERE category = :c ORDER BY id DESC'
             );
             $stmt->execute([':c' => $meta['key']]);
@@ -428,6 +433,88 @@ if ($route === 'category' || $route === 'products') {
         'Showing ' . $count . ' ' . ($count === 1 ? 'product' : 'products')
     );
     $html = velorex_set_div_inner($html, '<div class="products-grid" id="products-grid">', $cardsHtml);
+    echo $html;
+    exit;
+}
+
+// -----------------------------------------------------------------------------
+// Route: pre-owned listing, optionally narrowed to one format
+// -----------------------------------------------------------------------------
+if ($route === 'preowned') {
+    $cats    = velorex_categories();
+    $catSlug = isset($_GET['cat']) && $_GET['cat'] !== '' ? (string)$_GET['cat'] : null;
+    if ($catSlug !== null && !isset($cats[$catSlug])) velorex_send_404('Page not found');
+
+    $condCol = products_has_condition_column(db());
+    if (!$condCol) {
+        // Column missing (the ALTER failed) — there can be no pre-owned stock,
+        // so render the empty state rather than a SQL error.
+        $rows = [];
+    } else {
+        try {
+            $sql = 'SELECT id, title, artist, category, language, price, original_price, image, '
+                 . 'rating, reviews, badge, stock, item_condition, music_director FROM products '
+                 . "WHERE item_condition = 'pre-owned'"
+                 . ($catSlug ? ' AND category = :c' : '')
+                 . ' ORDER BY id DESC';
+            $stmt = db()->prepare($sql);
+            $stmt->execute($catSlug ? [':c' => $cats[$catSlug]['key']] : []);
+            $rows = $stmt->fetchAll();
+        } catch (Throwable $e) {
+            error_log('[seo-render] pre-owned query failed: ' . $e->getMessage());
+            $rows = [];
+        }
+    }
+
+    $products = array_map('row_to_product_lean', $rows);
+    $count = count($products);
+    $label = $catSlug ? $cats[$catSlug]['label'] : null;
+
+    $canonical = VELOREX_SITE_URL . '/pre-owned' . ($catSlug ? '/' . $catSlug : '');
+    $h1 = $label ? 'Pre-owned ' . $label : 'Pre-owned';
+    $title = $label
+        ? 'Pre-owned ' . $label . ' | Buy Used ' . $label . ' Online India'
+        : 'Pre-owned Vinyl, CDs & Cassettes | Buy Used Records India';
+    $desc = $label
+        ? 'Shop pre-owned ' . strtolower($label) . ' in India at Velorex Music. Second-hand and collector copies, condition-checked before dispatch, with pan-India delivery.'
+        : 'Shop pre-owned vinyl records, audio CDs, cassettes, Blu-rays and DVDs in India. Second-hand and collector copies, condition-checked before dispatch.';
+
+    // Empty listings stay out of the index — see the category route for why.
+    $robots = $count > 0
+        ? 'index, follow, max-image-preview:large, max-snippet:-1'
+        : 'noindex, follow';
+
+    $head  = velorex_meta_block([
+        'title'       => $title,
+        'description' => $desc,
+        'canonical'   => $canonical,
+        'image'       => $count ? velorex_absolute_image($products[0]['image'] ?? '') : VELOREX_DEFAULT_OG_IMAGE,
+        'imageAlt'    => $h1,
+        'robots'      => $robots,
+    ]);
+    $head .= velorex_jsonld_site();
+    if ($count) $head .= velorex_jsonld_item_list($products, $h1, $canonical);
+    $trail = [['name' => 'Home', 'url' => VELOREX_SITE_URL . '/']];
+    if ($label) {
+        $trail[] = ['name' => 'Pre-owned', 'url' => VELOREX_SITE_URL . '/pre-owned'];
+        $trail[] = ['name' => $label];
+    } else {
+        $trail[] = ['name' => 'Pre-owned'];
+    }
+    $head .= velorex_jsonld_breadcrumbs($trail);
+
+    $cards = $count
+        ? implode('', array_map('velorex_render_card', $products))
+        : '<p style="grid-column:1/-1;padding:2.5rem 1rem;text-align:center;color:var(--text-muted);">'
+          . 'No pre-owned stock in this format right now. <a href="/products">Browse everything</a>.</p>';
+
+    $html = velorex_shell();
+    $html = velorex_inject_head($html, $head);
+    $html = velorex_show_section($html, 'page-preowned');
+    $html = velorex_set_text($html, '<h1 class="page-hero-title" id="preowned-title">', 'h1', velorex_e($h1));
+    $html = velorex_set_text($html, '<p class="products-count" id="preowned-count">', 'p',
+        $count ? 'Showing ' . $count . ' pre-owned ' . ($count === 1 ? 'item' : 'items') : '');
+    $html = velorex_set_div_inner($html, '<div class="products-grid" id="preowned-grid">', $cards);
     echo $html;
     exit;
 }

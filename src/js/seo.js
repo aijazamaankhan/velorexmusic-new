@@ -50,6 +50,10 @@ var Seo = (function () {
       title: 'Buy Vinyl Records, CDs & Cassettes Online India | Velorex Music',
       description: 'Browse the full Velorex Music catalogue — vinyl records, audio CDs, cassettes, Blu-rays and DVDs. Hindi and English titles shipped across India.'
     },
+    preowned: {
+      title: 'Pre-owned Vinyl, CDs & Cassettes | Buy Used Records India',
+      description: 'Shop pre-owned vinyl records, audio CDs, cassettes, Blu-rays and DVDs in India. Second-hand and collector copies, condition-checked before dispatch.'
+    },
     blog: {
       title: 'Velorex Journal | Vinyl, Hindi Film Music & Collecting',
       description: 'Notes on vinyl records, Hindi film music and the pressings worth collecting — from the Velorex Music team in India.'
@@ -130,6 +134,11 @@ var Seo = (function () {
       return path + (qs.length ? '?' + qs.join('&') : '');
     }
 
+    // /pre-owned, optionally narrowed to one format: /pre-owned/vinyl-records
+    if (page === 'preowned') {
+      var pslug = params.cat ? CAT_TO_SLUG[params.cat] : null;
+      return pslug ? '/pre-owned/' + pslug : '/pre-owned';
+    }
     if (page === 'blog') return '/blog';
     if (page === 'blog-post') return params.slug ? '/blog/' + params.slug : '/blog';
 
@@ -151,6 +160,10 @@ var Seo = (function () {
     if (m) { params.id = parseInt(m[1], 10); return { page: 'product', params: params }; }
 
     if (path === '/products') return { page: 'products', params: params };
+
+    if (path === '/pre-owned') return { page: 'preowned', params: params };
+    var pom = path.match(/^\/pre-owned\/([a-z-]+)$/);
+    if (pom && SLUG_TO_CAT[pom[1]]) { params.cat = SLUG_TO_CAT[pom[1]]; return { page: 'preowned', params: params }; }
 
     if (path === '/blog') return { page: 'blog', params: params };
     var bm = path.match(/^\/blog\/([A-Za-z0-9-]+)$/);

@@ -46,7 +46,7 @@
   <script src="src/js/admin/main.js?v=84abacf6"></script>
   <script src="src/js/admin/customers.js?v=127735c1"></script>
   <script src="src/js/admin/orders.js?v=fef46ea8"></script>
-  <script src="src/js/admin/inventory.js?v=87220596"></script>
+  <script src="src/js/admin/inventory.js?v=982c3d3d"></script>
   <script src="src/js/admin/blog.js?v=7a085310"></script>
   <script src="src/js/admin/toast.js?v=9a4bf3e8"></script>
 </head>
@@ -477,6 +477,16 @@
               Shows this product in that homepage section (max 4 per section).
             </small>
           </div>
+          <!-- Condition. Writes products.item_condition; drives the "Pre-owned"
+               badge on cards, the /pre-owned section, and schema.org
+               itemCondition (UsedCondition vs NewCondition). -->
+          <div class="form-group">
+            <label class="form-label">Condition</label>
+            <select class="form-control" id="f-condition">
+              <option value="new">New / Sealed</option>
+              <option value="pre-owned">Pre-owned</option>
+            </select>
+          </div>
           <div class="form-group full-width">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
               <label class="form-label" style="margin:0;">Image URLs</label>
@@ -748,6 +758,16 @@
             <small style="display:block;margin-top:0.4rem;color:var(--text-muted);font-size:0.72rem;">
               Shows this product in that homepage section (max 4 per section).
             </small>
+          </div>
+          <!-- Condition. Writes products.item_condition; drives the "Pre-owned"
+               badge on cards, the /pre-owned section, and schema.org
+               itemCondition (UsedCondition vs NewCondition). -->
+          <div class="form-group">
+            <label class="form-label">Condition</label>
+            <select class="form-control" id="e-condition">
+              <option value="new">New / Sealed</option>
+              <option value="pre-owned">Pre-owned</option>
+            </select>
           </div>
           <div class="form-group full-width">
             <label class="form-label">Images</label>

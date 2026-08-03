@@ -424,7 +424,13 @@ function velorex_jsonld_product(array $p): string {
             'availability'  => $stock > 0
                 ? 'https://schema.org/InStock'
                 : 'https://schema.org/PreOrder',
-            'itemCondition' => 'https://schema.org/NewCondition',
+            // Was hardcoded to NewCondition. Now that pre-owned stock exists,
+            // that would be a false claim in structured data — Google surfaces
+            // condition in shopping results, and mislabelling used goods as new
+            // is both a rich-result violation and a consumer-trust problem.
+            'itemCondition' => (($p['condition'] ?? 'new') === 'pre-owned')
+                ? 'https://schema.org/UsedCondition'
+                : 'https://schema.org/NewCondition',
             'seller'        => ['@id' => VELOREX_SITE_URL . '/#organization'],
             'shippingDetails' => [
                 '@type' => 'OfferShippingDetails',

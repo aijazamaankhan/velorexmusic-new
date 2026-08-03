@@ -104,7 +104,7 @@
   <script src="src/js/api-base.js?v=0ce972cf"></script>
   <!-- URL vocabulary + live metadata. Must load before router.js and pages.js,
        both of which call Seo.buildPath()/Seo.productPath() to render hrefs. -->
-  <script src="src/js/seo.js?v=a29f7f79"></script>
+  <script src="src/js/seo.js?v=78104cfd"></script>
   <script src="src/js/constants.js?v=b0f974a1"></script>
   <script src="src/js/storage.js?v=3f882b69"></script>
   <script src="src/js/auth.js?v=79e7221e"></script>
@@ -124,11 +124,11 @@
        end up in script-scope; the inline <script> at the bottom of <body>
        just bootstraps DOMContentLoaded. -->
   <script src="src/js/storefront/carriers.js?v=488bf189"></script>
-  <script src="src/js/storefront/pages.js?v=a4fbb8e3"></script>
+  <script src="src/js/storefront/pages.js?v=70ffd5cf"></script>
   <!-- Blog views. Must load before router.js, whose initPage dispatcher calls
        initPageBlog / initPageBlogPost. -->
   <script src="src/js/storefront/blog.js?v=38e36528"></script>
-  <script src="src/js/storefront/router.js?v=ca47860b"></script>
+  <script src="src/js/storefront/router.js?v=f0869e80"></script>
   <script src="src/js/storefront/checkout.js?v=472f3280"></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
        they can be shared between the storefront pages without duplication.
@@ -143,10 +143,34 @@
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
   <!-- Page-specific styles (hero, products, cart, profile, footer, etc.).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=b7fa7fe6">
+  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=be308e29">
 </head>
 
 <body>
+  <!-- ==================== INTRO SPLASH ====================
+       Hidden by default and revealed by initSplash() in router.js only when it
+       is appropriate (homepage, first visit of the session). It ships hidden so
+       that if JavaScript never runs — including for a crawler that does not
+       execute it — the site is simply the site, with no overlay to get past.
+       That also means this markup cannot become an "intrusive interstitial" in
+       Google's sense on the pages people actually land on from search.
+       aria-hidden until shown, and inert to assistive tech when dismissed. -->
+  <div id="intro-splash" class="intro-splash" aria-hidden="true" hidden>
+    <div class="intro-splash-inner">
+      <img src="/src/img/logo-mark.svg" class="intro-splash-mark" alt="" width="120" height="120">
+      <div class="intro-splash-tagline">
+        <span class="intro-rule"></span>
+        Feel the Music . Own the Legacy
+        <span class="intro-rule"></span>
+      </div>
+      <p class="intro-splash-brand">Velorex Music</p>
+      <p class="intro-splash-sub">Step into a world of timeless sound.</p>
+      <button type="button" class="intro-splash-enter" id="intro-splash-enter">
+        Tap anywhere to enter <span aria-hidden="true">→</span>
+      </button>
+    </div>
+  </div>
+
   <div id="navbar-placeholder"></div>
   <div class="breadcrumbs-container">
     <ul class="breadcrumbs" id="breadcrumb-list"></ul>
@@ -460,6 +484,26 @@
             </div>
             <div class="products-grid" id="related-grid"></div>
           </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- PRE-OWNED -->
+    <div id="page-preowned" class="page-section">
+      <div class="page-hero">
+        <div class="container">
+          <h1 class="page-hero-title" id="preowned-title">Pre-owned</h1>
+          <p style="color:var(--text-muted);margin-top:0.5rem;max-width:64ch;">
+            Second-hand vinyl, CDs, cassettes, Blu-rays and DVDs — every copy
+            checked and graded before it ships.
+          </p>
+        </div>
+      </div>
+      <section class="section" style="padding-top:0;">
+        <div class="container">
+          <div class="preowned-chips" id="preowned-chips"></div>
+          <p class="products-count" id="preowned-count"></p>
+          <div class="products-grid" id="preowned-grid"><div class="loading-spinner"></div></div>
         </div>
       </section>
     </div>
@@ -985,6 +1029,12 @@
         navigate(initial.page, initial.params, { pushState: false });
         window.history.replaceState({ page: initial.page, params: initial.params }, '', buildPageUrl(initial.page, initial.params));
       }
+
+      // Intro splash. Called AFTER the first navigate so the page it covers is
+      // already painted — the overlay blurs the real shop rather than a blank
+      // document. initSplash decides for itself whether to show at all
+      // (homepage only, once per session); see router.js.
+      try { initSplash(initial.page); } catch (e) { console.warn('splash init failed:', e); }
 
       // Background product sync. If the cache was warm (we have products in
       // localStorage from a previous visit), the first paint above already

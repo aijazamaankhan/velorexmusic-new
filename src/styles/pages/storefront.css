@@ -964,3 +964,126 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   .blog-post-body { font-size: 1rem; }
   .blog-post-body h2 { font-size: 1.4rem; }
 }
+
+/* =============================================================
+   Intro splash — brand moment on first load of the homepage
+   ============================================================= */
+/* MUST come first and MUST stay.
+   The `hidden` attribute only works through the UA rule `[hidden]{display:none}`,
+   which is a bare attribute selector and loses to the `.intro-splash` class rule
+   below. Without this, the overlay stays position:fixed inset:0 over the whole
+   viewport forever — invisible enough to miss in a screenshot, but swallowing
+   every click on every page and making the site unusable. */
+.intro-splash[hidden] { display: none !important; }
+
+.intro-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  /* The real page sits behind and is blurred through, rather than being
+     covered by a flat colour — that is what makes it read as an overlay on
+     the shop instead of a loading screen. The rgba layer is the fallback for
+     browsers without backdrop-filter (Firefox with it disabled). */
+  background: rgba(9, 5, 18, 0.82);
+  -webkit-backdrop-filter: blur(26px) saturate(120%);
+  backdrop-filter: blur(26px) saturate(120%);
+  animation: introFadeIn 0.45s ease both;
+}
+[data-theme="light"] .intro-splash { background: rgba(255, 255, 255, 0.86); }
+
+.intro-splash.is-closing { animation: introFadeOut 0.4s ease both; pointer-events: none; }
+
+@keyframes introFadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes introFadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+.intro-splash-inner { max-width: 640px; animation: introRise 0.6s cubic-bezier(.2,.7,.3,1) both; }
+@keyframes introRise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+.intro-splash-mark {
+  width: 120px; height: 120px;
+  margin: 0 auto 1.75rem;
+  display: block;
+  filter: drop-shadow(0 12px 34px rgba(237, 44, 21, 0.35));
+}
+.intro-splash-tagline {
+  display: flex; align-items: center; justify-content: center; gap: 0.9rem;
+  font-size: 0.72rem; font-weight: 600;
+  letter-spacing: 0.34em; text-transform: uppercase;
+  color: var(--secondary);
+  margin-bottom: 1.1rem;
+}
+.intro-rule { display: block; width: 34px; height: 1px; background: currentColor; opacity: 0.55; }
+.intro-splash-brand {
+  font-family: var(--font-display);
+  font-size: clamp(2.1rem, 6vw, 3.4rem);
+  font-weight: 900; line-height: 1.1;
+  color: var(--text);
+  margin-bottom: 0.85rem;
+}
+.intro-splash-sub { color: var(--text-muted); font-size: 1rem; margin-bottom: 2.25rem; }
+.intro-splash-enter {
+  background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 0.78rem; font-weight: 600;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--secondary);
+  padding: 0.6rem 0.4rem;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.intro-splash-enter:hover { opacity: 0.75; transform: translateX(3px); }
+.intro-splash-enter:focus-visible { outline: 2px solid var(--secondary); outline-offset: 4px; border-radius: 4px; }
+
+/* Vestibular safety: skip the motion but keep the screen itself. */
+@media (prefers-reduced-motion: reduce) {
+  .intro-splash, .intro-splash-inner, .intro-splash.is-closing { animation: none; }
+  .intro-splash-enter:hover { transform: none; }
+}
+@media (max-width: 600px) {
+  .intro-splash-mark { width: 92px; height: 92px; margin-bottom: 1.4rem; }
+  .intro-splash-tagline { font-size: 0.62rem; letter-spacing: 0.24em; gap: 0.6rem; }
+  .intro-rule { width: 22px; }
+  .intro-splash-sub { font-size: 0.92rem; margin-bottom: 1.75rem; }
+}
+
+/* =============================================================
+   Pre-owned — condition badge + format chips
+   ============================================================= */
+/* Sits in the same stack as .badge-hot/.badge-new, but offset to the RIGHT so
+   a product that is both featured and pre-owned shows both without overlap. */
+.product-card-image .badge-preowned {
+  left: auto;
+  right: 0.75rem;
+  background: #0f766e;
+  color: #ecfeff;
+}
+[data-theme="light"] .product-card-image .badge-preowned { background: #0d9488; color: #fff; }
+
+.preowned-chips { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1.5rem; }
+.preowned-chip {
+  display: inline-flex; align-items: center;
+  padding: 0.45rem 0.95rem;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: var(--card-bg);
+  color: var(--text-muted);
+  font-size: 0.82rem; font-weight: 600;
+  text-decoration: none;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+.preowned-chip:hover { border-color: var(--secondary); color: var(--text); }
+.preowned-chip.active { background: var(--secondary); border-color: var(--secondary); color: #fff; }
+
+/* Condition line on the product detail page. */
+.product-detail-condition {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.3rem 0.7rem; border-radius: 6px;
+  background: rgba(15, 118, 110, 0.15);
+  color: #14b8a6;
+  font-size: 0.78rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}

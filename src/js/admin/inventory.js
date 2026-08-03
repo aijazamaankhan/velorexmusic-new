@@ -226,7 +226,7 @@
     function downloadBulkTemplate() {
       const headers = [
         'id', 'title', 'artist', 'category', 'price',
-        'language', 'original_price', 'stock', 'badge', 'description',
+        'language', 'original_price', 'stock', 'badge', 'condition', 'description',
         'music_director', 'track_listing', 'people',
         'specs_format', 'specs_speed', 'specs_label', 'specs_year',
         'specs_tracks', 'specs_genre', 'specs_theme',
@@ -373,6 +373,8 @@
       const op = num(obj.original_price); if (op !== null && Number.isFinite(op)) p.originalPrice = op;
       const stock = num(obj.stock); if (stock !== null && Number.isFinite(stock)) p.stock = stock;
       const badge = trim(obj.badge).toLowerCase(); if (badge) p.badge = badge;
+      const cond = trim(obj.condition).toLowerCase();
+      if (cond) p.condition = (cond === 'pre-owned' || cond === 'preowned' || cond === 'used') ? 'pre-owned' : 'new';
       const desc = trim(obj.description); if (desc) p.description = desc;
       const md = trim(obj.music_director); if (md) p.musicDirector = md;
       const tl = trim(obj.track_listing); if (tl) p.trackListing = tl;
@@ -900,6 +902,9 @@
         // key blanked the column. Any product featured via CSV lost its
         // placement the first time someone edited it in the admin UI.
         badge: (document.getElementById('f-badge') || {}).value || null,
+        // Stored as products.item_condition. Same reasoning as `badge` above:
+        // omit the key and REPLACE INTO silently resets it to the default.
+        condition: (document.getElementById('f-condition') || {}).value || 'new',
         specs: getSpecificationsData()
       };
 
@@ -990,6 +995,8 @@
       // would quietly demote a featured product.
       var eBadge = document.getElementById('e-badge');
       if (eBadge) eBadge.value = product.badge || '';
+      var eCond = document.getElementById('e-condition');
+      if (eCond) eCond.value = product.condition === 'pre-owned' ? 'pre-owned' : 'new';
       document.getElementById('e-description').value = product.description || '';
       document.getElementById('e-music-director').value = product.musicDirector || '';
 
@@ -1242,6 +1249,7 @@
         // omitting the key would leave the OLD badge in place and an admin
         // changing the value to "Not featured" would silently do nothing.
         badge: (document.getElementById('e-badge') || {}).value || null,
+        condition: (document.getElementById('e-condition') || {}).value || 'new',
         specs: getEditSpecificationsData(),
       };
 

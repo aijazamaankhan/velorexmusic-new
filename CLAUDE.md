@@ -1474,6 +1474,52 @@ Because the stored HTML is already safe, both the storefront renderer and
 Drafts are invisible to the public API, excluded from the sitemap, and an empty
 blog listing sets `noindex` so a thin page never enters the index.
 
+### Pre-owned stock
+
+Products carry a condition, set in the admin product form (**Condition**:
+New / Sealed vs Pre-owned) and stored in `products.item_condition`. It drives
+three things: the teal **Pre-owned** badge on cards, the `/pre-owned` section,
+and schema.org `itemCondition`.
+
+The column is **auto-added on first use** by `products_has_condition_column()`,
+like the blog table. Named `item_condition` because `CONDITION` is reserved in
+MySQL 8. If the `ALTER` ever fails, every product simply reads as `new` and the
+site keeps working — the column is never named in a `SELECT` unless it exists.
+
+URLs: `/pre-owned`, and `/pre-owned/<format>` for the five format slugs. Format
+chips are rendered only for formats that actually have pre-owned stock, and the
+sitemap lists only those — a link or sitemap entry leading to an empty grid is
+worse than none.
+
+`itemCondition` in the Product JSON-LD was previously hardcoded to
+`NewCondition`. It now follows the field (`UsedCondition` for pre-owned).
+Leaving it hardcoded would have published a false claim about every second-hand
+item — a rich-result violation and a consumer-trust problem, not a cosmetic one.
+
+### Intro splash
+
+A brand overlay on first load, in `#intro-splash` (markup in index.html, styles
+in `storefront.css`, `initSplash()` in `router.js`).
+
+**It is deliberately constrained, and the constraints are the point.** A
+full-screen overlay on arrival is what Google classifies as an *intrusive
+interstitial*, a documented mobile ranking negative. So:
+
+- **Homepage only.** Product, category, pre-owned and blog URLs are what people
+  land on from search and never show it. **Do not relax this.**
+- Once per session (`sessionStorage`), and skipped entirely when the URL carries
+  a query string or hash (that visitor is going somewhere specific).
+- Dismissed by any click, tap, key or scroll, plus a 6-second failsafe timer so
+  it can never trap anyone.
+- Ships with the `hidden` attribute and is revealed by JS, so a crawler that
+  does not execute scripts sees the page with no overlay at all.
+
+**`.intro-splash[hidden] { display: none !important }` must stay.** The `hidden`
+attribute only works through the UA rule `[hidden]{display:none}`, which loses
+to the `.intro-splash` class rule. Without it the overlay stays `position:fixed;
+inset:0` over the viewport on every page — invisible enough to pass a
+screenshot check, while silently swallowing every click on the site.
+
 ### Still to do (needs a person, not code)
 
 1. **Google Search Console** — add the property, verify via DNS TXT, submit

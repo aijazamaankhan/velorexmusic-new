@@ -93,6 +93,10 @@ DirectoryIndex index.html index.php
   # /products — the full catalogue
   RewriteRule ^products/?$ seo-render.php?_route=products [L,QSA]
 
+  # /pre-owned and /pre-owned/<format>
+  RewriteRule ^pre-owned/?$ seo-render.php?_route=preowned [L,QSA]
+  RewriteRule ^pre-owned/(vinyl-records|audio-cds|cassettes|blu-ray-movies|dvd-movies)/?$ seo-render.php?_route=preowned&cat=$1 [L,QSA]
+
   # /blog and /blog/<slug>. The slug charset is restricted to what
   # velorex_slugify() can emit, so no other shape reaches the front controller.
   RewriteRule ^blog/?$ seo-render.php?_route=blog [L,QSA]

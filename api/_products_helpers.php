@@ -18,6 +18,53 @@ function products_has_images_column(PDO $pdo): bool {
     return $has;
 }
 
+// Does products.item_condition exist? If not, add it — once per process, and
+// never retried after a failure.
+//
+// The column is named item_condition rather than `condition` because CONDITION
+// is a reserved word in MySQL 8 and would need backtick-quoting in every single
+// query that touches it.
+//
+// This auto-migrates, matching what the blog does, so a deploy is not left
+// half-working while someone remembers phpMyAdmin. It is a narrower risk than
+// it looks: adding a nullable column with a default to a ~70-row InnoDB table
+// is effectively instantaneous. If the ALTER fails for any reason (permissions,
+// say) every product simply reads as "new" and the site keeps working — the
+// caller never sees an error.
+function products_has_condition_column(PDO $pdo): bool {
+    static $has = null;
+    if ($has !== null) return $has;
+    try {
+        $stmt = $pdo->query("SHOW COLUMNS FROM products LIKE 'item_condition'");
+        $has = (bool)$stmt->fetch();
+        if (!$has) {
+            $pdo->exec(
+                "ALTER TABLE products
+                    ADD COLUMN item_condition ENUM('new','pre-owned')
+                    NOT NULL DEFAULT 'new' AFTER stock"
+            );
+            $has = true;
+        }
+    } catch (Throwable $e) {
+        error_log('[products] item_condition column unavailable: ' . $e->getMessage());
+        $has = false;
+    }
+    return $has;
+}
+
+// Normalise whatever the client sent into one of the two stored values.
+// Accepts the boolean the admin form is most likely to produce as well as the
+// string, so neither shape can silently store an invalid enum.
+function normalize_condition($v): string {
+    if (is_bool($v)) return $v ? 'pre-owned' : 'new';
+    $s = strtolower(trim((string)$v));
+    if ($s === 'pre-owned' || $s === 'preowned' || $s === 'pre owned'
+        || $s === 'used' || $s === '1' || $s === 'true') {
+        return 'pre-owned';
+    }
+    return 'new';
+}
+
 function upsert_product(PDO $pdo, array $p): void {
     // Normalise the gallery: accept either `images` (array of URLs / data: URLs)
     // or just `image` (single primary). Always persist the full list as JSON in
@@ -29,11 +76,14 @@ function upsert_product(PDO $pdo, array $p): void {
     }
 
     $hasImages = products_has_images_column($pdo);
+    $hasCond   = products_has_condition_column($pdo);
     $cols  = 'id, title, artist, category, language, price, original_price, description, image, '
            . ($hasImages ? 'images, ' : '')
+           . ($hasCond ? 'item_condition, ' : '')
            . 'rating, reviews, badge, stock, music_director, track_listing, specs, people';
     $vals  = ':id, :title, :artist, :category, :language, :price, :original_price, :description, :image, '
            . ($hasImages ? ':images, ' : '')
+           . ($hasCond ? ':item_condition, ' : '')
            . ':rating, :reviews, :badge, :stock, :music_director, :track_listing, :specs, :people';
     $sql = "REPLACE INTO products ($cols) VALUES ($vals)";
 
@@ -60,6 +110,11 @@ function upsert_product(PDO $pdo, array $p): void {
     ];
     if ($hasImages) {
         $params[':images'] = $imagesArr ? json_encode($imagesArr) : null;
+    }
+    if ($hasCond) {
+        // Accept either `condition` (API shape) or `itemCondition`/`preOwned`.
+        $raw = $p['condition'] ?? $p['itemCondition'] ?? $p['preOwned'] ?? 'new';
+        $params[':item_condition'] = normalize_condition($raw);
     }
 
     $pdo->prepare($sql)->execute($params);
@@ -91,6 +146,7 @@ function row_to_product(array $r): array {
         'stock' => (int)$r['stock'],
         'musicDirector' => $r['music_director'],
         'trackListing' => $r['track_listing'],
+        'condition' => $r['item_condition'] ?? 'new',
         'specs' => $r['specs'] ? json_decode($r['specs'], true) : null,
         'people' => $r['people'] ? json_decode($r['people'], true) : [],
     ];
@@ -117,5 +173,6 @@ function row_to_product_lean(array $r): array {
         'badge' => $r['badge'],
         'stock' => (int)$r['stock'],
         'musicDirector' => $r['music_director'],
+        'condition' => $r['item_condition'] ?? 'new',
     ];
 }

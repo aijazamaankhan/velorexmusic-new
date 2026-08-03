@@ -66,6 +66,7 @@
             <li class="nav-item"><a href="${P('products', {cat:'bluray'})}" onclick="navigate('products', {cat:'bluray'}); return false;" class="nav-link ${activePage === 'bluray' ? 'active' : ''}">Blu-rays</a></li>
             <li class="nav-item"><a href="${P('products', {cat:'dvd'})}" onclick="navigate('products', {cat:'dvd'}); return false;" class="nav-link ${activePage === 'dvd' ? 'active' : ''}">DVDs</a></li>
             <li class="nav-item"><a href="/products" onclick="navigate('products'); return false;" class="nav-link ${activePage === 'products' ? 'active' : ''}">All Products</a></li>
+            <li class="nav-item"><a href="/pre-owned" onclick="navigate('preowned'); return false;" class="nav-link ${activePage === 'preowned' ? 'active' : ''}">Pre-owned</a></li>
             <li class="nav-item"><a href="/blog" onclick="navigate('blog'); return false;" class="nav-link ${activePage === 'blog' || activePage === 'blog-post' ? 'active' : ''}">Blog</a></li>
           `}
         </ul>
@@ -133,6 +134,7 @@
             <div>
               <p class="footer-col-title">Help</p>
               <div class="footer-links">
+                <a href="${P('preowned', {})}" onclick="navigate('preowned'); return false;" class="footer-link">Pre-owned</a>
                 <a href="/blog" onclick="navigate('blog'); return false;" class="footer-link">Blog</a>
                 <a href="/shipping.html" class="footer-link">Shipping Policy</a>
                 <a href="/returns.html" class="footer-link">Returns &amp; Refunds</a>
@@ -148,6 +150,64 @@
           </div>
         </div>
       </footer>`;
+    }
+
+    // =============================================
+    // INTRO SPLASH
+    // =============================================
+    // A brand moment on first load. Deliberately constrained, because a
+    // full-screen overlay on arrival is precisely what Google treats as an
+    // intrusive interstitial — a documented mobile ranking negative:
+    //
+    //   • HOMEPAGE ONLY. Product, category and blog URLs are the pages people
+    //     land on from search, and they never see this. That is the single most
+    //     important guard here — do not relax it.
+    //   • ONCE PER SESSION, so browsing the shop is not interrupted repeatedly.
+    //   • Dismissed by literally any interaction, and auto-dismissed on a timer
+    //     so it can never trap someone.
+    //   • Added by JS to markup that ships hidden, so a non-executing crawler
+    //     sees the page with no overlay at all.
+    var SPLASH_KEY = 'vv_splash_seen';
+    var splashTimer = null;
+
+    function initSplash(page) {
+      var el = document.getElementById('intro-splash');
+      if (!el) return;
+      if (page !== 'index') return;                       // search landing pages: never
+      // A reload or an in-session revisit should not replay it.
+      try { if (sessionStorage.getItem(SPLASH_KEY)) return; } catch (e) { return; }
+      // Someone arriving deep-linked with a hash or query is going somewhere
+      // specific; do not put a curtain in front of them.
+      if (window.location.search || window.location.hash) return;
+
+      try { sessionStorage.setItem(SPLASH_KEY, '1'); } catch (e) { /* private mode */ }
+
+      el.hidden = false;
+      el.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+
+      ['click', 'touchstart', 'keydown', 'wheel'].forEach(function (evt) {
+        el.addEventListener(evt, closeSplash, { once: true, passive: true });
+      });
+      // Failsafe: if an event handler never fires for any reason, the overlay
+      // still goes away rather than leaving the shop unreachable.
+      splashTimer = setTimeout(closeSplash, 6000);
+
+      var btn = document.getElementById('intro-splash-enter');
+      if (btn) setTimeout(function () { try { btn.focus(); } catch (e) {} }, 400);
+    }
+
+    function closeSplash() {
+      var el = document.getElementById('intro-splash');
+      if (!el || el.hidden) return;
+      if (splashTimer) { clearTimeout(splashTimer); splashTimer = null; }
+      el.classList.add('is-closing');
+      document.body.style.overflow = '';
+      setTimeout(function () {
+        el.hidden = true;
+        el.setAttribute('aria-hidden', 'true');
+        el.classList.remove('is-closing');
+      }, 420);
     }
 
     document.addEventListener('DOMContentLoaded', () => { CartHelpers.updateBadge(); initTheme(); });
@@ -278,6 +338,12 @@
         const title = (document.getElementById('detail-title') || {}).textContent;
         items.push({ name: title && title !== 'Product Details' ? title : 'Details', active: true });
       }
+      else if (page === 'preowned') {
+        if (params.cat) {
+          items.push({ name: 'Pre-owned', page: 'preowned', params: {} });
+          items.push({ name: CAT_LABELS[params.cat] || params.cat, active: true });
+        } else items.push({ name: 'Pre-owned', active: true });
+      }
       else if (page === 'blog') items.push({ name: 'Blog', active: true });
       else if (page === 'blog-post') {
         items.push({ name: 'Blog', page: 'blog', params: {} });
@@ -305,6 +371,7 @@
       else if (page === 'profile') initPageProfile();
       else if (page === 'login') initPageLogin();
       else if (page === 'signup') initPageSignup();
+      else if (page === 'preowned') initPagePreowned(params);
       else if (page === 'blog') initPageBlog();
       else if (page === 'blog-post') initPageBlogPost(params);
       else if (page === 'forgot') { /* static page, nothing to init */ }

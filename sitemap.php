@@ -19,6 +19,7 @@
 // =============================================================================
 
 require_once __DIR__ . '/api/config.php';
+require_once __DIR__ . '/api/_products_helpers.php';  // products_has_condition_column()
 require_once __DIR__ . '/src/seo/seo-lib.php';
 
 // api/config.php sets JSON + no-store. A sitemap is XML and benefits from a
@@ -90,6 +91,34 @@ try {
     }
 } catch (Throwable $e) {
     error_log('[sitemap] product query failed: ' . $e->getMessage());
+}
+
+// ---- Pre-owned --------------------------------------------------------------
+// Listed only where there is actual stock, for the same reason as the category
+// facets above: a sitemap entry for an empty listing trains Google to distrust
+// the file.
+try {
+    if (products_has_condition_column(db())) {
+        $poCounts = [];
+        $st = db()->query(
+            "SELECT category, COUNT(*) AS n FROM products
+              WHERE item_condition = 'pre-owned' GROUP BY category"
+        );
+        $poTotal = 0;
+        foreach ($st->fetchAll() as $r) {
+            $poCounts[(string)$r['category']] = (int)$r['n'];
+            $poTotal += (int)$r['n'];
+        }
+        if ($poTotal > 0) {
+            $xml .= velorex_sitemap_url(VELOREX_SITE_URL . '/pre-owned', null, 'weekly', '0.8');
+            foreach (velorex_categories() as $slug => $meta) {
+                if (($poCounts[$meta['key']] ?? 0) < 1) continue;
+                $xml .= velorex_sitemap_url(VELOREX_SITE_URL . '/pre-owned/' . $slug, null, 'weekly', '0.7');
+            }
+        }
+    }
+} catch (Throwable $e) {
+    error_log('[sitemap] pre-owned query failed: ' . $e->getMessage());
 }
 
 // ---- Blog -------------------------------------------------------------------

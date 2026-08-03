@@ -63,6 +63,12 @@
       // onclick still returns false so users keep the SPA transition, and
       // middle-click / "open in new tab" now work as well.
       const href = Seo.productPath(product);
+      // Condition chip. Sits alongside the existing hot/new/upcoming badge
+      // rather than replacing it — they answer different questions ("is this
+      // featured?" vs "is this second-hand?") and a product can be both.
+      const condHtml = product.condition === 'pre-owned'
+        ? '<span class="product-badge badge-preowned">Pre-owned</span>'
+        : '';
       // Descriptive alt text: "<title> — <artist> <format>" reads naturally and
       // is what Google Images matches against for cover-art queries.
       const altText = Utils.escape(product.title + ' — ' + product.artist);
@@ -71,6 +77,7 @@
         <div class="product-card-image">
           <a href="${href}" onclick="navigate('product',{id:${product.id}});return false;" aria-label="${altText}">${imageHtml}</a>
           ${badgeHtml}
+          ${condHtml}
           <div class="product-card-actions">
             <button class="quick-action-btn" onclick="CartHelpers.addToCart(${product.id})" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
             <a href="${href}" onclick="return openProduct(${product.id})" class="quick-action-btn" title="Quick View"><i class="fas fa-eye"></i></a>
@@ -653,6 +660,7 @@
             <div class="product-detail-tags">
               <span class="product-badge badge-${product.badge || 'new'}">${catLabel}</span>
               <span class="product-detail-pill">${langLabel}</span>
+              ${product.condition === 'pre-owned' ? '<span class="product-detail-condition">Pre-owned</span>' : ''}
             </div>
             ${stockWarn}
           </div>
@@ -1087,3 +1095,75 @@
       if (btn) btn.classList.add('active');
     }
 
+
+    // =============================================
+    // PRE-OWNED
+    // =============================================
+    // Second-hand stock across every format. Driven by products.item_condition,
+    // set per product in the admin panel (Condition field).
+    //
+    // Reads from the same Storage cache as every other listing rather than a
+    // dedicated endpoint — the lean product list already carries `condition`,
+    // so a separate round-trip would buy nothing.
+    var PREOWNED_LABELS = {
+      vinyl: 'Vinyl Records', cd: 'Audio CDs', cassette: 'Cassettes',
+      bluray: 'Blu-ray Movies', dvd: 'DVD Movies'
+    };
+
+    function initPagePreowned(params) {
+      params = params || {};
+      var grid = document.getElementById('preowned-grid');
+      var countEl = document.getElementById('preowned-count');
+      var titleEl = document.getElementById('preowned-title');
+      var chips = document.getElementById('preowned-chips');
+      if (!grid) return;
+
+      var all = Storage.getProducts();
+      if (!all.length) {
+        grid.innerHTML = Skeleton.productGrid(8);
+        if (countEl) countEl.innerHTML = Skeleton.inlineLine('9rem');
+        return;
+      }
+
+      var preowned = all.filter(function (p) { return p.condition === 'pre-owned'; });
+      var shown = params.cat
+        ? preowned.filter(function (p) { return p.category === params.cat; })
+        : preowned;
+
+      if (titleEl) {
+        titleEl.textContent = params.cat
+          ? 'Pre-owned ' + (PREOWNED_LABELS[params.cat] || 'Products')
+          : 'Pre-owned';
+      }
+
+      // Format chips, built only for formats that actually have pre-owned stock —
+      // a chip leading to an empty grid is worse than no chip.
+      if (chips) {
+        var counts = {};
+        preowned.forEach(function (p) { counts[p.category] = (counts[p.category] || 0) + 1; });
+        var html = '<a href="/pre-owned" onclick="navigate(\'preowned\');return false;" class="preowned-chip'
+          + (params.cat ? '' : ' active') + '">All (' + preowned.length + ')</a>';
+        Object.keys(PREOWNED_LABELS).forEach(function (cat) {
+          if (!counts[cat]) return;
+          html += '<a href="' + Seo.buildPath('preowned', { cat: cat }) + '"'
+            + ' onclick="navigate(\'preowned\',{cat:\'' + cat + '\'});return false;"'
+            + ' class="preowned-chip' + (params.cat === cat ? ' active' : '') + '">'
+            + Utils.escape(PREOWNED_LABELS[cat]) + ' (' + counts[cat] + ')</a>';
+        });
+        chips.innerHTML = preowned.length ? html : '';
+      }
+
+      if (countEl) {
+        countEl.textContent = shown.length
+          ? 'Showing ' + shown.length + ' pre-owned ' + (shown.length === 1 ? 'item' : 'items')
+          : '';
+      }
+
+      grid.innerHTML = shown.length
+        ? shown.map(createProductCard).join('')
+        : '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:3rem 1rem;">'
+          + '<div style="font-size:2rem;margin-bottom:0.75rem;">💿</div>'
+          + '<p>No pre-owned stock in this format right now.</p>'
+          + '<p style="margin-top:0.75rem;"><a href="/products" onclick="navigate(\'products\');return false;" class="btn btn-primary">Browse all products</a></p>'
+          + '</div>';
+    }
