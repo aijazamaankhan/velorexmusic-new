@@ -167,17 +167,28 @@
     function initPageIndex() {
       var products = Storage.getProducts();
       var bsg = document.getElementById('best-selling-grid'), nrg = document.getElementById('new-releases-grid'), ug = document.getElementById('upcoming-grid');
-      // Cold cache: paint skeletons in all three strips + category counts.
-      // The background sync in the DOMContentLoaded bootstrap will re-invoke
-      // initPageIndex once real data arrives.
+      // Cold cache: skeleton the category counts, but keep the three curated
+      // strips HIDDEN rather than skeletoning them.
+      //
+      // We can't know yet whether any of them has featured products, and a
+      // skeleton that resolves to "nothing" is worse than showing nothing: the
+      // customer sees three shimmering placeholder rows collapse a moment
+      // later, which is both confusing and a Cumulative Layout Shift hit. The
+      // strips are below the fold (hero + category cards come first), so
+      // revealing them a beat late costs nothing. The background sync in the
+      // DOMContentLoaded bootstrap re-invokes initPageIndex with real data.
       if (!products.length) {
         ['vinyl','cd','cassette','bluray','dvd'].forEach(cat => {
           var el = document.getElementById(cat + '-count');
           if (el) el.innerHTML = Skeleton.inlineLine('5rem');
         });
-        if (bsg) bsg.innerHTML = Skeleton.productGrid(4);
-        if (nrg) nrg.innerHTML = Skeleton.productGrid(4);
-        if (ug)  ug.innerHTML  = Skeleton.productGrid(4);
+        ['best-selling', 'new-releases', 'upcoming'].forEach(id => {
+          var s = document.getElementById(id);
+          if (s) s.style.display = 'none';
+        });
+        if (bsg) bsg.innerHTML = '';
+        if (nrg) nrg.innerHTML = '';
+        if (ug)  ug.innerHTML  = '';
         return;
       }
       var counts = { vinyl: 0, cd: 0, cassette: 0, bluray: 0, dvd: 0 };
@@ -186,10 +197,35 @@
         var el = document.getElementById(cat + '-count');
         if (el) el.textContent = counts[cat] + ' titles available';
       });
-      var emptyMsg = function (msg) { return '<p class="text-muted text-center" style="grid-column:1/-1;padding:1rem 0;">' + msg + '</p>'; };
-      if (bsg) { var hot = products.filter(p => p.badge === 'hot').slice(0, 4); bsg.innerHTML = hot.length ? hot.map(createProductCard).join('') : emptyMsg('No bestsellers yet'); }
-      if (nrg) { var nw = products.filter(p => p.badge === 'new').slice(0, 4); nrg.innerHTML = nw.length ? nw.map(createProductCard).join('') : emptyMsg('No new releases yet'); }
-      if (ug) { var up = products.filter(p => p.badge === 'upcoming' || p.stock === 0).slice(0, 4); ug.innerHTML = up.length ? up.map(createProductCard).join('') : emptyMsg('No upcoming releases'); }
+      // Homepage strips are curated: a section exists on the page only when the
+      // admin has actually placed products in it (Homepage Placement in the
+      // product form → products.badge). An empty strip used to render its
+      // heading, subtitle and a "No bestsellers yet" placeholder, which reads to
+      // a customer as a broken or abandoned shop rather than an empty shelf.
+      //
+      // Hiding the whole <section> — not just emptying the grid — is what
+      // removes the "⏳ Upcoming / Pre-order before they're gone" heading too.
+      var renderStrip = function (gridEl, sectionId, items) {
+        if (!gridEl) return;
+        var section = document.getElementById(sectionId);
+        if (!items.length) {
+          if (section) section.style.display = 'none';
+          gridEl.innerHTML = '';
+          return;
+        }
+        // Reset to '' rather than 'block' so the section falls back to whatever
+        // display its CSS defines, instead of being pinned to block forever.
+        if (section) section.style.display = '';
+        gridEl.innerHTML = items.map(createProductCard).join('');
+      };
+
+      renderStrip(bsg, 'best-selling', products.filter(p => p.badge === 'hot').slice(0, 4));
+      renderStrip(nrg, 'new-releases', products.filter(p => p.badge === 'new').slice(0, 4));
+      // Upcoming is driven ONLY by the badge. It previously also matched
+      // `p.stock === 0`, which meant every sold-out product quietly turned up
+      // under "Upcoming" — sold out and not-yet-released are different things,
+      // and it took the section out of the admin's control.
+      renderStrip(ug, 'upcoming', products.filter(p => p.badge === 'upcoming').slice(0, 4));
       fixProductLinks('page-index');
     }
 
