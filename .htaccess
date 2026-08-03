@@ -1,0 +1,162 @@
+# =============================================================================
+# Velorex Music — root .htaccess
+#
+# Responsibilities, in the order they run:
+#   1. Canonical origin (one scheme, one host) so link equity never splits
+#   2. Pretty catalogue URLs → seo-render.php (the whole point of the SEO work)
+#   3. Compression + long-lived caching for static assets
+#   4. Blocking source/config files that must never be publicly readable
+#
+# NOTE: api/.htaccess overrides the caching rules below for /api/* — API
+# responses stay no-store. Nothing here should ever apply to /api/.
+#
+# Hostinger runs LiteSpeed, which implements mod_rewrite/mod_headers/mod_deflate
+# syntax. Every block is wrapped in <IfModule> so a host without one of them
+# degrades rather than 500s.
+# =============================================================================
+
+Options -Indexes
+DirectoryIndex index.html index.php
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # ---------------------------------------------------------------------------
+  # 1. Canonical origin
+  #
+  # Google treats http/https and www/non-www as four separate sites. Collapse
+  # to exactly one: https://velorexmusic.com
+  #
+  # The HTTPS check tests X-Forwarded-Proto as well as %{HTTPS} because on
+  # shared hosting TLS is frequently terminated at a proxy, leaving %{HTTPS}
+  # unset even on a genuinely secure request. Testing only %{HTTPS} there
+  # produces an infinite redirect loop.
+  # ---------------------------------------------------------------------------
+  RewriteCond %{HTTPS} !=on
+  RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+  RewriteRule ^ https://%1%{REQUEST_URI} [L,R=301]
+
+  # ---------------------------------------------------------------------------
+  # 2. Catalogue routes
+  # ---------------------------------------------------------------------------
+
+  # Sitemap is generated from the live catalogue, but must be served at the
+  # conventional .xml path that robots.txt and Search Console expect.
+  RewriteRule ^sitemap\.xml$ sitemap.php [L]
+
+  # Never rewrite something that physically exists (index.html, /src/*, the
+  # /uploads symlink, the /api directory). This MUST come before the catalogue
+  # rules below, otherwise a real asset whose name happens to match a pattern
+  # would be swallowed by the front controller.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d [OR]
+  RewriteCond %{REQUEST_FILENAME} -l
+  RewriteRule ^ - [L]
+
+  # /product/12-sholay-rd-burman  (slug optional; seo-render 301s to canonical)
+  RewriteRule ^product/([0-9]+)(?:-[^/]*)?/?$ seo-render.php?_route=product&id=$1 [L,QSA]
+
+  # /vinyl-records  and  /vinyl-records/hindi
+  RewriteRule ^(vinyl-records|audio-cds|cassettes|blu-ray-movies|dvd-movies)/?$ seo-render.php?_route=category&cat=$1 [L,QSA]
+  RewriteRule ^(vinyl-records|audio-cds|cassettes|blu-ray-movies|dvd-movies)/(hindi|english)/?$ seo-render.php?_route=category&cat=$1&lang=$2 [L,QSA]
+
+  # /products — the full catalogue
+  RewriteRule ^products/?$ seo-render.php?_route=products [L,QSA]
+
+  # Client-routed, non-indexable SPA views. These need to resolve to the shell
+  # on a hard refresh or the user gets a 404 after, say, reloading /cart.
+  # They are marked noindex by src/js/seo.js once the SPA boots.
+  RewriteRule ^(cart|profile|login|signup|forgot|checkout)/?$ index.html [L]
+</IfModule>
+
+# -----------------------------------------------------------------------------
+# 3. Compression
+#
+# Text assets compress 70-80%. This is the single cheapest Core Web Vitals win
+# available, and Core Web Vitals are a ranking signal.
+# -----------------------------------------------------------------------------
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css
+  AddOutputFilterByType DEFLATE application/javascript application/x-javascript
+  AddOutputFilterByType DEFLATE application/json application/xml
+  AddOutputFilterByType DEFLATE application/rss+xml image/svg+xml
+</IfModule>
+
+# -----------------------------------------------------------------------------
+# 4. Caching
+#
+# CSS/JS carry a ?v=<content-hash> maintained by scripts/bump-cache.js, so a
+# one-year immutable cache is safe: any content change produces a new URL.
+# See CLAUDE.md §13 "Cache-bust is automatic".
+#
+# HTML is deliberately short-lived — it must pick up new deploys quickly.
+# -----------------------------------------------------------------------------
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css                "access plus 1 year"
+  ExpiresByType application/javascript  "access plus 1 year"
+  ExpiresByType image/jpeg              "access plus 1 year"
+  ExpiresByType image/png               "access plus 1 year"
+  ExpiresByType image/webp              "access plus 1 year"
+  ExpiresByType image/svg+xml           "access plus 1 year"
+  ExpiresByType image/x-icon            "access plus 1 year"
+  ExpiresByType font/woff2              "access plus 1 year"
+  ExpiresByType text/html               "access plus 0 seconds"
+</IfModule>
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.(css|js|jpg|jpeg|png|webp|gif|svg|ico|woff2?)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "\.(html|php)$">
+    Header set Cache-Control "public, max-age=300, must-revalidate"
+  </FilesMatch>
+  # Defence-in-depth headers. Not ranking factors, but HTTPS hygiene is a
+  # documented (light) signal and these cost nothing.
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# -----------------------------------------------------------------------------
+# 5. Block non-public files
+#
+# Repo scaffolding is deployed by Hostinger's git integration, so documentation,
+# build scripts and the PHP SEO library all physically exist under the web root.
+# None of them should be fetchable, and none should ever be indexed.
+# -----------------------------------------------------------------------------
+# Apache 2.4 uses `Require`, 2.2 uses `Order/Deny`. Emitting the wrong one for
+# the running server is a 500, so pick by module presence — api/.htaccess uses
+# the 2.2 form, and this keeps both hosts working.
+<FilesMatch "\.(md|json|lock|sql|sh|yml|yaml)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+# The SEO library only defines functions, but there is no reason to serve it.
+<Files "seo-lib.php">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</Files>
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # Directories that exist on disk but must not be crawled or fetched.
+  # "old admin" contains a literal space; `.` matches it whether the request
+  # arrives raw, plus-encoded or %20-encoded, without fighting .htaccess
+  # whitespace tokenisation.
+  RewriteRule ^(scripts|node_modules|test-results|old.admin)/ - [F,L]
+</IfModule>

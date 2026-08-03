@@ -138,6 +138,12 @@ body { padding-top: 70px; }
 .product-card-image { position: relative; aspect-ratio: 1; overflow: hidden; background: var(--surface2); }
 .product-card-image img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
 .product-card:hover .product-card-image img { transform: scale(1.08); }
+/* The cover and the title are wrapped in real <a href> elements so crawlers can
+   follow them into the product page (they don't fire onclick handlers). These
+   rules keep the card looking exactly as it did when both were plain divs. */
+.product-card-image > a { display: block; width: 100%; height: 100%; }
+.product-title a { color: inherit; text-decoration: none; }
+.product-title a:hover { color: var(--secondary); }
 .product-badge { position: absolute; top: 0.75rem; left: 0.75rem; padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
 .badge-new { background: var(--success); color: #001a15; }
 .badge-hot { background: var(--secondary); color: white; }

@@ -7,7 +7,84 @@
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'self' https: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data:; font-src 'self' https: data:;">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <title>Velorex Music — Premium Music Store</title>
+
+  <!-- ==================== SEO ====================
+       These are the DEFAULTS for the app shell. Two things override them:
+         • seo-render.php replaces this block server-side for /product/… and
+           category URLs, before the browser ever parses it.
+         • src/js/seo.js rewrites them on every SPA navigation, so a crawler
+           that renders JavaScript reads values matching the view it landed on.
+       Keep the tag NAMES stable — seo.js targets them by selector and will
+       append duplicates if one is renamed. -->
+  <title>Velorex Music | Buy Vinyl Records, CDs &amp; Cassettes Online India</title>
+  <meta name="description" content="Buy original vinyl records, audio CDs, cassettes, Blu-rays and DVDs online in India. Hindi film soundtracks, English albums and rare collector pressings. Free shipping over ₹5,000.">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <link rel="canonical" href="https://velorexmusic.com/">
+  <meta name="theme-color" content="#0d0d0d">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Velorex Music">
+  <meta property="og:title" content="Velorex Music | Buy Vinyl Records, CDs &amp; Cassettes Online India">
+  <meta property="og:description" content="Buy original vinyl records, audio CDs, cassettes, Blu-rays and DVDs online in India. Hindi film soundtracks, English albums and rare collector pressings.">
+  <meta property="og:url" content="https://velorexmusic.com/">
+  <meta property="og:image" content="https://velorexmusic.com/src/img/og-default.jpg">
+  <meta property="og:locale" content="en_IN">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Velorex Music | Buy Vinyl Records, CDs &amp; Cassettes Online India">
+  <meta name="twitter:description" content="Buy original vinyl records, audio CDs, cassettes, Blu-rays and DVDs online in India.">
+  <meta name="twitter:image" content="https://velorexmusic.com/src/img/og-default.jpg">
+
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/src/img/og-default.jpg">
+
+  <!-- Organization + WebSite. The SearchAction lets Google render a sitelinks
+       search box for brand queries ("velorex music"). LocalBusiness lives on
+       the category pages (emitted by seo-render.php) and contact.html. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": "https://velorexmusic.com/#organization",
+    "name": "Velorex Music",
+    "url": "https://velorexmusic.com/",
+    "logo": "https://velorexmusic.com/src/img/og-default.jpg",
+    "description": "Velorex Music sells original vinyl records, audio CDs, cassettes, Blu-rays and DVDs across India, specialising in Hindi film music and collectible pressings.",
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "telephone": "+91-79060-27807",
+      "contactType": "customer service",
+      "areaServed": "IN",
+      "availableLanguage": ["en", "hi"]
+    },
+    "sameAs": [
+      "https://www.facebook.com/share/1H7s3i2jui/",
+      "https://instagram.com/vinyl_cassettes_audio_deal",
+      "https://whatsapp.com/channel/0029Va6LNYy4yltVj40o1I3i",
+      "https://youtube.com/channel/UCtUtHqlTQk6jQ-_g4DyB48g"
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": "https://velorexmusic.com/#website",
+    "url": "https://velorexmusic.com/",
+    "name": "Velorex Music",
+    "inLanguage": "en-IN",
+    "publisher": { "@id": "https://velorexmusic.com/#organization" },
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "https://velorexmusic.com/products?search={search_term_string}"
+      },
+      "query-input": "required name=search_term_string"
+    }
+  }
+  </script>
+  <!-- ================== /SEO ==================== -->
+
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link
@@ -20,6 +97,9 @@
        inline onclick= handlers can resolve them via script-scope. -->
   <script src="src/js/utils.js?v=15bf1815"></script>
   <script src="src/js/api-base.js?v=0ce972cf"></script>
+  <!-- URL vocabulary + live metadata. Must load before router.js and pages.js,
+       both of which call Seo.buildPath()/Seo.productPath() to render hrefs. -->
+  <script src="src/js/seo.js?v=f355358a"></script>
   <script src="src/js/constants.js?v=b0f974a1"></script>
   <script src="src/js/storage.js?v=3f882b69"></script>
   <script src="src/js/auth.js?v=79e7221e"></script>
@@ -39,8 +119,8 @@
        end up in script-scope; the inline <script> at the bottom of <body>
        just bootstraps DOMContentLoaded. -->
   <script src="src/js/storefront/carriers.js?v=488bf189"></script>
-  <script src="src/js/storefront/pages.js?v=881a0642"></script>
-  <script src="src/js/storefront/router.js?v=4601eecf"></script>
+  <script src="src/js/storefront/pages.js?v=f5c49fdc"></script>
+  <script src="src/js/storefront/router.js?v=3c6f9441"></script>
   <script src="src/js/storefront/checkout.js?v=472f3280"></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
        they can be shared between the storefront pages without duplication.
@@ -55,7 +135,7 @@
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
   <!-- Page-specific styles (hero, products, cart, profile, footer, etc.).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=6747850a">
+  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=50c51b07">
 </head>
 
 <body>

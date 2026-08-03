@@ -16,48 +16,59 @@
      - initPageXxx + handleCustomerLogout         (in pages.js + checkout.js)
    ============================================================================= */
 
+    // Real hrefs everywhere, with onclick for the SPA transition.
+    //
+    // Every link below used to be href="#". That made the whole catalogue
+    // undiscoverable: a crawler follows <a href>, it does not synthesise clicks
+    // to fire onclick handlers. With real paths the crawler can walk
+    // home → category → product, and internal link equity actually flows.
+    // The onclick still returns false, so users get the SPA transition and
+    // never a full page load — but middle-click and "open in new tab" now work
+    // too, which they previously did not.
+    const P = (page, params) => Seo.buildPath(page, params);
+
     function injectNavbar(activePage = '') {
       const nav = document.getElementById('navbar-placeholder'); if (!nav) return;
       const isAdmin = activePage === 'admin';
       nav.innerHTML = `
       <nav class="navbar">
-        <a href="#" onclick="navigate('index'); return false;" class="navbar-brand">
+        <a href="/" onclick="navigate('index'); return false;" class="navbar-brand">
           <div class="logo-icon"><i class="fas fa-music"></i></div>
           <span class="brand-name">Velorex Music</span>
           ${isAdmin ? '<span style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.1em;margin-left:0.5rem;border-left:1px solid var(--border);padding-left:0.5rem;">Admin</span>' : ''}
         </a>
         <ul class="navbar-nav" id="mainNav">
           ${isAdmin ? `
-            <li class="nav-item"><a href="#" onclick="navigate('index'); return false;" class="nav-link"><i class="fas fa-house"></i> View Store</a></li>
+            <li class="nav-item"><a href="/" onclick="navigate('index'); return false;" class="nav-link"><i class="fas fa-house"></i> View Store</a></li>
             <li class="nav-item"><span class="nav-link active">Admin Dashboard</span></li>
           ` : `
-            <li class="nav-item"><a href="#" onclick="navigate('index'); return false;" class="nav-link ${activePage === 'home' ? 'active' : ''}">Home</a></li>
+            <li class="nav-item"><a href="/" onclick="navigate('index'); return false;" class="nav-link ${activePage === 'home' ? 'active' : ''}">Home</a></li>
             <li class="nav-item">
-              <a href="#" onclick="navigate('products', {cat:'vinyl'}); return false;" class="nav-link ${activePage === 'vinyl' ? 'active' : ''}">
+              <a href="${P('products', {cat:'vinyl'})}" onclick="navigate('products', {cat:'vinyl'}); return false;" class="nav-link ${activePage === 'vinyl' ? 'active' : ''}">
                 Vinyl <span class="arrow"><i class="fas fa-chevron-down" style="font-size:0.7rem;"></i></span>
               </a>
               <div class="dropdown-menu">
-                <a href="#" onclick="navigate('products', {cat:'vinyl', lang:'hindi'}); return false;" class="dropdown-item"><i class="fas fa-globe"></i> Hindi Vinyl</a>
-                <a href="#" onclick="navigate('products', {cat:'vinyl', lang:'english'}); return false;" class="dropdown-item"><i class="fas fa-earth-americas"></i> English Vinyl</a>
+                <a href="${P('products', {cat:'vinyl', lang:'hindi'})}" onclick="navigate('products', {cat:'vinyl', lang:'hindi'}); return false;" class="dropdown-item"><i class="fas fa-globe"></i> Hindi Vinyl</a>
+                <a href="${P('products', {cat:'vinyl', lang:'english'})}" onclick="navigate('products', {cat:'vinyl', lang:'english'}); return false;" class="dropdown-item"><i class="fas fa-earth-americas"></i> English Vinyl</a>
                 <div class="dropdown-divider"></div>
-                <a href="#" onclick="navigate('products', {cat:'vinyl'}); return false;" class="dropdown-item">All Vinyl</a>
+                <a href="${P('products', {cat:'vinyl'})}" onclick="navigate('products', {cat:'vinyl'}); return false;" class="dropdown-item">All Vinyl</a>
               </div>
             </li>
-            <li class="nav-item"><a href="#" onclick="navigate('products', {cat:'cd'}); return false;" class="nav-link ${activePage === 'cd' ? 'active' : ''}">Audio CDs</a></li>
-            <li class="nav-item"><a href="#" onclick="navigate('products', {cat:'cassette'}); return false;" class="nav-link ${activePage === 'cassette' ? 'active' : ''}">Cassettes</a></li>
-            <li class="nav-item"><a href="#" onclick="navigate('products', {cat:'bluray'}); return false;" class="nav-link ${activePage === 'bluray' ? 'active' : ''}">Blu-rays</a></li>
-            <li class="nav-item"><a href="#" onclick="navigate('products', {cat:'dvd'}); return false;" class="nav-link ${activePage === 'dvd' ? 'active' : ''}">DVDs</a></li>
-            <li class="nav-item"><a href="#" onclick="navigate('products'); return false;" class="nav-link ${activePage === 'products' ? 'active' : ''}">All Products</a></li>
+            <li class="nav-item"><a href="${P('products', {cat:'cd'})}" onclick="navigate('products', {cat:'cd'}); return false;" class="nav-link ${activePage === 'cd' ? 'active' : ''}">Audio CDs</a></li>
+            <li class="nav-item"><a href="${P('products', {cat:'cassette'})}" onclick="navigate('products', {cat:'cassette'}); return false;" class="nav-link ${activePage === 'cassette' ? 'active' : ''}">Cassettes</a></li>
+            <li class="nav-item"><a href="${P('products', {cat:'bluray'})}" onclick="navigate('products', {cat:'bluray'}); return false;" class="nav-link ${activePage === 'bluray' ? 'active' : ''}">Blu-rays</a></li>
+            <li class="nav-item"><a href="${P('products', {cat:'dvd'})}" onclick="navigate('products', {cat:'dvd'}); return false;" class="nav-link ${activePage === 'dvd' ? 'active' : ''}">DVDs</a></li>
+            <li class="nav-item"><a href="/products" onclick="navigate('products'); return false;" class="nav-link ${activePage === 'products' ? 'active' : ''}">All Products</a></li>
           `}
         </ul>
         ${isAdmin ? '' : `<div class="navbar-search"><span class="search-icon"><i class="fas fa-magnifying-glass"></i></span><input type="text" id="globalSearch" placeholder="Search albums, artists..." autocomplete="off"></div>`}
         <div class="navbar-actions">
-          ${isAdmin ? '' : `<a href="#" onclick="navigate('cart'); return false;" class="nav-action-btn"><i class="fas fa-shopping-cart"></i><span class="cart-badge" id="cartBadge"></span></a>`}
+          ${isAdmin ? '' : `<a href="/cart" rel="nofollow" onclick="navigate('cart'); return false;" class="nav-action-btn"><i class="fas fa-shopping-cart"></i><span class="cart-badge" id="cartBadge"></span></a>`}
           <button class="nav-action-btn" id="themeToggle" onclick="toggleTheme()" title="Toggle Theme"><i class="fas fa-moon"></i></button>
           ${Auth.isLoggedIn()
-            ? `<a href="#" onclick="navigate('profile'); return false;" class="nav-action-btn" title="My Profile"><i class="fas fa-user"></i></a>
-               <a href="#" onclick="handleCustomerLogout(); return false;" class="nav-action-btn" title="Sign out"><i class="fas fa-right-from-bracket"></i></a>`
-            : `<a href="#" onclick="navigate('login'); return false;" class="nav-action-btn" title="Sign in"><i class="fas fa-right-to-bracket"></i></a>`}
+            ? `<a href="/profile" rel="nofollow" onclick="navigate('profile'); return false;" class="nav-action-btn" title="My Profile"><i class="fas fa-user"></i></a>
+               <a href="#" rel="nofollow" onclick="handleCustomerLogout(); return false;" class="nav-action-btn" title="Sign out"><i class="fas fa-right-from-bracket"></i></a>`
+            : `<a href="/login" rel="nofollow" onclick="navigate('login'); return false;" class="nav-action-btn" title="Sign in"><i class="fas fa-right-to-bracket"></i></a>`}
           <div class="hamburger" id="hamburger" onclick="toggleMobileNav()"><span></span><span></span><span></span></div>
         </div>
       </nav>`;
@@ -90,31 +101,31 @@
             <div>
               <p class="footer-col-title">Shop</p>
               <div class="footer-links">
-                <a href="#" onclick="navigate('products', {cat:'vinyl'}); return false;" class="footer-link">Vinyl Records</a>
-                <a href="#" onclick="navigate('products', {cat:'cd'}); return false;" class="footer-link">Audio CDs</a>
-                <a href="#" onclick="navigate('products', {cat:'cassette'}); return false;" class="footer-link">Cassettes</a>
-                <a href="#" onclick="navigate('products', {cat:'bluray'}); return false;" class="footer-link">Blu-rays</a>
-                <a href="#" onclick="navigate('products', {cat:'dvd'}); return false;" class="footer-link">DVDs</a>
-                <a href="#" onclick="navigate('products', {lang:'hindi'}); return false;" class="footer-link">Hindi Music</a>
-                <a href="#" onclick="navigate('products', {lang:'english'}); return false;" class="footer-link">English Music</a>
+                <a href="${P('products', {cat:'vinyl'})}" onclick="navigate('products', {cat:'vinyl'}); return false;" class="footer-link">Vinyl Records</a>
+                <a href="${P('products', {cat:'cd'})}" onclick="navigate('products', {cat:'cd'}); return false;" class="footer-link">Audio CDs</a>
+                <a href="${P('products', {cat:'cassette'})}" onclick="navigate('products', {cat:'cassette'}); return false;" class="footer-link">Cassettes</a>
+                <a href="${P('products', {cat:'bluray'})}" onclick="navigate('products', {cat:'bluray'}); return false;" class="footer-link">Blu-rays</a>
+                <a href="${P('products', {cat:'dvd'})}" onclick="navigate('products', {cat:'dvd'}); return false;" class="footer-link">DVDs</a>
+                <a href="${P('products', {cat:'vinyl', lang:'hindi'})}" onclick="navigate('products', {cat:'vinyl', lang:'hindi'}); return false;" class="footer-link">Hindi Vinyl</a>
+                <a href="${P('products', {cat:'vinyl', lang:'english'})}" onclick="navigate('products', {cat:'vinyl', lang:'english'}); return false;" class="footer-link">English Vinyl</a>
               </div>
             </div>
             <div>
               <p class="footer-col-title">Account</p>
               <div class="footer-links">
-                <a href="#" onclick="navigate('profile'); return false;" class="footer-link">My Profile</a>
-                <a href="#" onclick="navigate('cart'); return false;" class="footer-link">Cart</a>
-                <a href="#" onclick="navigate('profile'); return false;" class="footer-link">Order History</a>
+                <a href="/profile" rel="nofollow" onclick="navigate('profile'); return false;" class="footer-link">My Profile</a>
+                <a href="/cart" rel="nofollow" onclick="navigate('cart'); return false;" class="footer-link">Cart</a>
+                <a href="/profile" rel="nofollow" onclick="navigate('profile'); return false;" class="footer-link">Order History</a>
               </div>
             </div>
             <div>
               <p class="footer-col-title">Help</p>
               <div class="footer-links">
-                <a href="shipping.html" class="footer-link">Shipping Policy</a>
-                <a href="returns.html" class="footer-link">Returns & Refunds</a>
-                <a href="track-order.html" class="footer-link">Track Order</a>
-                <a href="contact.html" class="footer-link">Contact Us</a>
-                <a href="faq.html" class="footer-link">FAQ</a>
+                <a href="/shipping.html" class="footer-link">Shipping Policy</a>
+                <a href="/returns.html" class="footer-link">Returns &amp; Refunds</a>
+                <a href="/track-order.html" rel="nofollow" class="footer-link">Track Order</a>
+                <a href="/contact.html" class="footer-link">Contact Us</a>
+                <a href="/faq.html" class="footer-link">FAQ</a>
               </div>
             </div>
           </div>
@@ -152,21 +163,36 @@
     // Orders are loaded from the server (see initPageProfile / filterOrders).
     var CURRENT_USER_ORDERS = [];
 
+    // URLs are now real paths (/vinyl-records, /product/12-sholay-rd-burman)
+    // rather than hash fragments. The hash form is never generated any more,
+    // but parsePageFromUrl still understands it — see the back-compat note
+    // there. Path vocabulary lives in src/js/seo.js so the server-side
+    // renderer and the client agree on exactly one canonical URL per view.
     function buildPageUrl(page, params) {
-      params = params || {};
-      var keys = Object.keys(params).filter(k => params[k] !== undefined && params[k] !== null && params[k] !== '');
-      if (page === 'index' && keys.length === 0) return window.location.pathname + window.location.search;
-      var hash = page;
-      if (keys.length) { var s = new URLSearchParams(); keys.forEach(k => s.set(k, params[k])); hash += '?' + s.toString(); }
-      return window.location.pathname + window.location.search + '#' + hash;
+      return Seo.buildPath(page, params);
     }
 
     function parsePageFromUrl() {
       var hash = window.location.hash.slice(1);
-      if (!hash) return { page: 'index', params: {} };
-      var parts = hash.split('?'), page = parts[0] || 'index', params = {};
-      if (parts[1]) { var sp = new URLSearchParams(parts[1]); sp.forEach((v, k) => { params[k] = k === 'id' ? parseInt(v, 10) || v : v; }); }
-      return { page, params };
+      var fromPath = Seo.parsePath(window.location.pathname, window.location.search);
+
+      // Legacy hash URLs — "#product?id=12" was the only URL form this site
+      // had before the SEO migration, so bookmarks, WhatsApp shares and any
+      // already-indexed links still arrive that way. They always look like
+      // "/#product?id=12": the PATH is the bare root, which Seo.parsePath
+      // quite correctly resolves to the homepage. Checking the path first
+      // would therefore swallow every legacy link and dump the visitor on the
+      // homepage, so the hash wins whenever the path carries no view of its
+      // own. The bootstrap then replaceState()s it onto the canonical path,
+      // so the old form never lingers in the address bar or gets re-shared.
+      if (hash && (!fromPath || fromPath.page === 'index')) {
+        var parts = hash.split('?'), page = parts[0] || 'index', params = {};
+        if (parts[1]) { var sp = new URLSearchParams(parts[1]); sp.forEach((v, k) => { params[k] = k === 'id' ? parseInt(v, 10) || v : v; }); }
+        return { page, params };
+      }
+
+      if (fromPath) return fromPath;
+      return { page: 'index', params: {} };
     }
 
     function navigate(page, params, options) {
@@ -182,6 +208,10 @@
       var mobileNav = document.getElementById('mainNav');
       if (mobileNav) mobileNav.classList.remove('mobile-open');
       initPage(page, params);
+      // Keep <title>, meta description, canonical and robots in step with the
+      // view. A JS-rendering crawler reads these AFTER scripts run, so stale
+      // tags here mean every SPA view gets indexed under the homepage's title.
+      try { Seo.update(page, params); } catch (e) { console.warn('SEO tag update failed:', e); }
       const footer = document.querySelector('.footer');
       if (footer) footer.style.display = 'block';
       if (options.pushState !== false) {
@@ -197,23 +227,55 @@
       else { var parsed = parsePageFromUrl(); navigate(parsed.page, parsed.params, { pushState: false }); }
     });
 
+    // Breadcrumbs carry each crumb as a {page, params} pair rather than a
+    // pre-joined string. The previous form emitted navigate('products?cat=vinyl'),
+    // which looked for a DOM node with id "page-products?cat=vinyl" and silently
+    // did nothing when clicked.
+    //
+    // These now render real hrefs, and their labels mirror the BreadcrumbList
+    // JSON-LD emitted by seo-render.php — Google cross-checks visible
+    // breadcrumbs against the structured data before showing the breadcrumb
+    // trail in place of a raw URL in results.
+    const CAT_LABELS = {
+      vinyl: 'Vinyl Records', cd: 'Audio CDs', cassette: 'Cassettes',
+      bluray: 'Blu-ray Movies', dvd: 'DVD Movies'
+    };
+    const LANG_LABELS = { hindi: 'Hindi', english: 'English' };
+
     function updateBreadcrumbs(page, params) {
       const container = document.querySelector('.breadcrumbs-container'), list = document.getElementById('breadcrumb-list');
       if (!container || !list) return;
       if (page === 'index') { container.style.display = 'none'; return; }
       container.style.display = 'block';
-      let items = [{ name: 'Home', link: 'index' }];
+      params = params || {};
+
+      let items = [{ name: 'Home', page: 'index', params: {} }];
       if (page === 'products') {
-        if (params && params.cat) {
-          items.push({ name: params.cat.toUpperCase(), link: 'products?cat=' + params.cat });
-          if (params.lang) items.push({ name: params.lang.toUpperCase(), active: true });
-          else items[items.length - 1].active = true;
+        if (params.cat) {
+          const catName = CAT_LABELS[params.cat] || params.cat.toUpperCase();
+          items.push({ name: catName, page: 'products', params: { cat: params.cat } });
+          if (params.lang && LANG_LABELS[params.lang]) {
+            items.push({ name: LANG_LABELS[params.lang], active: true });
+          } else {
+            items[items.length - 1].active = true;
+          }
         } else items.push({ name: 'All Products', active: true });
-      } else if (page === 'product') { items.push({ name: 'Products', link: 'products' }); items.push({ name: 'Details', active: true }); }
+      } else if (page === 'product') {
+        items.push({ name: 'All Products', page: 'products', params: {} });
+        const title = (document.getElementById('detail-title') || {}).textContent;
+        items.push({ name: title && title !== 'Product Details' ? title : 'Details', active: true });
+      }
       else if (page === 'cart') items.push({ name: 'Shopping Cart', active: true });
       else if (page === 'profile') items.push({ name: 'My Profile', active: true });
       else items.push({ name: page.charAt(0).toUpperCase() + page.slice(1), active: true });
-      list.innerHTML = items.map(item => `<li class="breadcrumb-item ${item.active ? 'active' : ''}">${item.active ? item.name : `<a href="#" onclick="navigate('${item.link}'); return false;">${item.name}</a>`}</li>`).join('');
+
+      list.innerHTML = items.map(item => {
+        const label = Utils.escape(item.name);
+        if (item.active) return `<li class="breadcrumb-item active">${label}</li>`;
+        const href = Seo.buildPath(item.page, item.params);
+        const paramsJson = Utils.escape(JSON.stringify(item.params || {}));
+        return `<li class="breadcrumb-item"><a href="${href}" onclick='navigate("${item.page}", ${paramsJson}); return false;'>${label}</a></li>`;
+      }).join('');
     }
 
     function initPage(page, params) {

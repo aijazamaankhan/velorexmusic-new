@@ -57,19 +57,28 @@
         : (synced
             ? `<img src="https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=400&h=400&fit=crop" alt="${Utils.escape(product.title)}" loading="lazy" decoding="async">`
             : `<div class="skeleton skeleton-card-image" aria-label="Loading image"></div>`);
+      // Real href to the product's canonical path. Crawlers discover products
+      // by following <a href> — they do not fire onclick handlers, so while
+      // these were href="#" the entire catalogue was undiscoverable. The
+      // onclick still returns false so users keep the SPA transition, and
+      // middle-click / "open in new tab" now work as well.
+      const href = Seo.productPath(product);
+      // Descriptive alt text: "<title> — <artist> <format>" reads naturally and
+      // is what Google Images matches against for cover-art queries.
+      const altText = Utils.escape(product.title + ' — ' + product.artist);
       return `
       <div class="product-card" data-id="${product.id}">
         <div class="product-card-image">
-          ${imageHtml}
+          <a href="${href}" onclick="navigate('product',{id:${product.id}});return false;" aria-label="${altText}">${imageHtml}</a>
           ${badgeHtml}
           <div class="product-card-actions">
             <button class="quick-action-btn" onclick="CartHelpers.addToCart(${product.id})" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-            <a href="#" onclick="return openProduct(${product.id})" class="quick-action-btn" title="Quick View"><i class="fas fa-eye"></i></a>
+            <a href="${href}" onclick="return openProduct(${product.id})" class="quick-action-btn" title="Quick View"><i class="fas fa-eye"></i></a>
           </div>
         </div>
         <div class="product-card-body">
           <div class="product-category-tag">${catLabel} · ${langLabel}</div>
-          <h3 class="product-title">${Utils.escape(product.title)}</h3>
+          <h3 class="product-title"><a href="${href}" onclick="navigate('product',{id:${product.id}});return false;">${Utils.escape(product.title)}</a></h3>
           <p class="product-artist">${Utils.escape(product.artist)}</p>
           <div class="product-rating"><span class="stars">${stars}</span><span class="rating-count">(${product.reviews})</span></div>
           <div class="product-price-row">
@@ -78,7 +87,7 @@
           </div>
         </div>
         <div class="product-card-footer">
-          <a href="#" onclick="navigate('product',{id:${product.id}});return false;" class="btn btn-primary btn-sm btn-block">View Details</a>
+          <a href="${href}" onclick="navigate('product',{id:${product.id}});return false;" class="btn btn-primary btn-sm btn-block">View Details</a>
         </div>
       </div>`;
     }
@@ -488,6 +497,12 @@
         var dtFinal = document.getElementById('detail-title'); if (dtFinal) dtFinal.textContent = product.title;
         renderProductDetail(product);
         renderRelatedProducts(product, products);
+        // Now that the full record is in hand: upgrade a bare /product/12 to
+        // the canonical /product/12-title-artist (replaceState, so no extra
+        // history entry) and rewrite the meta/OG tags with the real title,
+        // description and cover image.
+        try { Seo.syncProductUrl(product); } catch (e) { console.warn('SEO product sync failed:', e); }
+        updateBreadcrumbs('product', { id: product.id });
       } catch (e) {
         if (container && !leanProduct) {
           container.innerHTML = '<div class="empty-cart"><div class="empty-cart-icon">😔</div><h3>Could not load product</h3><p style="color:var(--text-muted);font-size:0.85rem;">' + Utils.escape(e.message || 'Network error') + '</p><a href="#" onclick="navigate(\'products\')" class="btn btn-primary">Browse Products</a></div>';

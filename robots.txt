@@ -1,0 +1,75 @@
+# =============================================================================
+# Velorex Music — https://velorexmusic.com
+#
+# Policy: the catalogue is fully crawlable. Everything that is transactional,
+# personal, or infinite (filter permutations) is kept out of the index.
+#
+# Note on Disallow vs noindex: Disallow stops the crawl, it does NOT remove a
+# URL that is already indexed. Pages that must actually leave the index carry
+# a `noindex` robots meta tag from src/js/seo.js instead — a page has to be
+# crawlable for Google to see that tag.
+# =============================================================================
+
+User-agent: *
+
+# --- Admin panel -------------------------------------------------------------
+# Deliberately off the conventional /admin path so scanners 404, but there is
+# no reason for a crawler to ever request it.
+Disallow: /vlx-admin-2026.html
+Disallow: /old%20admin/
+
+# --- Backend + tooling -------------------------------------------------------
+Disallow: /api/
+Disallow: /scripts/
+Disallow: /node_modules/
+Disallow: /test-results/
+Disallow: /seo-render.php
+
+# --- Transactional / personal views ------------------------------------------
+# No ranking value, and we never want a cart or profile URL surfacing publicly.
+Disallow: /cart
+Disallow: /checkout
+Disallow: /profile
+Disallow: /login
+Disallow: /signup
+Disallow: /forgot
+Disallow: /track-order.html
+
+# --- Crawl-budget control ----------------------------------------------------
+# Faceted filtering can generate effectively unlimited URL permutations from
+# the same products. The curated /vinyl-records/hindi style paths ARE indexable;
+# these query-string forms are the uncontrolled ones.
+Disallow: /*?search=
+Disallow: /*?sort=
+Disallow: /*&search=
+Disallow: /*&sort=
+
+# --- Assets ------------------------------------------------------------------
+# Explicitly allowed: Google must fetch CSS/JS to render the SPA, and blocking
+# them causes "page cannot be rendered" errors in Search Console. Blocking
+# product images would also forfeit Google Images traffic, which for a store
+# selling physical records with distinctive cover art is real volume.
+Allow: /src/
+Allow: /uploads/
+Allow: /*.css$
+Allow: /*.js$
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.png$
+Allow: /*.webp$
+
+# --- Aggressive SEO scrapers -------------------------------------------------
+# These crawl hard, cost real bandwidth on shared hosting, and send no traffic.
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+Sitemap: https://velorexmusic.com/sitemap.xml

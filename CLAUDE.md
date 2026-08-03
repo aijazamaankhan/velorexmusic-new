@@ -89,6 +89,10 @@ velorexmusic-new/
 │       ├── skeleton.js          # Skeleton.{productGrid, orderCards, statCards, tableRows,
 │       │                        # drawerSection, inlineLine} — string-output helpers used by
 │       │                        # both storefront + admin for cold-cache placeholder UI.
+│       ├── seo.js               # URL vocabulary (buildPath/parsePath/slugify) + live
+│       │                        # <title>/description/canonical/robots updates on SPA
+│       │                        # navigation. slugify() MUST stay byte-identical to
+│       │                        # velorex_slugify() in src/seo/seo-lib.php — see §15.
 │       ├── storefront/
 │       │   ├── carriers.js      # CARRIERS_META + carrier helpers (inline SVG logos, tracking URLs)
 │       │   ├── pages.js         # createProductCard + all initPageXxx + page renderers
@@ -116,6 +120,21 @@ velorexmusic-new/
 ├── contact.html, faq.html,      # Static info pages.
 │   shipping.html, returns.html,
 │   track-order.html, maintenance.html
+├── .htaccess                    # Root rewrites: pretty catalogue URLs → seo-render.php,
+│                                # HTTPS + non-www canonical, compression, asset caching,
+│                                # and denial of .md/.json/scripts/. See §15.
+├── .gitattributes               # Forces LF everywhere. NOT cosmetic — scripts/bump-cache.js
+│                                # hashes raw bytes, so a CRLF checkout produces cache-bust
+│                                # tokens that never match what the Linux host serves. See §15.
+├── robots.txt                   # Crawl policy + sitemap pointer.
+├── sitemap.php                  # Serves /sitemap.xml (rewritten). Generated from the live
+│                                # products table — new products appear with no deploy.
+├── seo-render.php               # Front controller that server-renders product + category
+│                                # pages at real URLs with per-page metadata and JSON-LD.
+├── favicon.svg                  # Vinyl-record mark, matches src/styles/tokens.css colours.
+├── src/seo/
+│   └── seo-lib.php              # Shared SEO library: slugify, category taxonomy, meta-tag
+│                                # builder, JSON-LD builders. Used by seo-render + sitemap.
 ├── api/
 │   ├── .htaccess                # Deny direct access to config*.php, disable LiteSpeed cache
 │   ├── config.php               # GITIGNORED. Real DB creds + ADMIN_PASS + shared helpers
@@ -1188,6 +1207,7 @@ See `PLAYWRIGHT_MCP_README.md` for the optional MCP server setup if you want bro
 | Order status updates | Local-only | Admin can change an order's status in the UI but it only updates localStorage on the admin's browser. Needs a PATCH endpoint on `orders.php`. |
 | Razorpay integration | ✅ Shipped | Server-side order creation + HMAC signature verification + webhook backstop. Both test and live keys live in the secrets file, switched via `RAZORPAY_MODE`. See [§10 Razorpay payment flow](#razorpay-payment-flow). |
 | Storefront perf rewrite | Phase 1 ✅ shipped; Phases 2–3 pending | Phase 1 (May 2026) moved product images out of DB-base64 into `public_html/uploads/products/` + split list/detail endpoints. Cut `/api/products.php` from 27 MB / 15 s to 17 KB / 0.7 s. Phases 2 (thumbnails), 3 (CDN), and HTTP cache headers are documented in [§14 Storefront performance roadmap](#14-storefront-performance-roadmap) — none urgent, all independent. |
+| SEO / crawlability | ✅ Shipped | Was the single biggest gap: hash routing made the whole catalogue one URL, so no product or category could rank. Now real paths (`/vinyl-records`, `/product/12-sholay-r-d-burman`) server-rendered by `seo-render.php` with per-page metadata + JSON-LD, plus `robots.txt`, a DB-generated sitemap, and real `<a href>` internal links. See [§15 SEO architecture](#15-seo-architecture). Outstanding manual steps (OG image, Search Console, Business Profile) are listed there. |
 | Frontend test coverage | Minimal | Only `test-admin-login.js` exists. Worth expanding when there's time. |
 
 ## 13. Conventions for AI assistants editing this repo
@@ -1202,6 +1222,9 @@ See `PLAYWRIGHT_MCP_README.md` for the optional MCP server setup if you want bro
 - **Bulk-replace semantics for products/categories.** Don't try to add per-item PATCH endpoints — the existing pattern is "send the whole list, server replaces atomically." Match that for new collection-type entities.
 - **Cache-bust is automatic — don't hand-edit `?v=…`.** Asset version strings on `<script>` / `<link>` tags are SHA-1 content hashes maintained by `npm run prep-deploy`. If you modify a `.js` or `.css` file, run that command before pushing (or rely on the pre-push hook from [§9 Deployment](#code-deploy-every-push) to remind you). Bumping by hand defeats the per-file-only caching and is easy to forget.
 - **Product images live on disk, not in the DB.** Phase 1 of the perf rewrite (May 2026) moved images from base64 LONGTEXT columns to filesystem storage. On Hostinger the actual files live at `/home/u286479481/uploads/products/<hash>.<ext>` (OUTSIDE `public_html`) and are exposed via a self-healing symlink — see [§10 "Uploaded images live OUTSIDE public_html"](#uploaded-images-live-outside-publichtml-hostinger-deploy-wipes-anything-inside-it). The DB stores only the URL. Admin uploads go through `/api/upload-product-image.php`. The list endpoint (`/api/products.php`) is intentionally lean — no description/gallery/specs — and the detail page fetches the rest from `/api/product.php?id=N`. Don't put base64 image strings into `products.image` or `products.images` again, and don't move the actual files into `public_html/` (Hostinger's deploy will eat them).
+- **Navigation links must be real `<a href>`.** Crawlers follow hrefs and never fire `onclick`. Build the path with `Seo.buildPath()` / `Seo.productPath()` and keep the `onclick` for the SPA transition. Reverting any link to `href="#"` re-hides that part of the site from search. See [§15](#15-seo-architecture).
+- **Slug functions are mirrored.** `velorex_slugify()` (PHP) and `Seo.slugify()` (JS) must produce identical output. Change both together or you create duplicate URLs.
+- **Don't remove `.gitattributes`.** LF line endings are required for `bump-cache.js` hashes to match between a Windows clone and the Linux host. See [§15](#15-seo-architecture).
 - **Update this doc.** If you change the schema, add an endpoint, or change a major convention, update the relevant section in `CLAUDE.md` in the same commit.
 
 ## 14. Storefront performance roadmap
@@ -1288,3 +1311,121 @@ Apache/LiteSpeed on Hostinger both support this.
 | Marketing push outside India | Phase 3 (CDN — your India server is far from US/EU customers) |
 | Customers say "second visit feels slow" | HTTP cache headers (cheapest fix; do this even without Phases 2/3) |
 | Phase 2 + 3 are both done and you want more | Lazy-load images below the fold (browser-native `loading="lazy"` — already used elsewhere; add to product cards) |
+
+## 15. SEO architecture
+
+### The problem this solved
+
+The storefront was hash-routed: categories were `#products?cat=vinyl`, products were
+`#product?id=5`. **Everything after `#` is never sent to a server**, so Google saw the
+entire catalogue as one URL (`velorexmusic.com/`). All 66 products and all 5 category
+pages were unrankable — not badly ranked, absent. On top of that there were no meta
+descriptions, no canonicals, no Open Graph, no structured data, no `robots.txt`, no
+sitemap, and every internal link was `href="#"` with an `onclick`, so a crawler had
+nothing to follow even if the URLs had existed.
+
+### URL scheme
+
+Real paths now, served by `.htaccess` → `seo-render.php`:
+
+| URL | Route | Indexable |
+|---|---|---|
+| `/` | Homepage | ✅ |
+| `/products` | Full catalogue | ✅ |
+| `/vinyl-records`, `/audio-cds`, `/cassettes`, `/blu-ray-movies`, `/dvd-movies` | Category | ✅ (noindex when empty) |
+| `/vinyl-records/hindi`, `/vinyl-records/english` | Category + language facet | ✅ |
+| `/product/<id>-<title>-<artist>` | Product detail | ✅ |
+| `/products?search=…&sort=…&people=…` | Filter permutation | ❌ canonical → clean category |
+| `/cart`, `/profile`, `/login`, `/signup`, `/forgot`, `/track-order.html` | Transactional | ❌ noindex |
+
+The **id is authoritative**, the slug is decorative. `/product/12-anything` 301s to the
+current canonical slug, so renaming a product never strands an inbound link or splits
+ranking signals across two URLs.
+
+### How a request flows
+
+```
+GET /product/12-sholay-r-d-burman
+  → .htaccess rewrites to seo-render.php?_route=product&id=12
+  → loads the product, 301s if the slug is stale
+  → reads index.html, injects into the <head>:
+      per-page <title> + meta description + canonical
+      Open Graph + Twitter card
+      Product/Offer + BreadcrumbList + Organization/WebSite JSON-LD
+  → reveals #page-product (it is display:none until the router runs) and
+    server-renders the name, price, availability, description and specs
+  → browser paints that instantly; the SPA boots and replaces it in place
+```
+
+A crawler that never runs JavaScript still gets a complete, indexable page. One that
+does run JavaScript gets `src/js/seo.js` keeping the tags correct as the user navigates.
+
+### Slug parity — the one rule that will bite you
+
+`velorex_slugify()` in [src/seo/seo-lib.php](src/seo/seo-lib.php) and `Seo.slugify()` in
+[src/js/seo.js](src/js/seo.js) **must produce byte-identical output**. If they diverge,
+the browser pushes one URL while the server declares a different canonical, and Google
+reads that as duplicate content — the exact problem this work exists to fix.
+
+Transliteration is deliberately **not** done with `iconv('ASCII//TRANSLIT')`: its output
+is libc-dependent. glibc turns "Café" into `Cafe`, Windows and musl turn it into `Caf'e`
+→ `caf-e`. That means local dev and Hostinger would mint different URLs for the same
+product. PHP uses `Normalizer` (ext/intl) when present and an explicit character map
+otherwise; both match the JS `normalize('NFD')` + strip-combining-marks approach.
+
+If you change either function, change both, and re-run a parity check across accented
+titles before pushing.
+
+### Line endings are load-bearing
+
+[.gitattributes](.gitattributes) pins everything to LF. This is not style policing:
+`scripts/bump-cache.js` computes each `?v=` token as a SHA-1 of the file's **raw bytes**.
+Under `core.autocrlf=true` with no `.gitattributes`, a Windows clone checks files out as
+CRLF while the committed blob is LF, so the same file hashes differently on Windows than
+on the Linux host serving it. Symptom: `node scripts/bump-cache.js --check` reports every
+HTML file permanently stale, and running `prep-deploy` on Windows rewrites all 58 tokens
+to values that never match production. Don't remove `.gitattributes` without reworking
+`bump-cache.js` to normalise line endings before hashing.
+
+### Structured data emitted
+
+| Schema | Where | Why |
+|---|---|---|
+| `Organization`, `WebSite` (+`SearchAction`) | Every page | Brand knowledge panel + sitelinks search box |
+| `Product` + `Offer` | Product pages | Price / availability / stars in results — the biggest CTR lever |
+| `AggregateRating` | Product pages, **only when `reviews > 0`** | Emitting `reviewCount: 0` is a violation and suppresses the whole rich result |
+| `BreadcrumbList` | Product + category | Breadcrumb trail instead of a raw URL in results |
+| `ItemList` | Category pages | Marks the page as a curated listing |
+| `Store` ×2 (Gurugram, Meerut) | Category pages + contact.html | "record store near me" / local pack |
+| `FAQPage` | faq.html | FAQ rich results |
+
+**FAQ answers in the JSON-LD must stay verbatim identical to the visible page copy.**
+Schema whose answers don't appear on the page is a manual-action risk, not just a
+suppressed result. If you edit an answer in `faq.html`'s body, edit the JSON-LD too.
+
+### Conventions to preserve
+
+- **Never go back to `href="#"` for navigation.** Crawlers follow `<a href>`; they do not
+  fire `onclick`. Every nav, footer, breadcrumb and product-card link now carries a real
+  path from `Seo.buildPath()` with the `onclick` retained for the SPA transition. This
+  also made middle-click and "open in new tab" work, which they never did before.
+- **Keep meta tag *names* stable.** `src/js/seo.js` targets them by selector and appends a
+  duplicate if one is renamed.
+- **New indexable page ⇒ add it to `sitemap.php`.** A sitemap is a statement that a URL
+  should be indexed; never list a `noindex` page in it.
+- **New category ⇒ add it to `velorex_categories()` AND `Seo.CAT_TO_SLUG` AND the
+  `.htaccess` rewrite alternation.** All three, or the URL 404s or renders untitled.
+
+### Still to do (needs a person, not code)
+
+1. **`src/img/og-default.jpg`** — 1200×630 social share image. Spec in
+   [src/img/README.md](src/img/README.md). Can't be generated here: PHP on this host has
+   no GD. Nothing breaks without it; shared links just render without a thumbnail.
+2. **Google Search Console** — add the property, verify via DNS TXT, submit
+   `https://velorexmusic.com/sitemap.xml`, then use "Request indexing" on the homepage
+   and 2–3 product pages to seed the crawl.
+3. **Google Business Profile** — for the local cluster. The name/address/phone must match
+   `contact.html` and the `Store` JSON-LD *exactly*; NAP mismatches suppress local
+   rankings.
+4. **Verify rich results** after deploy — <https://search.google.com/test/rich-results>
+   on one product URL and on `/faq.html`.

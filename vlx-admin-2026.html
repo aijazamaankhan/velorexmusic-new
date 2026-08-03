@@ -8,6 +8,12 @@
     content="default-src 'self' https: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data:; font-src 'self' https: data:;">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Velorex Music — Admin Command Center</title>
+  <!-- Belt and braces with robots.txt. A Disallow rule only stops the CRAWL —
+       a URL that is already indexed (or discovered via an external link) can
+       still appear in results with no snippet. `noindex` is what actually
+       removes it, and Google has to be able to fetch the page to see this tag,
+       so the two mechanisms are complementary rather than redundant. -->
+  <meta name="robots" content="noindex, nofollow, noarchive">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link
