@@ -1,16 +1,48 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Velorex Music">
-  <!-- Vinyl record mark. Colours mirror the storefront tokens:
-       --primary #0d0d0d (record body) and the gold/orange accent gradient. -->
-  <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#ffb347"/>
-      <stop offset="100%" stop-color="#ff6b35"/>
-    </linearGradient>
-  </defs>
-  <circle cx="32" cy="32" r="31" fill="#0d0d0d"/>
-  <circle cx="32" cy="32" r="24" fill="none" stroke="url(#g)" stroke-width="1.4" opacity="0.55"/>
-  <circle cx="32" cy="32" r="18.5" fill="none" stroke="url(#g)" stroke-width="1.4" opacity="0.75"/>
-  <circle cx="32" cy="32" r="13" fill="none" stroke="url(#g)" stroke-width="1.4" opacity="0.9"/>
-  <circle cx="32" cy="32" r="8" fill="url(#g)"/>
-  <circle cx="32" cy="32" r="2.4" fill="#0d0d0d"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Velorex Music">
+  <!-- Velorex Music brand mark for use as a favicon.
+       Vector paths lifted verbatim from src/img/logo.svg (the 31-07-2026
+       master); only the framing and backdrop are new.
+
+       Two deliberate departures from the master artwork:
+
+       1. WHITE BACKDROP. The record body is solid black, so on a transparent
+          background the mark disappears into dark browser chrome and dark OS
+          themes — at 16px all that survives is a floating red squiggle. The
+          logo is designed to sit on white (see the OG card), so the plate
+          restores the intended contrast and makes the silhouette readable at
+          tab size.
+
+       2. NO WORDMARK. The master sets "Velorex Music" as live <text> in Aktiv
+          Grotesk and Poppins — fonts a browser will not have, so it would
+          silently fall back to a different face. It is also unreadable below
+          ~100px. A favicon wants the symbol alone.
+
+       Brand colours: #ed2c15 (primary red), #ec411e (centre label). -->
+  <title>Velorex Music</title>
+
+  <!-- White plate. Rounded square rather than a circle: the music-note flourish
+       rises well above the record, so a circle sized to contain it would leave
+       the record looking small and lost. -->
+  <rect width="512" height="512" rx="96" fill="#fff"/>
+
+  <!-- Mark, scaled from the master's coordinate space into this 512 viewBox.
+       Source bounding box is x 426.77-877.0, y 11.1-483.41; the transform
+       fits that to a 424px box centred with ~44px padding. -->
+  <g transform="translate(-329.2 34.04) scale(0.8977)">
+    <!-- Record body -->
+    <circle cx="627.6" cy="282.58" r="200.83"/>
+    <!-- Grooves. Stroke widened from the master's 0.75 to 1.6 so they survive
+         downscaling instead of dropping out entirely below ~48px. -->
+    <g fill="none" stroke="#fff" stroke-width="1.6" stroke-miterlimit="10">
+      <circle cx="627.6" cy="282.58" r="103.92"/>
+      <circle cx="627.6" cy="282.58" r="139"/>
+      <circle cx="627.6" cy="282.58" r="175.01"/>
+    </g>
+    <!-- Centre label + spindle hole -->
+    <circle cx="627.6" cy="282.58" r="53.08" fill="#ec411e"/>
+    <circle cx="627.6" cy="282.58" r="12.43" fill="#fff"/>
+    <!-- V + music note -->
+    <path fill="#ed2c15" stroke="#fff" stroke-width="7" stroke-miterlimit="10"
+          d="M500.51,124.2l134.55,283.67L789.85,11.1s8.65,31.43,35.6,51.27c26.94,19.84,48.01,40.17,51.92,72.25,3.92,32.09-20.82,54.86-37.96,54.62-17.15-.24-29.64-7.35-32.58-18.86-2.94-11.51,6.12-21.55,14.94-24.49,8.82-2.94,26.45-5.63,41.39,8.57.56-12.35-3.01-23.12-12.57-32.14-11.92-9.34-24.5-14.64-32.99-19.91l-19.59-13.59-151.37,394.58h-34.78l-149.9-324.04,38.54-35.17Z"/>
+  </g>
 </svg>

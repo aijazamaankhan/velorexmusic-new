@@ -34,8 +34,13 @@
   <meta name="twitter:description" content="Buy original vinyl records, audio CDs, cassettes, Blu-rays and DVDs online in India.">
   <meta name="twitter:image" content="https://velorexmusic.com/src/img/og-default.jpg">
 
+  <!-- SVG first (crisp at every size, and modern browsers prefer it); PNGs are
+       the fallback for older browsers and feed readers that ignore image/svg+xml.
+       iOS ignores SVG favicons entirely, hence the 180px apple-touch-icon. -->
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="/src/img/og-default.jpg">
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 
   <!-- Organization + WebSite. The SearchAction lets Google render a sitelinks
        search box for brand queries ("velorex music"). LocalBusiness lives on
@@ -47,7 +52,7 @@
     "@id": "https://velorexmusic.com/#organization",
     "name": "Velorex Music",
     "url": "https://velorexmusic.com/",
-    "logo": "https://velorexmusic.com/src/img/og-default.jpg",
+    "logo": "https://velorexmusic.com/src/img/logo-1200.png",
     "description": "Velorex Music sells original vinyl records, audio CDs, cassettes, Blu-rays and DVDs across India, specialising in Hindi film music and collectible pressings.",
     "contactPoint": {
       "@type": "ContactPoint",

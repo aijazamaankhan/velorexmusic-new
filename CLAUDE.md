@@ -1416,16 +1416,38 @@ suppressed result. If you edit an answer in `faq.html`'s body, edit the JSON-LD 
 - **New category ⇒ add it to `velorex_categories()` AND `Seo.CAT_TO_SLUG` AND the
   `.htaccess` rewrite alternation.** All three, or the URL 404s or renders untitled.
 
+### Brand assets
+
+Built from the master logo (`src/img/logo.svg`, the 31-07-2026 export). See
+[src/img/README.md](src/img/README.md) for the full inventory and how to regenerate.
+
+Two things worth knowing:
+
+- **`og:image` and `Organization.logo` are deliberately different images.**
+  `og-default.jpg` is a dark promotional card with copy on it; `logo-1200.png` is the
+  clean mark on white. Google does not want a promotional banner for schema `logo`, and
+  a bare logo makes a weak social card. Don't collapse them into one file.
+- **The wordmark in `logo.svg` is live `<text>` in Aktiv Grotesk + Poppins.** Browsers
+  don't have those fonts, so rendering that SVG directly in a page silently falls back to
+  a different typeface. Anything showing the wordmark uses the raster `logo-full.png`;
+  `favicon.svg` contains only the vinyl + V mark, which is pure vector paths.
+
+**Known inconsistency, not yet resolved:** the logo's brand red is `#ed2c15`, but
+`src/styles/tokens.css` still uses an amber/orange palette from the original theme
+(`--secondary: #ff6b35`, `--accent: #ffd700`). The favicon and social card use the real
+brand red; the site chrome does not. Aligning the tokens is a site-wide visual change and
+was left alone deliberately — decide it as a design call, not as a side effect of SEO work.
+
 ### Still to do (needs a person, not code)
 
-1. **`src/img/og-default.jpg`** — 1200×630 social share image. Spec in
-   [src/img/README.md](src/img/README.md). Can't be generated here: PHP on this host has
-   no GD. Nothing breaks without it; shared links just render without a thumbnail.
-2. **Google Search Console** — add the property, verify via DNS TXT, submit
+1. **Google Search Console** — add the property, verify via DNS TXT, submit
    `https://velorexmusic.com/sitemap.xml`, then use "Request indexing" on the homepage
    and 2–3 product pages to seed the crawl.
-3. **Google Business Profile** — for the local cluster. The name/address/phone must match
+2. **Google Business Profile** — for the local cluster. The name/address/phone must match
    `contact.html` and the `Store` JSON-LD *exactly*; NAP mismatches suppress local
    rankings.
-4. **Verify rich results** after deploy — <https://search.google.com/test/rich-results>
+3. **Verify rich results** after deploy — <https://search.google.com/test/rich-results>
    on one product URL and on `/faq.html`.
+4. **Re-scrape the social caches** so the new card replaces any previously cached blank:
+   Facebook's [Sharing Debugger](https://developers.facebook.com/tools/debug/) → "Scrape
+   Again" (this also covers WhatsApp).

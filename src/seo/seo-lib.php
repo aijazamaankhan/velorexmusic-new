@@ -26,8 +26,14 @@ if (!defined('VELOREX_SITE_URL')) {
 
 define('VELOREX_SITE_NAME', 'Velorex Music');
 
-// Fallback social-share image. Used when a product has no cover image.
+// Fallback social-share image (1200x630 card, dark, with marketing copy).
+// Used for og:image / twitter:image when a product has no cover of its own.
 define('VELOREX_DEFAULT_OG_IMAGE', VELOREX_SITE_URL . '/src/img/og-default.jpg');
+
+// Organization / Store logo for JSON-LD. Deliberately NOT the OG card: Google
+// wants a clean rendering of the mark on a plain background for schema `logo`,
+// not a promotional banner with overlaid text.
+define('VELOREX_LOGO_IMAGE', VELOREX_SITE_URL . '/src/img/logo-1200.png');
 
 // -----------------------------------------------------------------------------
 // Category taxonomy
@@ -289,7 +295,7 @@ function velorex_jsonld_site(): string {
         '@id'      => VELOREX_SITE_URL . '/#organization',
         'name'     => VELOREX_SITE_NAME,
         'url'      => VELOREX_SITE_URL . '/',
-        'logo'     => VELOREX_DEFAULT_OG_IMAGE,
+        'logo'     => VELOREX_LOGO_IMAGE,
         'description' => 'Velorex Music sells original vinyl records, audio CDs, cassettes, Blu-rays and DVDs across India, specialising in Hindi film music and collectible pressings.',
         'contactPoint' => [
             '@type'             => 'ContactPoint',
@@ -340,7 +346,7 @@ function velorex_jsonld_local_business(): string {
             '@id'      => VELOREX_SITE_URL . '/#store-' . $b['id'],
             'name'     => VELOREX_SITE_NAME . ' — ' . $b['locality'],
             'url'      => VELOREX_SITE_URL . '/',
-            'image'    => VELOREX_DEFAULT_OG_IMAGE,
+            'image'    => VELOREX_LOGO_IMAGE,
             'telephone' => '+91-79060-27807',
             'parentOrganization' => ['@id' => VELOREX_SITE_URL . '/#organization'],
             'priceRange' => '₹₹',
