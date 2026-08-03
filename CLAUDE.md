@@ -1499,7 +1499,10 @@ item — a rich-result violation and a consumer-trust problem, not a cosmetic on
 ### Intro splash
 
 A brand overlay on first load, in `#intro-splash` (markup in index.html, styles
-in `storefront.css`, `initSplash()` in `router.js`).
+in `storefront.css`, `initSplash()` in `router.js`). It shows the full stacked
+lockup — `logo-stacked-dark.png` / `logo-stacked-light.png`, picked by the same
+`.brand-lockup-dark`/`-light` rules the navbar uses — so the wordmark and
+tagline come from the artwork and no duplicate brand text is rendered.
 
 **It is deliberately constrained, and the constraints are the point.** A
 full-screen overlay on arrival is what Google classifies as an *intrusive

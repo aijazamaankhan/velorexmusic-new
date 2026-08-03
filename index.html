@@ -143,7 +143,7 @@
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
   <!-- Page-specific styles (hero, products, cart, profile, footer, etc.).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=be308e29">
+  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=dd4f0f9e">
 </head>
 
 <body>
@@ -157,14 +157,20 @@
        aria-hidden until shown, and inert to assistive tech when dismissed. -->
   <div id="intro-splash" class="intro-splash" aria-hidden="true" hidden>
     <div class="intro-splash-inner">
-      <img src="/src/img/logo-mark.svg" class="intro-splash-mark" alt="" width="120" height="120">
-      <div class="intro-splash-tagline">
-        <span class="intro-rule"></span>
-        Feel the Music . Own the Legacy
-        <span class="intro-rule"></span>
-      </div>
-      <p class="intro-splash-brand">Velorex Music</p>
-      <p class="intro-splash-sub">Step into a world of timeless sound.</p>
+      <!-- The full stacked lockup, which already contains the mark, the
+           wordmark and the "FEEL THE MUSIC. OWN THE LEGACY." tagline — so no
+           separate brand or tagline text is rendered here any more.
+           Two variants, chosen in CSS by [data-theme]; the hidden one is
+           display:none and so also drops out of the accessibility tree,
+           which is why both can carry the same alt without it being read
+           twice. PNG exports, not the SVG masters: the masters set the
+           wordmark as live <text> in Aktiv Grotesk and Poppins, fonts no
+           browser has. See src/img/README.md. -->
+      <img src="/src/img/logo-stacked-dark.png" class="intro-splash-logo brand-lockup-dark"
+           alt="Velorex Music — Feel the Music. Own the Legacy." width="760" height="471">
+      <img src="/src/img/logo-stacked-light.png" class="intro-splash-logo brand-lockup-light"
+           alt="Velorex Music — Feel the Music. Own the Legacy." width="760" height="471">
+      <p class="intro-splash-sub">Dive into the music.</p>
       <button type="button" class="intro-splash-enter" id="intro-splash-enter">
         Tap anywhere to enter <span aria-hidden="true">→</span>
       </button>
