@@ -27,14 +27,44 @@ var Seo = (function () {
 
   // DB category value → URL slug. Mirrors velorex_categories() in seo-lib.php.
   var CAT_TO_SLUG = {
-    vinyl:    'vinyl-records',
-    cd:       'audio-cds',
-    cassette: 'cassettes',
-    bluray:   'blu-ray-movies',
-    dvd:      'dvd-movies'
+    vinyl:        'vinyl-records',
+    cd:           'audio-cds',
+    cassette:     'cassettes',
+    bluray:       'blu-ray-movies',
+    dvd:          'dvd-movies',
+    // Departments. Unlike the five formats above these are subcategory-driven
+    // rather than language-faceted — see SUBCATS. Their slug happens to equal
+    // their DB key, which the formats' do not.
+    merchandise:  'merchandise',
+    'vinyl-care': 'vinyl-care'
   };
   var SLUG_TO_CAT = {};
   Object.keys(CAT_TO_SLUG).forEach(function (k) { SLUG_TO_CAT[CAT_TO_SLUG[k]] = k; });
+
+  // Second level under the departments. MUST stay in sync with the `subs` maps
+  // in velorex_categories() (src/seo/seo-lib.php) — the server declares the
+  // canonical URL for these pages, so a slug present here but not there would
+  // push a URL the server 404s.
+  var SUBCATS = {
+    merchandise: {
+      't-shirts': 'T-Shirts', 'hoodies': 'Hoodies', 'caps': 'Caps',
+      'tote-bags': 'Tote Bags', 'posters': 'Posters', 'stickers': 'Stickers',
+      'mugs': 'Mugs', 'keychains': 'Keychains', 'slipmats': 'Slipmats'
+    },
+    'vinyl-care': {
+      'record-cleaning-brush': 'Record Cleaning Brush',
+      'carbon-fiber-brush': 'Carbon Fiber Brush',
+      'record-cleaning-solution': 'Record Cleaning Solution',
+      'microfiber-cloth': 'Microfiber Cloth',
+      'anti-static-inner-sleeves': 'Anti-Static Inner Sleeves',
+      'outer-protective-sleeves': 'Outer Protective Sleeves',
+      'vinyl-storage-boxes': 'Vinyl Storage Boxes',
+      'stylus-cleaning-gel': 'Stylus Cleaning Gel / Brush',
+      'turntable-slipmats': 'Turntable Slipmats',
+      'record-weight-clamp': 'Record Weight / Clamp'
+    }
+  };
+  function isDepartment(cat) { return !!SUBCATS[cat]; }
 
   var LANGS = { hindi: 'Hindi', english: 'English' };
 
@@ -118,9 +148,16 @@ var Seo = (function () {
       var slug = params.cat ? CAT_TO_SLUG[params.cat] : null;
       if (slug) {
         path = '/' + slug;
-        // Only hindi/english get a clean facet path; they are the two facets
-        // with enough inventory to justify their own indexable page.
-        if (params.lang && LANGS[params.lang]) path += '/' + params.lang;
+        // Departments take a subcategory in the facet slot; formats take a
+        // language. They can never collide because a category is one or the
+        // other, never both.
+        if (isDepartment(params.cat)) {
+          if (params.sub && SUBCATS[params.cat][params.sub]) path += '/' + params.sub;
+        } else if (params.lang && LANGS[params.lang]) {
+          // Only hindi/english get a clean facet path; they are the two facets
+          // with enough inventory to justify their own indexable page.
+          path += '/' + params.lang;
+        }
       } else {
         path = '/products';
         if (params.lang && LANGS[params.lang]) qs.push('lang=' + encodeURIComponent(params.lang));
@@ -172,7 +209,17 @@ var Seo = (function () {
     var parts = path.slice(1).split('/');
     if (SLUG_TO_CAT[parts[0]]) {
       params.cat = SLUG_TO_CAT[parts[0]];
-      if (parts[1] && LANGS[parts[1]]) params.lang = parts[1];
+      if (parts[1]) {
+        if (isDepartment(params.cat)) {
+          // Unknown subcategory is NOT claimed, so it falls through to a 404
+          // rather than silently rendering the whole department under a URL
+          // the server does not consider canonical.
+          if (!SUBCATS[params.cat][parts[1]]) return null;
+          params.sub = parts[1];
+        } else if (LANGS[parts[1]]) {
+          params.lang = parts[1];
+        }
+      }
       return { page: 'products', params: params };
     }
 
@@ -256,9 +303,22 @@ var Seo = (function () {
     if (page === 'products') {
       var catLabels = {
         vinyl: 'Vinyl Records', cd: 'Audio CDs', cassette: 'Cassettes',
-        bluray: 'Blu-ray Movies', dvd: 'DVD Movies'
+        bluray: 'Blu-ray Movies', dvd: 'DVD Movies',
+        merchandise: 'Merchandise', 'vinyl-care': 'Vinyl Care'
       };
       var label = params.cat ? catLabels[params.cat] : null;
+      // A department subcategory is the specific thing being sold, so it leads
+      // the title ("Buy T-Shirts Online India") rather than the department.
+      if (label && isDepartment(params.cat) && params.sub && SUBCATS[params.cat][params.sub]) {
+        var subLabel = SUBCATS[params.cat][params.sub];
+        applyTags({
+          title: 'Buy ' + subLabel + ' Online India | Velorex Music',
+          description: 'Shop ' + subLabel.toLowerCase() + ' at Velorex Music. '
+            + 'Part of our ' + label.toLowerCase() + ' range, shipped across India.',
+          canonical: canonical
+        });
+        return;
+      }
       var langLabel = params.lang && LANGS[params.lang] ? LANGS[params.lang] : null;
 
       if (label) {
@@ -376,6 +436,8 @@ var Seo = (function () {
     update: update,
     syncProductUrl: syncProductUrl,
     CAT_TO_SLUG: CAT_TO_SLUG,
-    SLUG_TO_CAT: SLUG_TO_CAT
+    SLUG_TO_CAT: SLUG_TO_CAT,
+    SUBCATS: SUBCATS,
+    isDepartment: isDepartment
   };
 })();

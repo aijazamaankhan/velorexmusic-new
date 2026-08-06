@@ -65,6 +65,30 @@ function normalize_condition($v): string {
     return 'new';
 }
 
+// products.subcategory — the second level under the Merchandise and Vinyl Care
+// departments (t-shirts, record-cleaning-brush, …). Null for the five format
+// categories, which use the language facet instead.
+//
+// Auto-added on first use, same pattern and same reasoning as item_condition:
+// adding a nullable column to a small InnoDB table is instant, and if the ALTER
+// fails everything degrades to "no subcategory" rather than erroring.
+function products_has_subcategory_column(PDO $pdo): bool {
+    static $has = null;
+    if ($has !== null) return $has;
+    try {
+        $stmt = $pdo->query("SHOW COLUMNS FROM products LIKE 'subcategory'");
+        $has = (bool)$stmt->fetch();
+        if (!$has) {
+            $pdo->exec('ALTER TABLE products ADD COLUMN subcategory VARCHAR(60) NULL AFTER category');
+            $has = true;
+        }
+    } catch (Throwable $e) {
+        error_log('[products] subcategory column unavailable: ' . $e->getMessage());
+        $has = false;
+    }
+    return $has;
+}
+
 function upsert_product(PDO $pdo, array $p): void {
     // Normalise the gallery: accept either `images` (array of URLs / data: URLs)
     // or just `image` (single primary). Always persist the full list as JSON in
@@ -77,13 +101,16 @@ function upsert_product(PDO $pdo, array $p): void {
 
     $hasImages = products_has_images_column($pdo);
     $hasCond   = products_has_condition_column($pdo);
+    $hasSub    = products_has_subcategory_column($pdo);
     $cols  = 'id, title, artist, category, language, price, original_price, description, image, '
            . ($hasImages ? 'images, ' : '')
            . ($hasCond ? 'item_condition, ' : '')
+           . ($hasSub ? 'subcategory, ' : '')
            . 'rating, reviews, badge, stock, music_director, track_listing, specs, people';
     $vals  = ':id, :title, :artist, :category, :language, :price, :original_price, :description, :image, '
            . ($hasImages ? ':images, ' : '')
            . ($hasCond ? ':item_condition, ' : '')
+           . ($hasSub ? ':subcategory, ' : '')
            . ':rating, :reviews, :badge, :stock, :music_director, :track_listing, :specs, :people';
     $sql = "REPLACE INTO products ($cols) VALUES ($vals)";
 
@@ -116,6 +143,12 @@ function upsert_product(PDO $pdo, array $p): void {
         $raw = $p['condition'] ?? $p['itemCondition'] ?? $p['preOwned'] ?? 'new';
         $params[':item_condition'] = normalize_condition($raw);
     }
+    if ($hasSub) {
+        $sub = trim((string)($p['subcategory'] ?? ''));
+        // Slug-shaped only; anything else is dropped rather than stored, so a
+        // stray value can never mint a URL the router does not understand.
+        $params[':subcategory'] = preg_match('/^[a-z0-9-]{1,60}$/', $sub) ? $sub : null;
+    }
 
     $pdo->prepare($sql)->execute($params);
 }
@@ -147,6 +180,7 @@ function row_to_product(array $r): array {
         'musicDirector' => $r['music_director'],
         'trackListing' => $r['track_listing'],
         'condition' => $r['item_condition'] ?? 'new',
+        'subcategory' => $r['subcategory'] ?? null,
         'specs' => $r['specs'] ? json_decode($r['specs'], true) : null,
         'people' => $r['people'] ? json_decode($r['people'], true) : [],
     ];
@@ -174,5 +208,6 @@ function row_to_product_lean(array $r): array {
         'stock' => (int)$r['stock'],
         'musicDirector' => $r['music_director'],
         'condition' => $r['item_condition'] ?? 'new',
+        'subcategory' => $r['subcategory'] ?? null,
     ];
 }

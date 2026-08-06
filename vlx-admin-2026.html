@@ -43,10 +43,10 @@
        script-scope. Load order: main first (defines shared helpers like
        adminAuthHeaders, switchPanel), then per-panel files, then toast last
        (the admin showToast — different shape from the storefront's). -->
-  <script src="src/js/admin/main.js?v=84abacf6"></script>
+  <script src="src/js/admin/main.js?v=7008eee6"></script>
   <script src="src/js/admin/customers.js?v=127735c1"></script>
   <script src="src/js/admin/orders.js?v=fef46ea8"></script>
-  <script src="src/js/admin/inventory.js?v=982c3d3d"></script>
+  <script src="src/js/admin/inventory.js?v=c371cbb7"></script>
   <script src="src/js/admin/blog.js?v=7a085310"></script>
   <script src="src/js/admin/toast.js?v=9a4bf3e8"></script>
 </head>
@@ -477,6 +477,16 @@
               Shows this product in that homepage section (max 4 per section).
             </small>
           </div>
+          <!-- Subcategory. Only meaningful for the Merchandise and Vinyl Care
+               departments; hidden for the five music formats, which use the
+               language facet instead. Options are filled by
+               renderSubcategoryOptions() whenever the Category select changes. -->
+          <div class="form-group" id="f-subcategory-wrap" style="display:none;">
+            <label class="form-label">Subcategory</label>
+            <select class="form-control" id="f-subcategory">
+              <option value="">— none —</option>
+            </select>
+          </div>
           <!-- Condition. Writes products.item_condition; drives the "Pre-owned"
                badge on cards, the /pre-owned section, and schema.org
                itemCondition (UsedCondition vs NewCondition). -->
@@ -758,6 +768,16 @@
             <small style="display:block;margin-top:0.4rem;color:var(--text-muted);font-size:0.72rem;">
               Shows this product in that homepage section (max 4 per section).
             </small>
+          </div>
+          <!-- Subcategory. Only meaningful for the Merchandise and Vinyl Care
+               departments; hidden for the five music formats, which use the
+               language facet instead. Options are filled by
+               renderSubcategoryOptions() whenever the Category select changes. -->
+          <div class="form-group" id="e-subcategory-wrap" style="display:none;">
+            <label class="form-label">Subcategory</label>
+            <select class="form-control" id="e-subcategory">
+              <option value="">— none —</option>
+            </select>
           </div>
           <!-- Condition. Writes products.item_condition; drives the "Pre-owned"
                badge on cards, the /pre-owned section, and schema.org

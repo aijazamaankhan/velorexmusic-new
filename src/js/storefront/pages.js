@@ -253,8 +253,13 @@
       document.querySelectorAll('#page-products input[name="people"]').forEach(cb => cb.checked = false);
       if (params && params.cat) {
         document.querySelectorAll('#page-products input[name="cat"]').forEach(cb => cb.checked = cb.value === params.cat);
-        var labels = { vinyl: 'Vinyl Records', cd: 'Audio CDs', cassette: 'Cassettes', bluray: 'Blu-ray Movies', dvd: 'DVD Movies' };
-        var pt = document.getElementById('page-title'); if (pt) pt.textContent = labels[params.cat] || 'Products';
+        var labels = { vinyl: 'Vinyl Records', cd: 'Audio CDs', cassette: 'Cassettes', bluray: 'Blu-ray Movies', dvd: 'DVD Movies',
+                       merchandise: 'Merchandise', 'vinyl-care': 'Vinyl Care' };
+        // A subcategory is the specific thing being sold, so it becomes the
+        // heading rather than the department it sits under.
+        var subLabel = (Seo.SUBCATS[params.cat] || {})[params.sub];
+        var pt = document.getElementById('page-title');
+        if (pt) pt.textContent = subLabel || labels[params.cat] || 'Products';
       } else { var pt2 = document.getElementById('page-title'); if (pt2) pt2.textContent = 'All Products'; }
       if (params && params.lang) document.querySelectorAll('#page-products input[name="lang"]').forEach(cb => cb.checked = cb.value === params.lang);
       updateCountsProducts(allProducts);
@@ -285,9 +290,25 @@
     function applyFilters(searchOverride) {
       var allProds = Storage.getProducts(), filtered = allProds.slice();
 
-      // Category filter
+      // Category filter.
+      //
+      // The sidebar has a checkbox per music FORMAT only. The Merchandise and
+      // Vinyl Care departments have no checkbox, so relying on the sidebar
+      // alone silently showed the whole catalogue on /merchandise — the filter
+      // found nothing checked and concluded "no filter". Fall back to the
+      // routed category whenever the sidebar has no say.
       var selCats = Array.from(document.querySelectorAll('#page-products input[name="cat"]:checked')).map(i => i.value);
-      if (selCats.length) filtered = filtered.filter(p => selCats.indexOf(p.category) !== -1);
+      if (selCats.length) {
+        filtered = filtered.filter(p => selCats.indexOf(p.category) !== -1);
+      } else if (currentParams && currentParams.cat) {
+        filtered = filtered.filter(p => p.category === currentParams.cat);
+      }
+
+      // Subcategory (departments only) — always driven by the URL, since there
+      // is no sidebar control for it.
+      if (currentParams && currentParams.sub) {
+        filtered = filtered.filter(p => p.subcategory === currentParams.sub);
+      }
 
       // Language filter
       var selLangs = Array.from(document.querySelectorAll('#page-products input[name="lang"]:checked')).map(i => i.value);

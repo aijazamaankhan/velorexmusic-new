@@ -167,6 +167,7 @@
 
         // Reset specifications
         setSpecificationsData({});
+        renderSubcategoryOptions('f', null);
 
         // Reset images (URLs + uploads)
         resetImageGallery();
@@ -226,7 +227,7 @@
     function downloadBulkTemplate() {
       const headers = [
         'id', 'title', 'artist', 'category', 'price',
-        'language', 'original_price', 'stock', 'badge', 'condition', 'description',
+        'language', 'original_price', 'stock', 'badge', 'condition', 'subcategory', 'description',
         'music_director', 'track_listing', 'people',
         'specs_format', 'specs_speed', 'specs_label', 'specs_year',
         'specs_tracks', 'specs_genre', 'specs_theme',
@@ -375,6 +376,8 @@
       const badge = trim(obj.badge).toLowerCase(); if (badge) p.badge = badge;
       const cond = trim(obj.condition).toLowerCase();
       if (cond) p.condition = (cond === 'pre-owned' || cond === 'preowned' || cond === 'used') ? 'pre-owned' : 'new';
+      const sub = trim(obj.subcategory).toLowerCase();
+      if (sub) p.subcategory = sub;
       const desc = trim(obj.description); if (desc) p.description = desc;
       const md = trim(obj.music_director); if (md) p.musicDirector = md;
       const tl = trim(obj.track_listing); if (tl) p.trackListing = tl;
@@ -905,6 +908,7 @@
         // Stored as products.item_condition. Same reasoning as `badge` above:
         // omit the key and REPLACE INTO silently resets it to the default.
         condition: (document.getElementById('f-condition') || {}).value || 'new',
+        subcategory: (document.getElementById('f-subcategory') || {}).value || null,
         specs: getSpecificationsData()
       };
 
@@ -997,6 +1001,9 @@
       if (eBadge) eBadge.value = product.badge || '';
       var eCond = document.getElementById('e-condition');
       if (eCond) eCond.value = product.condition === 'pre-owned' ? 'pre-owned' : 'new';
+      // Must run AFTER e-category has been set above, since the options shown
+      // depend on the selected category.
+      renderSubcategoryOptions('e', product.subcategory || null);
       document.getElementById('e-description').value = product.description || '';
       document.getElementById('e-music-director').value = product.musicDirector || '';
 
@@ -1250,6 +1257,7 @@
         // changing the value to "Not featured" would silently do nothing.
         badge: (document.getElementById('e-badge') || {}).value || null,
         condition: (document.getElementById('e-condition') || {}).value || 'new',
+        subcategory: (document.getElementById('e-subcategory') || {}).value || null,
         specs: getEditSpecificationsData(),
       };
 
@@ -1314,3 +1322,70 @@
         modal.style.display = 'flex';
       });
     }
+
+    // =============================================
+    // SUBCATEGORIES (Merchandise / Vinyl Care)
+    // =============================================
+    // Mirrors velorex_subcategories() in src/seo/seo-lib.php and Seo.SUBCATS in
+    // src/js/seo.js. Three copies is one more than ideal, but the admin panel
+    // does not load the storefront's seo.js and the server is the only one that
+    // can validate — so this is the admin's local view of the same taxonomy.
+    // If you add a subcategory, update all three.
+    var ADMIN_SUBCATS = {
+      merchandise: {
+        't-shirts': 'T-Shirts', 'hoodies': 'Hoodies', 'caps': 'Caps',
+        'tote-bags': 'Tote Bags', 'posters': 'Posters', 'stickers': 'Stickers',
+        'mugs': 'Mugs', 'keychains': 'Keychains', 'slipmats': 'Slipmats'
+      },
+      'vinyl-care': {
+        'record-cleaning-brush': 'Record Cleaning Brush',
+        'carbon-fiber-brush': 'Carbon Fiber Brush',
+        'record-cleaning-solution': 'Record Cleaning Solution',
+        'microfiber-cloth': 'Microfiber Cloth',
+        'anti-static-inner-sleeves': 'Anti-Static Inner Sleeves',
+        'outer-protective-sleeves': 'Outer Protective Sleeves',
+        'vinyl-storage-boxes': 'Vinyl Storage Boxes',
+        'stylus-cleaning-gel': 'Stylus Cleaning Gel / Brush',
+        'turntable-slipmats': 'Turntable Slipmats',
+        'record-weight-clamp': 'Record Weight / Clamp'
+      }
+    };
+
+    // Fill (and show/hide) the subcategory select for a given prefix — 'f' for
+    // the New Product modal, 'e' for Edit. The wrapper is hidden entirely for
+    // the five music formats, which have no subcategories, so the form does not
+    // show a control that can never do anything.
+    function renderSubcategoryOptions(prefix, selected) {
+      var catEl  = document.getElementById(prefix + '-category');
+      var subEl  = document.getElementById(prefix + '-subcategory');
+      var wrap   = document.getElementById(prefix + '-subcategory-wrap');
+      if (!catEl || !subEl || !wrap) return;
+
+      var subs = ADMIN_SUBCATS[catEl.value];
+      if (!subs) {
+        wrap.style.display = 'none';
+        subEl.innerHTML = '<option value="">— none —</option>';
+        subEl.value = '';
+        return;
+      }
+      wrap.style.display = '';
+      subEl.innerHTML = '<option value="">— none —</option>'
+        + Object.keys(subs).map(function (k) {
+            return '<option value="' + escapeHTML(k) + '">' + escapeHTML(subs[k]) + '</option>';
+          }).join('');
+      // Only restore the previous value if it belongs to the newly chosen
+      // category; otherwise switching category would leave a stale subcategory
+      // attached to the product.
+      subEl.value = (selected && subs[selected]) ? selected : '';
+    }
+
+    // Bind once, after the modals exist. Changing Category re-renders the
+    // dependent select for that modal only.
+    document.addEventListener('DOMContentLoaded', function () {
+      ['f', 'e'].forEach(function (prefix) {
+        var catEl = document.getElementById(prefix + '-category');
+        if (catEl) {
+          catEl.addEventListener('change', function () { renderSubcategoryOptions(prefix, null); });
+        }
+      });
+    });

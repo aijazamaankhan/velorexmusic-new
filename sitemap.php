@@ -69,9 +69,31 @@ try {
     error_log('[sitemap] category count query failed: ' . $e->getMessage());
 }
 
+// Subcategory counts for the departments, so only stocked sub-pages are listed.
+$countsBySub = [];
+try {
+    if (products_has_subcategory_column(db())) {
+        $st = db()->query(
+            "SELECT category, subcategory, COUNT(*) AS n FROM products
+              WHERE subcategory IS NOT NULL AND subcategory <> ''
+              GROUP BY category, subcategory"
+        );
+        foreach ($st->fetchAll() as $r) {
+            $countsBySub[(string)$r['category']][(string)$r['subcategory']] = (int)$r['n'];
+        }
+    }
+} catch (Throwable $e) {
+    error_log('[sitemap] subcategory count query failed: ' . $e->getMessage());
+}
+
 foreach (velorex_categories() as $slug => $meta) {
     if (($countsByCat[$meta['key']] ?? 0) < 1) continue;
     $xml .= velorex_sitemap_url(velorex_category_url($slug), null, 'daily', '0.9');
+    // Departments list stocked subcategories; formats list stocked languages.
+    foreach (velorex_subcategories($slug) as $subSlug => $subLabel) {
+        if (($countsBySub[$meta['key']][$subSlug] ?? 0) < 1) continue;
+        $xml .= velorex_sitemap_url(VELOREX_SITE_URL . '/' . $slug . '/' . $subSlug, null, 'weekly', '0.8');
+    }
     foreach (array_keys(velorex_languages()) as $lang) {
         if (($countsByCatLang[$meta['key']][$lang] ?? 0) < 1) continue;
         $xml .= velorex_sitemap_url(velorex_category_url($slug, $lang), null, 'weekly', '0.8');

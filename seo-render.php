@@ -308,8 +308,16 @@ if ($route === 'category' || $route === 'products') {
     $catSlug  = isset($_GET['cat']) ? (string)$_GET['cat'] : '';
     $langSlug = isset($_GET['lang']) && $_GET['lang'] !== '' ? (string)$_GET['lang'] : null;
 
+    // Department subcategory (/merchandise/t-shirts). Validated against the
+    // taxonomy — an unknown slug 404s rather than quietly rendering the whole
+    // department, which would put the same product list on unlimited URLs.
+    $subSlug = isset($_GET['sub']) && $_GET['sub'] !== '' ? (string)$_GET['sub'] : null;
+
     if ($route === 'category' && !isset($cats[$catSlug])) velorex_send_404('Category not found');
     if ($langSlug !== null && !isset($langs[$langSlug]))   velorex_send_404('Page not found');
+    if ($subSlug !== null && !isset(velorex_subcategories($catSlug)[$subSlug])) {
+        velorex_send_404('Page not found');
+    }
 
     $isAll = ($route === 'products');
     $meta  = $isAll ? null : $cats[$catSlug];
@@ -318,6 +326,7 @@ if ($route === 'category' || $route === 'products') {
     // adds it on first call). If that ALTER ever failed, degrade to the old
     // column list rather than 500-ing a public category page.
     $condCol = products_has_condition_column(db()) ? 'item_condition, ' : '';
+    $condCol .= products_has_subcategory_column(db()) ? 'subcategory, ' : '';
 
     try {
         if ($isAll) {
@@ -333,6 +342,14 @@ if ($route === 'category' || $route === 'products') {
               . 'WHERE category = :c AND language = :l ORDER BY id DESC'
             );
             $stmt->execute([':c' => $meta['key'], ':l' => $langSlug]);
+            $rows = $stmt->fetchAll();
+        } elseif ($subSlug !== null) {
+            $stmt = db()->prepare(
+                'SELECT id, title, artist, category, language, price, original_price, image, '
+              . 'rating, reviews, badge, stock, ' . $condCol . 'music_director FROM products '
+              . 'WHERE category = :c AND subcategory = :s ORDER BY id DESC'
+            );
+            $stmt->execute([':c' => $meta['key'], ':s' => $subSlug]);
             $rows = $stmt->fetchAll();
         } else {
             $stmt = db()->prepare(
@@ -370,6 +387,18 @@ if ($route === 'category' || $route === 'products') {
             $desc  = 'Shop ' . strtolower($langLabel) . ' ' . strtolower($meta['label'])
                    . ' online in India at Velorex Music. Original pressings, collector titles and current releases with pan-India delivery and free shipping over ₹5,000.';
             $intro = $langLabel . ' titles from our ' . strtolower($meta['label']) . ' collection, shipped across India.';
+        } elseif ($subSlug !== null) {
+            // The subcategory IS the product type people search for, so it
+            // leads the title rather than the department name.
+            $subLabel  = velorex_subcategories($catSlug)[$subSlug];
+            $canonical = VELOREX_SITE_URL . '/' . $catSlug . '/' . $subSlug;
+            $h1    = $subLabel;
+            $title = 'Buy ' . $subLabel . ' Online India | ' . VELOREX_SITE_NAME;
+            $desc  = 'Shop ' . strtolower($subLabel) . ' at Velorex Music — part of our '
+                   . strtolower($meta['label']) . ' range, shipped across India.';
+            $intro = strtolower($subLabel) . ' from the Velorex Music '
+                   . strtolower($meta['label']) . ' range.';
+            $intro = ucfirst($intro);
         }
     }
 
@@ -399,6 +428,9 @@ if ($route === 'category' || $route === 'products') {
         if ($langSlug !== null) {
             $trail[] = ['name' => $meta['label'], 'url' => velorex_category_url($catSlug)];
             $trail[] = ['name' => $langs[$langSlug]['adjective']];
+        } elseif ($subSlug !== null) {
+            $trail[] = ['name' => $meta['label'], 'url' => velorex_category_url($catSlug)];
+            $trail[] = ['name' => velorex_subcategories($catSlug)[$subSlug]];
         } else {
             $trail[] = ['name' => $meta['label']];
         }
@@ -453,7 +485,7 @@ if ($route === 'preowned') {
     } else {
         try {
             $sql = 'SELECT id, title, artist, category, language, price, original_price, image, '
-                 . 'rating, reviews, badge, stock, item_condition, music_director FROM products '
+                 . 'rating, reviews, badge, stock, item_condition, ' . (products_has_subcategory_column(db()) ? 'subcategory, ' : '') . 'music_director FROM products '
                  . "WHERE item_condition = 'pre-owned'"
                  . ($catSlug ? ' AND category = :c' : '')
                  . ' ORDER BY id DESC';

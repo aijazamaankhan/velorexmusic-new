@@ -1474,6 +1474,48 @@ Because the stored HTML is already safe, both the storefront renderer and
 Drafts are invisible to the public API, excluded from the sitemap, and an empty
 blog listing sets `noindex` so a thin page never enters the index.
 
+### Departments (Merchandise / Vinyl Care)
+
+Two non-format categories sit alongside the five music formats: `merchandise`
+and `vinyl-care`. Where a format takes a **language** facet
+(`/vinyl-records/hindi`), a department takes a **subcategory**
+(`/merchandise/t-shirts`, `/vinyl-care/carbon-fiber-brush`). They occupy the
+same URL slot; `velorex_subcategories()` is what distinguishes them.
+
+Modelling them as two departments with subcategories, rather than 19 top-level
+categories, keeps the navbar and URL surface manageable and avoids writing 19
+sets of hand-written SEO copy for pages that are variations on one theme.
+
+**The subcategory taxonomy lives in THREE places and they must agree:**
+
+| File | Symbol |
+|---|---|
+| [src/seo/seo-lib.php](src/seo/seo-lib.php) | `subs` in `velorex_categories()` — authoritative |
+| [src/js/seo.js](src/js/seo.js) | `Seo.SUBCATS` |
+| [src/js/admin/inventory.js](src/js/admin/inventory.js) | `ADMIN_SUBCATS` |
+
+The admin panel doesn't load the storefront's `seo.js`, hence the third copy. A
+slug present in the client but not on the server pushes a URL the server 404s,
+so there is a parity check (slugs *and* labels) in the department test suite.
+
+Stored in `products.subcategory` — auto-added like `item_condition`, and
+validated against `^[a-z0-9-]{1,60}$` on write so a stray value can never mint a
+URL the router doesn't understand. An unknown subcategory in a URL is **not**
+claimed by `parsePath` and 404s server-side, rather than silently rendering the
+whole department under an unlimited number of URLs.
+
+Both categories are seeded into the `categories` table by
+`categories_seed_departments()` so they appear in the admin's Category dropdown.
+Removing one via the Categories panel won't stick — deliberate, since the
+storefront routes for it exist regardless and an unassignable route is worse
+than an extra pill.
+
+**Navbar:** the five formats are grouped under a single **Music** dropdown. They
+were six separate top-level items, which together with the two departments
+overflowed the navbar at 1280px and pushed the search box, cart and sign-in off
+screen entirely. Every link is still a real `<a href>` in the DOM, so nothing
+became less crawlable.
+
 ### Pre-owned stock
 
 Products carry a condition, set in the admin product form (**Condition**:

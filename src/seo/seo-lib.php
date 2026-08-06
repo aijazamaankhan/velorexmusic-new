@@ -82,7 +82,61 @@ function velorex_categories(): array {
             'description' => 'Shop DVD movies online in India — Bollywood classics, regional cinema and English films. Original DVDs with pan-India delivery and free shipping over ₹5,000.',
             'intro' => 'Original DVD releases covering Bollywood classics, regional Indian cinema and English films, including many long out-of-print titles.',
         ],
+        // ---- Non-format departments -----------------------------------------
+        // These two carry SUBCATEGORIES rather than the hindi/english language
+        // facet the formats use. Both occupy the same URL slot — /<cat>/<facet> —
+        // and velorex_subcategories() is what tells the two apart.
+        'merchandise' => [
+            'key'   => 'merchandise',
+            'label' => 'Merchandise',
+            'title' => 'Music Merchandise India | Band T-Shirts, Hoodies & Posters',
+            'description' => 'Music merchandise from Velorex Music — band t-shirts, hoodies, caps, tote bags, posters, stickers, mugs, keychains and slipmats. Shipped across India.',
+            'intro' => 'Wearables and collectables for people who take their record shelf seriously — printed apparel, posters and desk pieces, shipped across India.',
+            'subs'  => [
+                't-shirts'   => 'T-Shirts',
+                'hoodies'    => 'Hoodies',
+                'caps'       => 'Caps',
+                'tote-bags'  => 'Tote Bags',
+                'posters'    => 'Posters',
+                'stickers'   => 'Stickers',
+                'mugs'       => 'Mugs',
+                'keychains'  => 'Keychains',
+                'slipmats'   => 'Slipmats',
+            ],
+        ],
+        'vinyl-care' => [
+            'key'   => 'vinyl-care',
+            'label' => 'Vinyl Care',
+            'title' => 'Vinyl Record Care & Cleaning Products India | Velorex Music',
+            'description' => 'Vinyl record care in India — cleaning brushes, carbon fibre brushes, cleaning solution, anti-static inner sleeves, outer sleeves, storage boxes, stylus cleaners and record clamps.',
+            'intro' => 'Everything needed to keep a collection playing properly: cleaning kit, anti-static and protective sleeves, storage, stylus care and turntable accessories.',
+            'subs'  => [
+                'record-cleaning-brush'     => 'Record Cleaning Brush',
+                'carbon-fiber-brush'        => 'Carbon Fiber Brush',
+                'record-cleaning-solution'  => 'Record Cleaning Solution',
+                'microfiber-cloth'          => 'Microfiber Cloth',
+                'anti-static-inner-sleeves' => 'Anti-Static Inner Sleeves',
+                'outer-protective-sleeves'  => 'Outer Protective Sleeves',
+                'vinyl-storage-boxes'       => 'Vinyl Storage Boxes',
+                'stylus-cleaning-gel'       => 'Stylus Cleaning Gel / Brush',
+                'turntable-slipmats'        => 'Turntable Slipmats',
+                'record-weight-clamp'       => 'Record Weight / Clamp',
+            ],
+        ],
     ];
+}
+
+// Subcategory map for a category slug, or [] for the format categories (which
+// use the language facet instead). Single source of truth — mirrored by
+// Seo.SUBCATS in src/js/seo.js.
+function velorex_subcategories(string $catSlug): array {
+    $cats = velorex_categories();
+    return $cats[$catSlug]['subs'] ?? [];
+}
+
+// Categories that are departments (subcategory-driven) rather than formats.
+function velorex_is_department(string $catSlug): bool {
+    return !empty(velorex_categories()[$catSlug]['subs']);
 }
 
 // Reverse lookup: DB category value → URL slug.

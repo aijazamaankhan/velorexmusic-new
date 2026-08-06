@@ -1082,3 +1082,15 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   font-size: 0.78rem; font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.05em;
 }
+
+/* Department dropdowns (Merchandise / Vinyl Care) carry 9-10 items, well past
+   what the format dropdowns hold, so they get their own scroll cap rather than
+   running off the bottom of a laptop viewport. */
+.dropdown-menu-tall {
+  max-height: min(70vh, 460px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Indented second level inside the Music dropdown (Hindi / English vinyl). */
+.dropdown-item-sub { padding-left: 2rem; font-size: 0.85rem; opacity: 0.85; }

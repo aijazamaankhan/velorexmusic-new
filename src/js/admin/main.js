@@ -111,6 +111,11 @@
     // =============================================
     // AUTH LOGIC
     // =============================================
+    // Code-defined departments (see velorex_categories() in seo-lib.php). Given
+    // an emoji so they read as sections rather than formats in the category
+    // dropdown and pill list.
+    var DEPT_LABELS = { merchandise: '👕 Merchandise', 'vinyl-care': '💿 Vinyl Care' };
+
     function getCategoryLabel(category) {
       const labels = {
         vinyl: 'Vinyl Record',
@@ -119,7 +124,8 @@
         bluray: 'Blu-ray',
         dvd: 'DVD'
       };
-      return labels[category] || category.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      return DEPT_LABELS[category] || labels[category]
+        || category.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     }
 
     function renderCategorySelectors() {

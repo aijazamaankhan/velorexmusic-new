@@ -87,8 +87,12 @@ DirectoryIndex index.html index.php
   RewriteRule ^product/([0-9]+)(?:-[^/]*)?/?$ seo-render.php?_route=product&id=$1 [L,QSA]
 
   # /vinyl-records  and  /vinyl-records/hindi
-  RewriteRule ^(vinyl-records|audio-cds|cassettes|blu-ray-movies|dvd-movies)/?$ seo-render.php?_route=category&cat=$1 [L,QSA]
+  RewriteRule ^(vinyl-records|audio-cds|cassettes|blu-ray-movies|dvd-movies|merchandise|vinyl-care)/?$ seo-render.php?_route=category&cat=$1 [L,QSA]
   RewriteRule ^(vinyl-records|audio-cds|cassettes|blu-ray-movies|dvd-movies)/(hindi|english)/?$ seo-render.php?_route=category&cat=$1&lang=$2 [L,QSA]
+  # Department subcategories: /merchandise/t-shirts, /vinyl-care/carbon-fiber-brush.
+  # The sub slug is validated against the taxonomy inside seo-render.php, so an
+  # unknown one 404s rather than rendering the whole department.
+  RewriteRule ^(merchandise|vinyl-care)/([a-z0-9-]+)/?$ seo-render.php?_route=category&cat=$1&sub=$2 [L,QSA]
 
   # /products — the full catalogue
   RewriteRule ^products/?$ seo-render.php?_route=products [L,QSA]

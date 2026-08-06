@@ -50,22 +50,66 @@
             <li class="nav-item"><span class="nav-link active">Admin Dashboard</span></li>
           ` : `
             <li class="nav-item"><a href="/" onclick="navigate('index'); return false;" class="nav-link ${activePage === 'home' ? 'active' : ''}">Home</a></li>
+            <!-- All five music formats live under one dropdown. They used to be
+                 six separate top-level items, which together with the two new
+                 departments overflowed the navbar at 1280px and pushed the
+                 search box, cart and sign-in off screen entirely. Grouping them
+                 is also the truer structure now that the shop sells things that
+                 are not music formats. Every link is still a real <a href> in
+                 the DOM, so nothing became less crawlable. -->
             <li class="nav-item">
-              <a href="${P('products', {cat:'vinyl'})}" onclick="navigate('products', {cat:'vinyl'}); return false;" class="nav-link ${activePage === 'vinyl' ? 'active' : ''}">
-                Vinyl <span class="arrow"><i class="fas fa-chevron-down" style="font-size:0.7rem;"></i></span>
+              <a href="/products" onclick="navigate('products'); return false;" class="nav-link ${['vinyl','cd','cassette','bluray','dvd','products'].indexOf(activePage) !== -1 ? 'active' : ''}">
+                Music <span class="arrow"><i class="fas fa-chevron-down" style="font-size:0.7rem;"></i></span>
               </a>
-              <div class="dropdown-menu">
-                <a href="${P('products', {cat:'vinyl', lang:'hindi'})}" onclick="navigate('products', {cat:'vinyl', lang:'hindi'}); return false;" class="dropdown-item"><i class="fas fa-globe"></i> Hindi Vinyl</a>
-                <a href="${P('products', {cat:'vinyl', lang:'english'})}" onclick="navigate('products', {cat:'vinyl', lang:'english'}); return false;" class="dropdown-item"><i class="fas fa-earth-americas"></i> English Vinyl</a>
+              <div class="dropdown-menu dropdown-menu-tall">
+                <a href="${P('products', {cat:'vinyl'})}" onclick="navigate('products', {cat:'vinyl'}); return false;" class="dropdown-item">Vinyl Records</a>
+                <a href="${P('products', {cat:'vinyl', lang:'hindi'})}" onclick="navigate('products', {cat:'vinyl', lang:'hindi'}); return false;" class="dropdown-item dropdown-item-sub">Hindi Vinyl</a>
+                <a href="${P('products', {cat:'vinyl', lang:'english'})}" onclick="navigate('products', {cat:'vinyl', lang:'english'}); return false;" class="dropdown-item dropdown-item-sub">English Vinyl</a>
+                <a href="${P('products', {cat:'cd'})}" onclick="navigate('products', {cat:'cd'}); return false;" class="dropdown-item">Audio CDs</a>
+                <a href="${P('products', {cat:'cassette'})}" onclick="navigate('products', {cat:'cassette'}); return false;" class="dropdown-item">Cassettes</a>
+                <a href="${P('products', {cat:'bluray'})}" onclick="navigate('products', {cat:'bluray'}); return false;" class="dropdown-item">Blu-ray Movies</a>
+                <a href="${P('products', {cat:'dvd'})}" onclick="navigate('products', {cat:'dvd'}); return false;" class="dropdown-item">DVD Movies</a>
                 <div class="dropdown-divider"></div>
-                <a href="${P('products', {cat:'vinyl'})}" onclick="navigate('products', {cat:'vinyl'}); return false;" class="dropdown-item">All Vinyl</a>
+                <a href="/products" onclick="navigate('products'); return false;" class="dropdown-item">All Products</a>
               </div>
             </li>
-            <li class="nav-item"><a href="${P('products', {cat:'cd'})}" onclick="navigate('products', {cat:'cd'}); return false;" class="nav-link ${activePage === 'cd' ? 'active' : ''}">Audio CDs</a></li>
-            <li class="nav-item"><a href="${P('products', {cat:'cassette'})}" onclick="navigate('products', {cat:'cassette'}); return false;" class="nav-link ${activePage === 'cassette' ? 'active' : ''}">Cassettes</a></li>
-            <li class="nav-item"><a href="${P('products', {cat:'bluray'})}" onclick="navigate('products', {cat:'bluray'}); return false;" class="nav-link ${activePage === 'bluray' ? 'active' : ''}">Blu-rays</a></li>
-            <li class="nav-item"><a href="${P('products', {cat:'dvd'})}" onclick="navigate('products', {cat:'dvd'}); return false;" class="nav-link ${activePage === 'dvd' ? 'active' : ''}">DVDs</a></li>
-            <li class="nav-item"><a href="/products" onclick="navigate('products'); return false;" class="nav-link ${activePage === 'products' ? 'active' : ''}">All Products</a></li>
+            <li class="nav-item">
+              <a href="${P('products', {cat:'merchandise'})}" onclick="navigate('products', {cat:'merchandise'}); return false;" class="nav-link ${activePage === 'merchandise' ? 'active' : ''}">
+                👕 Merchandise <span class="arrow"><i class="fas fa-chevron-down" style="font-size:0.7rem;"></i></span>
+              </a>
+              <div class="dropdown-menu dropdown-menu-tall">
+                <a href="${P('products', {cat:'merchandise', sub:'t-shirts'})}" onclick="navigate('products', {cat:'merchandise', sub:'t-shirts'}); return false;" class="dropdown-item">T-Shirts</a>
+                <a href="${P('products', {cat:'merchandise', sub:'hoodies'})}" onclick="navigate('products', {cat:'merchandise', sub:'hoodies'}); return false;" class="dropdown-item">Hoodies</a>
+                <a href="${P('products', {cat:'merchandise', sub:'caps'})}" onclick="navigate('products', {cat:'merchandise', sub:'caps'}); return false;" class="dropdown-item">Caps</a>
+                <a href="${P('products', {cat:'merchandise', sub:'tote-bags'})}" onclick="navigate('products', {cat:'merchandise', sub:'tote-bags'}); return false;" class="dropdown-item">Tote Bags</a>
+                <a href="${P('products', {cat:'merchandise', sub:'posters'})}" onclick="navigate('products', {cat:'merchandise', sub:'posters'}); return false;" class="dropdown-item">Posters</a>
+                <a href="${P('products', {cat:'merchandise', sub:'stickers'})}" onclick="navigate('products', {cat:'merchandise', sub:'stickers'}); return false;" class="dropdown-item">Stickers</a>
+                <a href="${P('products', {cat:'merchandise', sub:'mugs'})}" onclick="navigate('products', {cat:'merchandise', sub:'mugs'}); return false;" class="dropdown-item">Mugs</a>
+                <a href="${P('products', {cat:'merchandise', sub:'keychains'})}" onclick="navigate('products', {cat:'merchandise', sub:'keychains'}); return false;" class="dropdown-item">Keychains</a>
+                <a href="${P('products', {cat:'merchandise', sub:'slipmats'})}" onclick="navigate('products', {cat:'merchandise', sub:'slipmats'}); return false;" class="dropdown-item">Slipmats</a>
+                <div class="dropdown-divider"></div>
+                <a href="${P('products', {cat:'merchandise'})}" onclick="navigate('products', {cat:'merchandise'}); return false;" class="dropdown-item">All Merchandise</a>
+              </div>
+            </li>
+            <li class="nav-item">
+              <a href="${P('products', {cat:'vinyl-care'})}" onclick="navigate('products', {cat:'vinyl-care'}); return false;" class="nav-link ${activePage === 'vinyl-care' ? 'active' : ''}">
+                💿 Vinyl Care <span class="arrow"><i class="fas fa-chevron-down" style="font-size:0.7rem;"></i></span>
+              </a>
+              <div class="dropdown-menu dropdown-menu-tall">
+                <a href="${P('products', {cat:'vinyl-care', sub:'record-cleaning-brush'})}" onclick="navigate('products', {cat:'vinyl-care', sub:'record-cleaning-brush'}); return false;" class="dropdown-item">Record Cleaning Brush</a>
+                <a href="${P('products', {cat:'vinyl-care', sub:'carbon-fiber-brush'})}" onclick="navigate('products', {cat:'vinyl-care', sub:'carbon-fiber-brush'}); return false;" class="dropdown-item">Carbon Fiber Brush</a>
+                <a href="${P('products', {cat:'vinyl-care', sub:'record-cleaning-solution'})}" onclick="navigate('products', {cat:'vinyl-care', sub:'record-cleaning-solution'}); return false;" class="dropdown-item">Record Cleaning Solution</a>
+                <a href="${P('products', {cat:'vinyl-care', sub:'microfiber-cloth'})}" onclick="navigate('products', {cat:'vinyl-care', sub:'microfiber-cloth'}); return false;" class="dropdown-item">Microfiber Cloth</a>
+                <a href="${P('products', {cat:'vinyl-care', sub:'anti-static-inner-sleeves'})}" onclick="navigate('products', {cat:'vinyl-care', sub:'anti-static-inner-sleeves'}); return false;" class="dropdown-item">Anti-Static Inner Sleeves</a>
+                <a href="${P('products', {cat:'vinyl-care', sub:'outer-protective-sleeves'})}" onclick="navigate('products', {cat:'vinyl-care', sub:'outer-protective-sleeves'}); return false;" class="dropdown-item">Outer Protective Sleeves</a>
+                <a href="${P('products', {cat:'vinyl-care', sub:'vinyl-storage-boxes'})}" onclick="navigate('products', {cat:'vinyl-care', sub:'vinyl-storage-boxes'}); return false;" class="dropdown-item">Vinyl Storage Boxes</a>
+                <a href="${P('products', {cat:'vinyl-care', sub:'stylus-cleaning-gel'})}" onclick="navigate('products', {cat:'vinyl-care', sub:'stylus-cleaning-gel'}); return false;" class="dropdown-item">Stylus Cleaning Gel / Brush</a>
+                <a href="${P('products', {cat:'vinyl-care', sub:'turntable-slipmats'})}" onclick="navigate('products', {cat:'vinyl-care', sub:'turntable-slipmats'}); return false;" class="dropdown-item">Turntable Slipmats</a>
+                <a href="${P('products', {cat:'vinyl-care', sub:'record-weight-clamp'})}" onclick="navigate('products', {cat:'vinyl-care', sub:'record-weight-clamp'}); return false;" class="dropdown-item">Record Weight / Clamp</a>
+                <div class="dropdown-divider"></div>
+                <a href="${P('products', {cat:'vinyl-care'})}" onclick="navigate('products', {cat:'vinyl-care'}); return false;" class="dropdown-item">All Vinyl Care</a>
+              </div>
+            </li>
             <li class="nav-item"><a href="/pre-owned" onclick="navigate('preowned'); return false;" class="nav-link ${activePage === 'preowned' ? 'active' : ''}">Pre-owned</a></li>
             <li class="nav-item"><a href="/blog" onclick="navigate('blog'); return false;" class="nav-link ${activePage === 'blog' || activePage === 'blog-post' ? 'active' : ''}">Blog</a></li>
           `}
@@ -311,7 +355,8 @@
     // trail in place of a raw URL in results.
     const CAT_LABELS = {
       vinyl: 'Vinyl Records', cd: 'Audio CDs', cassette: 'Cassettes',
-      bluray: 'Blu-ray Movies', dvd: 'DVD Movies'
+      bluray: 'Blu-ray Movies', dvd: 'DVD Movies',
+      merchandise: 'Merchandise', 'vinyl-care': 'Vinyl Care'
     };
     const LANG_LABELS = { hindi: 'Hindi', english: 'English' };
 

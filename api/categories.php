@@ -4,8 +4,30 @@ require_once __DIR__ . '/config.php';
 $method = $_SERVER['REQUEST_METHOD'];
 $pdo = db();
 
+// Departments defined in CODE (velorex_categories() in src/seo/seo-lib.php)
+// rather than by the admin: they have their own URLs, subcategory taxonomy and
+// hand-written SEO copy. This seeds them into the categories table so they show
+// up in the admin's Category dropdown and products can actually be assigned.
+//
+// INSERT IGNORE, so it is a no-op once they exist and never disturbs the
+// admin's own ordering or additions. Removing one from the Categories panel
+// will not stick — that is intentional, since the storefront routes for it
+// exist regardless and an unassignable route is worse than an extra pill.
+function categories_seed_departments(PDO $pdo): void {
+    try {
+        $stmt = $pdo->prepare('INSERT IGNORE INTO categories (name, sort_order) VALUES (:n, :s)');
+        foreach ([['merchandise', 90], ['vinyl-care', 91]] as [$name, $sort]) {
+            $stmt->execute([':n' => $name, ':s' => $sort]);
+        }
+    } catch (Throwable $e) {
+        // Never fatal: the storefront reads categories on every page load.
+        error_log('[categories] department seed failed: ' . $e->getMessage());
+    }
+}
+
 try {
     if ($method === 'GET') {
+        categories_seed_departments($pdo);
         $stmt = $pdo->query('SELECT name FROM categories ORDER BY sort_order, name');
         echo json_encode($stmt->fetchAll(PDO::FETCH_COLUMN));
         exit;

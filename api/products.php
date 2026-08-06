@@ -20,9 +20,10 @@ try {
         // adds it on first call, but if that ALTER ever failed we must not
         // hard-error the storefront's main listing over a cosmetic column.
         $condCol = products_has_condition_column($pdo) ? 'item_condition, ' : '';
+        $subCol  = products_has_subcategory_column($pdo) ? 'subcategory, ' : '';
         $stmt = $pdo->query(
             'SELECT id, title, artist, category, language, price, original_price, '
-          . 'image, rating, reviews, badge, stock, ' . $condCol . 'music_director '
+          . 'image, rating, reviews, badge, stock, ' . $condCol . $subCol . 'music_director '
           . 'FROM products ORDER BY id'
         );
         $rows = $stmt->fetchAll();
