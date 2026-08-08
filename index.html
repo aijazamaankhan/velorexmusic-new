@@ -7,6 +7,19 @@
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'self' https: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data:; font-src 'self' https: data:;">
   <meta name="referrer" content="strict-origin-when-cross-origin">
+  <!-- Google Analytics 4 (G-N6H3GG17TM).
+       Placed after the CSP meta on purpose: a meta-delivered CSP only governs
+       content that follows it. default-src allows https:, so no policy change
+       was needed for googletagmanager.com.
+       Loaded async, so it never blocks rendering or Core Web Vitals. -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-N6H3GG17TM"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-N6H3GG17TM");
+  </script>
+
 
   <!-- ==================== SEO ====================
        These are the DEFAULTS for the app shell. Two things override them:
@@ -128,7 +141,7 @@
   <!-- Blog views. Must load before router.js, whose initPage dispatcher calls
        initPageBlog / initPageBlogPost. -->
   <script src="src/js/storefront/blog.js?v=38e36528"></script>
-  <script src="src/js/storefront/router.js?v=8345db07"></script>
+  <script src="src/js/storefront/router.js?v=4aacaebf"></script>
   <script src="src/js/storefront/checkout.js?v=472f3280"></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
        they can be shared between the storefront pages without duplication.

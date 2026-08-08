@@ -5,6 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data:; font-src 'self' https: data:;">
   <meta name="referrer" content="strict-origin-when-cross-origin">
+  <!-- Google Analytics 4 (G-N6H3GG17TM).
+       Placed after the CSP meta on purpose: a meta-delivered CSP only governs
+       content that follows it. default-src allows https:, so no policy change
+       was needed for googletagmanager.com.
+       Loaded async, so it never blocks rendering or Core Web Vitals. -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-N6H3GG17TM"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("js", new Date());
+    gtag("config", "G-N6H3GG17TM");
+  </script>
+
   <title>Contact Velorex Music | Record Store Gurugram &amp; Meerut</title>
   <meta name="description" content="Contact Velorex Music for orders, stock enquiries and international shipping quotes. Based in Sector 52 Gurugram and Meerut, Uttar Pradesh. Call +91 79060 27807 or send us a message.">
   <meta name="robots" content="index, follow, max-image-preview:large">

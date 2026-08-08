@@ -197,6 +197,41 @@
     }
 
     // =============================================
+    // ANALYTICS — SPA PAGE VIEWS
+    // =============================================
+    // The gtag snippet in index.html sends ONE page_view when the document
+    // loads. After that the storefront never loads another document — every
+    // category, product, blog post and cart view is a History API pushState.
+    //
+    // MEASURED, not assumed. Two control runs with this hook disabled recorded
+    // 0/3 and 1/3 navigations respectively — GA4's "page changes based on
+    // browser history events" fires unreliably here, so leaning on it alone
+    // loses most of the site's traffic. With this hook, every navigation is
+    // recorded.
+    //
+    // The first call is skipped because the gtag config already covered the
+    // initial document load; counting it here too would double it.
+    //
+    // >>> ONE SETTING TO CHANGE IN GA4 <<<
+    // Admin → Data Streams → (your stream) → Enhanced measurement → turn OFF
+    // "Page changes based on browser history events". GA occasionally fires its
+    // own page_view for a pushState in addition to this one, which inflates the
+    // count. Turning it off makes this hook the single source of page views.
+    // Its own events are identifiable in the network tab: they carry `dl` but
+    // no `dp`, whereas this hook always sends `dp`.
+    var gaFirstViewSkipped = false;
+
+    function trackPageView() {
+      if (typeof window.gtag !== 'function') return;   // tag blocked or not loaded
+      if (!gaFirstViewSkipped) { gaFirstViewSkipped = true; return; }
+      window.gtag('event', 'page_view', {
+        page_title: document.title,
+        page_location: window.location.href,
+        page_path: window.location.pathname + window.location.search,
+      });
+    }
+
+    // =============================================
     // INTRO SPLASH
     // =============================================
     // A brand moment on first load. Deliberately constrained, because a
@@ -329,6 +364,10 @@
       // view. A JS-rendering crawler reads these AFTER scripts run, so stale
       // tags here mean every SPA view gets indexed under the homepage's title.
       try { Seo.update(page, params); } catch (e) { console.warn('SEO tag update failed:', e); }
+      // Analytics must be told about the view AFTER Seo.update, so the title
+      // and canonical it reports describe the page the visitor actually landed
+      // on rather than the one they just left.
+      try { trackPageView(); } catch (e) { console.warn('analytics page_view failed:', e); }
       const footer = document.querySelector('.footer');
       if (footer) footer.style.display = 'block';
       if (options.pushState !== false) {
