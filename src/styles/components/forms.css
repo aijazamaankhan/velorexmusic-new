@@ -27,8 +27,17 @@
 .form-control option { background: var(--surface); }
 
 @media (max-width: 1024px) {
-  /* iOS Safari auto-zooms when a focused input has font-size < 16px. */
+  /* iOS Safari auto-zooms the whole page when a focused input has a
+     font-size below 16px, then leaves it zoomed — jarring mid-checkout. */
   input, select, textarea, .form-control { font-size: 16px; }
+
+  /* These two need naming explicitly. The bare `input` selector above is
+     specificity 0,0,1, so any rule that reaches an input through a CLASS
+     (`.navbar-search input` = 0,1,1, `.people-search-input` = 0,1,0) wins and
+     keeps its smaller size — meaning the guard silently did not apply to the
+     header search box or the people filter. */
+  .navbar-search input,
+  .people-search-input { font-size: 16px; }
 }
 
 @media (max-width: 768px) {

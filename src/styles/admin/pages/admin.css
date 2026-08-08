@@ -1941,3 +1941,54 @@
   color: var(--text-muted);
   font-style: italic;
 }
+
+/* =============================================================
+   ADMIN — MOBILE ERGONOMICS
+   The panel is genuinely used from a phone (checking orders,
+   fixing a price, publishing a post), so the controls need to be
+   thumb-sized. No layout changes: the admin already has no
+   horizontal overflow at 375px.
+   ============================================================= */
+@media (max-width: 900px) {
+
+  /* Blog editor toolbar — 12 buttons at 34x30 is a lot of missing.
+     Bigger targets and a scrollable single row rather than a
+     ragged wrap that pushes the editor down the page. */
+  .blog-toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 0.15rem;
+  }
+  .blog-toolbar::-webkit-scrollbar { display: none; }
+  .blog-toolbar button {
+    min-width: 42px;
+    height: 42px;
+    flex-shrink: 0;
+    font-size: 0.9rem;
+  }
+  .blog-toolbar-sep { flex-shrink: 0; }
+
+  /* The editor gets more of the screen — on a phone the surrounding
+     chrome eats most of it otherwise. */
+  .blog-editor { min-height: 260px; max-height: 50vh; padding: 0.85rem; }
+
+  /* Buttons and rows in tables/panels reach the 44px target. */
+  .data-table .btn,
+  .modal-content .btn { min-height: 42px; }
+  .data-table th, .data-table td { padding-top: 0.7rem; padding-bottom: 0.7rem; }
+
+  /* Category pills carry a small × remove button. */
+  .category-pill { min-height: 40px; }
+  .category-pill button { min-width: 32px; min-height: 32px; }
+
+  /* Image gallery tiles in the product modal. */
+  .img-action-btn { min-height: 34px; }
+  .img-delete-btn { min-width: 34px; min-height: 34px; }
+
+  /* Modal action rows stack instead of squeezing three buttons
+     onto one line where each ends up too narrow to read. */
+  .modal-content > div[style*="justify-content:flex-end"] .btn { flex: 1 1 auto; }
+}

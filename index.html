@@ -136,14 +136,14 @@
   <link rel="stylesheet" href="src/styles/tokens.css?v=a893990f">
   <link rel="stylesheet" href="src/styles/base.css?v=45f8212c">
   <link rel="stylesheet" href="src/styles/components/buttons.css?v=e55e967c">
-  <link rel="stylesheet" href="src/styles/components/forms.css?v=c9d8c052">
+  <link rel="stylesheet" href="src/styles/components/forms.css?v=75a50a70">
   <link rel="stylesheet" href="src/styles/components/modal.css?v=6d89eb5d">
   <link rel="stylesheet" href="src/styles/components/payment-modal.css?v=02096d61">
   <link rel="stylesheet" href="src/styles/components/toast.css?v=1b13f717">
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
   <!-- Page-specific styles (hero, products, cart, profile, footer, etc.).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=f6d43811">
+  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=5fcd289f">
 </head>
 
 <body>
@@ -977,7 +977,10 @@
             </div>
             <div class="form-group full-width">
               <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.9rem;">
-                <input id="addr-default" type="checkbox" style="width:18px;height:18px;cursor:pointer;">
+                <!-- Sized in CSS, not inline: an inline style beats every
+                     stylesheet rule, so the mobile tap-target sizing in
+                     storefront.css could never reach this one. -->
+                <input id="addr-default" type="checkbox" class="addr-default-check">
                 <span>Set as default shipping address</span>
               </label>
             </div>
