@@ -707,7 +707,13 @@
             </div>
             <div class="product-actions-group">${actionBtns}</div>
             <div class="product-detail-footnote">
-              <div>🚚 Free shipping on orders above ₹5,000</div>
+              <!-- Delivery is per product now, so this states THIS product's
+                   terms rather than a blanket promise the cart may not keep. -->
+              <div>${product.freeShipping
+                ? '🚚 <strong style="color:var(--success);">Free delivery</strong> on this item'
+                : (product.shippingCharge !== null && product.shippingCharge !== undefined
+                    ? '🚚 Delivery ₹' + Number(product.shippingCharge).toLocaleString()
+                    : '🚚 Delivery calculated at checkout')}</div>
               <div>🔒 Secure payment</div>
             </div>
           </div>
@@ -757,7 +763,7 @@
       // shown in the payment modal once an address is picked, and the
       // server is authoritative at order-creation time.
       var subtotal = CartHelpers.getCartTotal();
-      var quote = Shipping.calculate(subtotal, null);
+      var quote = Shipping.calculate(subtotal, null, Shipping.cartShippingItems());
       // Cart total shows the subtotal only — shipping is either free (≥ threshold)
       // or unknown until the address is picked at checkout. The order summary's
       // shipping line reflects that distinction.
@@ -783,9 +789,13 @@
         </div>
         <div class="cart-item-price"><div class="price">₹${(item.price * item.qty).toLocaleString()}</div><div class="unit-price">₹${item.price.toLocaleString()} each</div></div>
       </div>`).join('');
-      var shippingHtml = quote.freeShipping
-        ? '🚚 ✅ <strong style="color:var(--success);">Free shipping applied!</strong>'
-        : `🚚 Add ₹${quote.amountToFree.toLocaleString()} more for <strong style="color:var(--success);">FREE shipping pan-India</strong>`;
+        // quote.amountToFree is gone along with the spend threshold — using it
+        // here would have printed "Add ₹undefined more". Delivery now depends on
+        // what is in the cart, so state that rather than dangling a target the
+        // customer can no longer reach by spending more.
+        var shippingHtml = quote.freeShipping
+          ? '🚚 ✅ <strong style="color:var(--success);">Free delivery on this order</strong>'
+          : `🚚 Delivery ₹${Number(quote.shipping || 0).toLocaleString()} — charged once per order, not per item`;
       container.innerHTML = `<div class="cart-layout"><div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;"><h2 style="font-family:var(--font-display);font-size:1.25rem;">${cartItems.length} item${cartItems.length > 1 ? 's' : ''} in cart</h2><button class="btn btn-sm btn-danger" onclick="clearCartSPA()"><i class="fas fa-trash-can"></i> Clear Cart</button></div>
         <div class="cart-items-list">${itemsHtml}</div>

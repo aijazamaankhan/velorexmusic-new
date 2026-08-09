@@ -104,7 +104,7 @@
       }
       setCheckoutIntlBlocked(false);
 
-      var quote = Shipping.calculate(subtotal, addr);
+      var quote = Shipping.calculate(subtotal, addr, Shipping.cartShippingItems());
       var total = subtotal + quote.shipping;
 
       var amtEl = document.getElementById('payment-amount-display');

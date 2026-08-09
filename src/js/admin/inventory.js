@@ -168,6 +168,7 @@
         // Reset specifications
         setSpecificationsData({});
         renderSubcategoryOptions('f', null);
+        toggleShippingCharge('f');
 
         // Reset images (URLs + uploads)
         resetImageGallery();
@@ -227,7 +228,8 @@
     function downloadBulkTemplate() {
       const headers = [
         'id', 'title', 'artist', 'category', 'price',
-        'language', 'original_price', 'stock', 'badge', 'condition', 'subcategory', 'description',
+        'language', 'original_price', 'stock', 'badge', 'condition', 'subcategory',
+        'free_shipping', 'shipping_charge', 'description',
         'music_director', 'track_listing', 'people',
         'specs_format', 'specs_speed', 'specs_label', 'specs_year',
         'specs_tracks', 'specs_genre', 'specs_theme',
@@ -378,6 +380,10 @@
       if (cond) p.condition = (cond === 'pre-owned' || cond === 'preowned' || cond === 'used') ? 'pre-owned' : 'new';
       const sub = trim(obj.subcategory).toLowerCase();
       if (sub) p.subcategory = sub;
+      const fs2 = trim(obj.free_shipping).toLowerCase();
+      if (fs2) p.freeShipping = (fs2 === '1' || fs2 === 'yes' || fs2 === 'true' || fs2 === 'free');
+      const sc = trim(obj.shipping_charge);
+      if (sc !== '') p.shippingCharge = sc;
       const desc = trim(obj.description); if (desc) p.description = desc;
       const md = trim(obj.music_director); if (md) p.musicDirector = md;
       const tl = trim(obj.track_listing); if (tl) p.trackListing = tl;
@@ -909,6 +915,10 @@
         // omit the key and REPLACE INTO silently resets it to the default.
         condition: (document.getElementById('f-condition') || {}).value || 'new',
         subcategory: (document.getElementById('f-subcategory') || {}).value || null,
+        freeShipping: (document.getElementById('f-free-shipping') || {}).value === '1',
+        // Blank stays blank: null means "use the zone rate", which is NOT the
+        // same as 0 ("charge nothing").
+        shippingCharge: ((document.getElementById('f-shipping-charge') || {}).value || '').trim() || null,
         specs: getSpecificationsData()
       };
 
@@ -1004,6 +1014,11 @@
       // Must run AFTER e-category has been set above, since the options shown
       // depend on the selected category.
       renderSubcategoryOptions('e', product.subcategory || null);
+      var eFree = document.getElementById('e-free-shipping');
+      if (eFree) eFree.value = product.freeShipping ? '1' : '0';
+      var eChg = document.getElementById('e-shipping-charge');
+      if (eChg) eChg.value = (product.shippingCharge === null || product.shippingCharge === undefined) ? '' : product.shippingCharge;
+      toggleShippingCharge('e');
       document.getElementById('e-description').value = product.description || '';
       document.getElementById('e-music-director').value = product.musicDirector || '';
 
@@ -1258,6 +1273,8 @@
         badge: (document.getElementById('e-badge') || {}).value || null,
         condition: (document.getElementById('e-condition') || {}).value || 'new',
         subcategory: (document.getElementById('e-subcategory') || {}).value || null,
+        freeShipping: (document.getElementById('e-free-shipping') || {}).value === '1',
+        shippingCharge: ((document.getElementById('e-shipping-charge') || {}).value || '').trim() || null,
         specs: getEditSpecificationsData(),
       };
 
@@ -1389,3 +1406,12 @@
         }
       });
     });
+
+    // Hide the charge box when a product is marked free delivery — an amount
+    // that will never be used is just a way to confuse the next admin.
+    function toggleShippingCharge(prefix) {
+      var sel = document.getElementById(prefix + '-free-shipping');
+      var wrap = document.getElementById(prefix + '-shipping-charge-wrap');
+      if (!sel || !wrap) return;
+      wrap.style.display = sel.value === '1' ? 'none' : '';
+    }

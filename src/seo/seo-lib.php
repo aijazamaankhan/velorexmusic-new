@@ -51,14 +51,14 @@ function velorex_categories(): array {
             'key'   => 'vinyl',
             'label' => 'Vinyl Records',
             'title' => 'Buy Vinyl Records Online India | Hindi & English LP Records',
-            'description' => 'Shop original vinyl records online in India — Bollywood LPs, Hindi film soundtracks, English rock and jazz pressings. R.D. Burman, Kishore Kumar, Lata Mangeshkar and more. Free shipping over ₹5,000, delivered pan-India.',
+            'description' => 'Shop original vinyl records online in India — Bollywood LPs, Hindi film soundtracks, English rock and jazz pressings. R.D. Burman, Kishore Kumar, Lata Mangeshkar and more. Delivered pan-India.',
             'intro' => 'Original and reissue vinyl records shipped across India. Our collection spans Hindi film soundtracks and rare Bollywood pressings alongside English rock, jazz and classical LPs — curated for collectors who care about pressing quality.',
         ],
         'audio-cds' => [
             'key'   => 'cd',
             'label' => 'Audio CDs',
             'title' => 'Buy Audio CDs Online India | Hindi & English Music CDs',
-            'description' => 'Buy audio CDs online in India — Bollywood soundtracks, ghazals, classical and English albums. Sealed and pre-owned music CDs with pan-India delivery and free shipping over ₹5,000.',
+            'description' => 'Buy audio CDs online in India — Bollywood soundtracks, ghazals, classical and English albums. Sealed and pre-owned music CDs with pan-India delivery.',
             'intro' => 'A carefully checked catalogue of audio CDs covering Hindi film music, ghazals, Indian classical and English albums. Every disc is inspected before dispatch.',
         ],
         'cassettes' => [
@@ -79,7 +79,7 @@ function velorex_categories(): array {
             'key'   => 'dvd',
             'label' => 'DVD Movies',
             'title' => 'Buy DVD Movies Online India | Bollywood & English DVDs',
-            'description' => 'Shop DVD movies online in India — Bollywood classics, regional cinema and English films. Original DVDs with pan-India delivery and free shipping over ₹5,000.',
+            'description' => 'Shop DVD movies online in India — Bollywood classics, regional cinema and English films. Original DVDs with pan-India delivery.',
             'intro' => 'Original DVD releases covering Bollywood classics, regional Indian cinema and English films, including many long out-of-print titles.',
         ],
         // ---- Non-format departments -----------------------------------------

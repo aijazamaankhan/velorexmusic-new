@@ -74,7 +74,7 @@ var Seo = (function () {
   var PAGE_META = {
     index: {
       title: 'Velorex Music | Buy Vinyl Records, CDs & Cassettes Online India',
-      description: 'Buy original vinyl records, audio CDs, cassettes, Blu-rays and DVDs online in India. Hindi film soundtracks, English albums and rare collector pressings. Free shipping over ₹5,000.'
+      description: 'Buy original vinyl records, audio CDs, cassettes, Blu-rays and DVDs online in India. Hindi film soundtracks, English albums and rare collector pressings. Delivered across India.'
     },
     products: {
       title: 'Buy Vinyl Records, CDs & Cassettes Online India | Velorex Music',
@@ -326,8 +326,7 @@ var Seo = (function () {
         applyTags({
           title: 'Buy ' + full + ' Online India | Velorex Music',
           description: 'Shop ' + full.toLowerCase() + ' online in India at Velorex Music. '
-            + 'Original pressings, collector titles and current releases with pan-India delivery '
-            + 'and free shipping over ₹5,000.',
+            + 'Original pressings, collector titles and current releases, delivered pan-India.',
           canonical: canonical,
           robots: params.search ? 'noindex, follow' : undefined
         });

@@ -20,7 +20,8 @@
 //   2. Recomputes subtotal + shipping server-side. Same zone rule as the UI
 //      (see api/_shipping_helpers.php — mirror of src/js/shipping.js): zone
 //      based on the shipping address (Delhi/NCR ₹49, rest of India ₹99,
-//      remote zones ₹199), free PAN India at ₹5,000+ subtotal.
+//      remote zones ₹199) used as the FALLBACK, with per-product delivery
+//      (free / admin-set charge) taking precedence. See _shipping_helpers.php.
 //   3. Calls Razorpay's create-order API to mint an order_id bound to that
 //      amount. The browser cannot tamper with the bound amount.
 //   4. Persists a payment_orders row so verify.php can look it up later.
@@ -33,6 +34,7 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../_razorpay.php';
 require_once __DIR__ . '/../_address_helpers.php';
 require_once __DIR__ . '/../_shipping_helpers.php';
+require_once __DIR__ . '/../_products_helpers.php';  // products_has_shipping_columns()
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -150,7 +152,10 @@ try {
     // Load all referenced products in one query. The DB row's price wins —
     // the client's quoted price is ignored.
     $placeholders = implode(',', array_fill(0, count($quantities), '?'));
-    $stmt = $pdo->prepare("SELECT id, title, artist, price, stock FROM products WHERE id IN ($placeholders)");
+    // Only name the delivery columns when they exist; if the auto-ALTER ever
+    // failed we must still be able to take payments, falling back to zone rates.
+    $shipCols = products_has_shipping_columns($pdo) ? ', free_shipping, shipping_charge' : '';
+    $stmt = $pdo->prepare("SELECT id, title, artist, price, stock{$shipCols} FROM products WHERE id IN ($placeholders)");
     $stmt->execute(array_keys($quantities));
     $rows = $stmt->fetchAll();
 
@@ -162,6 +167,7 @@ try {
 
     $subtotal = 0; // in rupees
     $itemsSnapshot = [];
+    $shippingItems = [];
     foreach ($rows as $r) {
         $pid = (int)$r['id'];
         $qty = $quantities[$pid];
@@ -191,9 +197,19 @@ try {
             'qty'       => $qty,
             'lineTotal' => $lineTotal,
         ];
+        // One entry per LINE, not per unit: shipping is charged for the parcel,
+        // so buying two of the same record must not double the delivery.
+        $shippingItems[] = [
+            'freeShipping'   => !empty($r['free_shipping']),
+            'shippingCharge' => (isset($r['shipping_charge']) && $r['shipping_charge'] !== null)
+                ? (int)$r['shipping_charge'] : null,
+        ];
     }
 
-    $shipQuote = shipping_calculate((int)$subtotal, $addressSnapshot);
+    // Per-product delivery: the calculator needs the cart's shipping flags, not
+    // just the subtotal. $shippingItems is built inside the item loop above from
+    // the SAME DB rows the prices came from, so a client cannot influence it.
+    $shipQuote = shipping_calculate((int)$subtotal, $addressSnapshot, $shippingItems);
     $shipping  = $shipQuote['shipping'];
     $total     = $subtotal + $shipping;
     if ($total < 1) {

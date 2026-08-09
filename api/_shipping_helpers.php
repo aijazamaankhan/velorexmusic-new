@@ -12,9 +12,9 @@
 //                rejects non-IN addresses with intl_not_supported before
 //                this function is even called. Rate retained as a no-op
 //                safety fallback only.
-// Free shipping kicks in PAN India at ₹5,000+ subtotal.
-
-const VV_SHIPPING_FREE_THRESHOLD = 5000;
+// Delivery is now decided PER PRODUCT (free, or an admin-set rate), with these
+// zone rates as the fallback for products that do not specify one. The old
+// "free pan-India over ₹5,000" threshold has been removed.
 
 const VV_SHIPPING_RATES = [
     'ncr'    => 49,
@@ -66,15 +66,45 @@ function shipping_classify_zone(?array $address): string {
 }
 
 // Returns ['zone' => string, 'shipping' => int rupees, 'freeShipping' => bool].
-// $subtotal is in rupees (int). Mirrors Shipping.calculate() in the JS module.
-function shipping_calculate(int $subtotal, ?array $address): array {
+// $subtotal is in rupees (int). Mirrors Shipping.calculate() in the JS module —
+// CHANGE BOTH TOGETHER. This one is authoritative: it mints the Razorpay amount.
+//
+// DELIVERY IS PER PRODUCT. The old "free pan-India over ₹5,000" rule is gone.
+// Each product carries:
+//     freeShipping    → never adds a delivery charge
+//     shippingCharge  → the admin's own rate; null means "use the zone rate"
+//
+// $items is a list of ['freeShipping' => bool, 'shippingCharge' => ?int].
+// Passing an empty list falls back to the plain zone rate, which is what the
+// old behaviour was minus the threshold — so a caller that has not been updated
+// still charges something sane rather than zero.
+//
+// The cart charge is the HIGHEST applicable rate, not the sum. Everything ships
+// in one parcel, so summing would bill three records at 3x the courier cost and
+// punish exactly the large baskets we want. Free only when EVERY item is free —
+// otherwise a ₹50 free-delivery sticker would carry a heavy vinyl order.
+function shipping_calculate(int $subtotal, ?array $address, array $items = []): array {
     $zone = shipping_classify_zone($address);
     $baseRate = VV_SHIPPING_RATES[$zone] ?? VV_SHIPPING_RATES['rest'];
-    $freeShipping = $subtotal >= VV_SHIPPING_FREE_THRESHOLD;
-    $shipping = $freeShipping ? 0 : $baseRate;
+
+    if (!$items) {
+        return ['zone' => $zone, 'shipping' => $baseRate, 'freeShipping' => false];
+    }
+
+    $charge = 0;
+    $anyPaid = false;
+    foreach ($items as $it) {
+        if (!empty($it['freeShipping'])) continue;
+        $anyPaid = true;
+        $rate = (isset($it['shippingCharge']) && $it['shippingCharge'] !== null)
+            ? max(0, (int)$it['shippingCharge'])
+            : $baseRate;
+        if ($rate > $charge) $charge = $rate;
+    }
+
     return [
         'zone'         => $zone,
-        'shipping'     => $shipping,
-        'freeShipping' => $freeShipping,
+        'shipping'     => $anyPaid ? $charge : 0,
+        'freeShipping' => !$anyPaid,
     ];
 }

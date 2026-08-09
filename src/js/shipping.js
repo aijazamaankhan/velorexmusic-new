@@ -18,7 +18,8 @@
                     checkout.js) and server (create-order.php returns 400
                     with code:'intl_not_supported'). Rate retained as a
                     no-op safety fallback in case the gate is bypassed.
-   Free shipping kicks in PAN India at ₹5,000+ subtotal.
+   Delivery is decided PER PRODUCT (free, or an admin-set rate); these zone
+   rates are the fallback for products that do not specify one.
 
    NCR_PIN_PREFIXES is a coarse 3-digit list covering the NCR Planning Board's
    official districts. A handful of non-NCR pockets (e.g. parts of Kurukshetra
@@ -27,7 +28,8 @@
    ============================================================================= */
 
 const Shipping = {
-  FREE_THRESHOLD: 5000,
+  // Zone rates are the FALLBACK for products that don't set their own charge.
+  // Delivery is decided per product now; the old "free over ₹5,000" rule is gone.
   RATES: { ncr: 49, rest: 99, remote: 199, intl: 99 },
 
   // Match exactly the IN_STATES strings (see src/js/constants.js).
@@ -89,20 +91,57 @@ const Shipping = {
   // subtotal in rupees (int). address is the shipping-address snapshot shape
   // (countryCode, state, postalCode). Pass null/undefined for "address not
   // known yet" — returns the rest-of-India tier as the safe default.
-  calculate(subtotal, address) {
+  // MIRRORS shipping_calculate() in api/_shipping_helpers.php — change both
+  // together. That one is authoritative; this is only the on-screen estimate,
+  // so a divergence shows the customer a wrong number before checkout and then
+  // charges a different one, which is worse than either being wrong alone.
+  //
+  // `items` is the cart resolved against the product list:
+  //   [{ freeShipping: bool, shippingCharge: number|null }, ...]
+  // Highest applicable rate wins (one parcel, so summing would triple-bill a
+  // three-record order). Free only when every item is free.
+  calculate(subtotal, address, items) {
     const zone = this.classifyZone(address);
     const baseRate = this.RATES[zone] ?? this.RATES.rest;
-    const freeShipping = subtotal >= this.FREE_THRESHOLD;
-    const shipping = freeShipping ? 0 : baseRate;
-    const amountToFree = freeShipping ? 0 : Math.max(0, this.FREE_THRESHOLD - subtotal);
+
+    if (!items || !items.length) {
+      return { zone, zoneLabel: this.zoneLabel(zone), baseRate, shipping: baseRate, freeShipping: false };
+    }
+
+    let charge = 0;
+    let anyPaid = false;
+    items.forEach((it) => {
+      if (it && it.freeShipping) return;
+      anyPaid = true;
+      const rate = (it && it.shippingCharge !== null && it.shippingCharge !== undefined)
+        ? Math.max(0, parseInt(it.shippingCharge, 10) || 0)
+        : baseRate;
+      if (rate > charge) charge = rate;
+    });
+
     return {
       zone,
       zoneLabel: this.zoneLabel(zone),
       baseRate,
-      shipping,
-      freeShipping,
-      amountToFree,
-      freeThreshold: this.FREE_THRESHOLD,
+      shipping: anyPaid ? charge : 0,
+      freeShipping: !anyPaid,
     };
+  },
+
+  // Resolve the cart into the shape calculate() needs. Kept here so both
+  // callers (cart page + checkout) derive it identically.
+  cartShippingItems() {
+    try {
+      const products = Storage.getProducts() || [];
+      return (Storage.getCart() || []).map((line) => {
+        const p = products.find((x) => String(x.id) === String(line.id));
+        return {
+          freeShipping: !!(p && p.freeShipping),
+          shippingCharge: p && p.shippingCharge !== undefined ? p.shippingCharge : null,
+        };
+      });
+    } catch (e) {
+      return [];   // falls back to the plain zone rate
+    }
   },
 };
