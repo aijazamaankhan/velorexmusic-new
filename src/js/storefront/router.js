@@ -70,6 +70,7 @@
                 <a href="${P('products', {cat:'bluray'})}" onclick="navigate('products', {cat:'bluray'}); return false;" class="dropdown-item">Blu-ray Movies</a>
                 <a href="${P('products', {cat:'dvd'})}" onclick="navigate('products', {cat:'dvd'}); return false;" class="dropdown-item">DVD Movies</a>
                 <div class="dropdown-divider"></div>
+                <a href="/combos" onclick="navigate('combos'); return false;" class="dropdown-item">🎁 Combo Offers</a>
                 <a href="/products" onclick="navigate('products'); return false;" class="dropdown-item">All Products</a>
               </div>
             </li>
