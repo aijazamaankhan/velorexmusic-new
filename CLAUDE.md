@@ -102,7 +102,8 @@ velorexmusic-new/
 │       │   ├── router.js        # injectNavbar + injectFooter + theme/mobile-nav toggles +
 │       │   │                    # buildPageUrl/parsePageFromUrl/navigate/initPage dispatcher +
 │       │   │                    # currentPage/_detailQty/_detailMax/CURRENT_USER_ORDERS state
-│       │   ├── combos.js        # Combo offers — card rendering + "Add all to cart"
+│       │   ├── combos.js        # Combo offers — cards, /combos/<slug> detail page,
+│       │   │                    # "Add all to cart" / "Buy Now" / per-item add
 │       │   └── checkout.js      # checkoutSPA + processPayment + guest contact/address form +
 │       │                        # guest-upgrade modal (Phase 1C) + renderCheckoutAddressPicker
 │       └── admin/
@@ -400,6 +401,7 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 | GET | `/api/product.php?id=N` | — | Full `Product` for that id (or 404 if missing). Heavy fields included. Called on the product-detail page only. |
 | GET | `/api/categories.php` | — | `string[]` (sorted by `sort_order`) |
 | GET | `/api/combos.php` | — | `Combo[]` — published combos with their products resolved live, plus the real `total` of current prices, `itemCount` and `inStock`. Combos whose products have all been deleted are omitted. |
+| GET | `/api/combos.php?slug=X` | — | One published `Combo`, for the `/combos/<slug>` detail page so a deep link need not pull the whole feed. 404 if missing, unpublished, or left with zero products — a draft is not disclosed by its status code. |
 | POST | `/api/auth/signup.php` | `{ email, password, firstName, lastName? }` | `{ ok, token, user }` |
 | POST | `/api/auth/login.php` | `{ email, password }` | `{ ok, token, user }` |
 | POST | `/api/contact.php` | `{ fullName, email, subject, message }` | `{ ok, message }` — sends a support request from the contact page. |
@@ -1369,6 +1371,7 @@ Real paths now, served by `.htaccess` → `seo-render.php`:
 | `/product/<id>-<title>-<artist>` | Product detail | ✅ |
 | `/products?search=…&sort=…&people=…` | Filter permutation | ❌ canonical → clean category |
 | `/combos` | Combo offers | ✅ (noindex when empty) |
+| `/combos/<slug>` | Single combo | ✅ |
 | `/cart`, `/profile`, `/login`, `/signup`, `/forgot`, `/track-order.html` | Transactional | ❌ noindex |
 
 The **id is authoritative**, the slug is decorative. `/product/12-anything` 301s to the
@@ -1677,7 +1680,20 @@ implies — not a display tweak, and not something to bolt onto this table.
 | CRUD endpoint | [api/combos.php](api/combos.php) |
 | Admin panel + product picker | [src/js/admin/combos.js](src/js/admin/combos.js) |
 | Storefront cards + "Add all to cart" | [src/js/storefront/combos.js](src/js/storefront/combos.js) |
-| Server render | `$route === 'combos'` in [seo-render.php](seo-render.php) |
+| Server render | `$route === 'combos'` (listing) and `'combo'` (detail) in [seo-render.php](seo-render.php) |
+
+Each combo also has its own page at **`/combos/<slug>`** — the listing cards
+link to it rather than carrying the buy actions themselves. That page is where
+the descriptive copy and the outbound product links live, so it is the one
+worth ranking, and it is what someone lands on from a shared link. It offers
+three actions: **Add all to cart**, **Buy Now** (add all, then straight to the
+cart, mirroring `handleBuyNowDetail` on a product), and **Add just this** per
+product for people who only want one thing out of the bundle.
+
+The server-rendered version of the detail page deliberately omits the buy
+buttons. They need the combo in JS memory to work, and a button that silently
+does nothing until a script loads is worse than one that appears with the
+script. The SPA replaces the whole block on boot.
 
 **Products are resolved live on every read**, never denormalised onto the
 combo. A price edit or a deletion is reflected immediately, so the total on the

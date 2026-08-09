@@ -650,6 +650,107 @@ if ($route === 'combos') {
 }
 
 // -----------------------------------------------------------------------------
+// Route: single combo — /combos/<slug>
+//
+// The page a customer actually lands on from search or a shared link, so it is
+// rendered in full server-side: the bundle name, the description, every product
+// with its price and a link to its own page, and the combined total.
+//
+// As on the listing, no Offer markup: a combo is not a purchasable SKU.
+// ItemList is the honest description — a curated list of products.
+// -----------------------------------------------------------------------------
+if ($route === 'combo') {
+    require_once __DIR__ . '/api/_combo_helpers.php';
+    $slug = isset($_GET['slug']) ? (string)$_GET['slug'] : '';
+    if ($slug === '') velorex_send_404('Combo not found');
+
+    try {
+        combos_ensure_table(db());
+        $st = db()->prepare("SELECT * FROM combo_offers WHERE slug = :s AND status = 'published' LIMIT 1");
+        $st->execute([':s' => $slug]);
+        $row = $st->fetch();
+    } catch (Throwable $e) {
+        error_log('[seo-render] combo query failed: ' . $e->getMessage());
+        $row = false;
+    }
+    if (!$row) velorex_send_404('Combo not found');
+
+    $c = combos_attach_products(db(), [$row])[0];
+    // Every product deleted since the combo was built — nothing left to show.
+    if ($c['itemCount'] < 1) velorex_send_404('Combo not found');
+
+    $canonical = VELOREX_SITE_URL . '/combos/' . $c['slug'];
+    $desc = trim((string)$c['description']);
+    if ($desc === '') {
+        $desc = $c['itemCount'] . ' items bundled together by Velorex Music, bought as a set '
+              . 'at their normal prices. Shipped across India.';
+    }
+
+    $head  = velorex_meta_block([
+        'title'       => $c['title'] . ' | Combo Offer | Velorex Music',
+        'description' => $desc,
+        'canonical'   => $canonical,
+        'image'       => !empty($c['image'])
+            ? velorex_absolute_image($c['image'])
+            : velorex_absolute_image($c['products'][0]['image'] ?? ''),
+        'imageAlt'    => $c['title'],
+    ]);
+    $head .= velorex_jsonld_site();
+    $head .= velorex_jsonld_item_list($c['products'], $c['title'], $canonical);
+    $head .= velorex_jsonld_breadcrumbs([
+        ['name' => 'Home',         'url' => VELOREX_SITE_URL . '/'],
+        ['name' => 'Combo Offers', 'url' => VELOREX_SITE_URL . '/combos'],
+        ['name' => $c['title']],
+    ]);
+
+    $rows = '';
+    foreach ($c['products'] as $p) {
+        $url = velorex_product_path($p);
+        $oos = (int)($p['stock'] ?? 0) < 1;
+        $img = !empty($p['image'])
+            ? '<img src="' . velorex_e(velorex_absolute_image($p['image'])) . '" alt="'
+              . velorex_e($p['title']) . '" loading="lazy" decoding="async">'
+            : '<span class="combo-item-noimg">🎵</span>';
+        $rows .= '<li class="combo-item' . ($oos ? ' is-oos' : '') . '">'
+            . '<a class="combo-item-media" href="' . velorex_e($url) . '">' . $img . '</a>'
+            . '<div class="combo-item-info">'
+            . '<a class="combo-item-title" href="' . velorex_e($url) . '">' . velorex_e($p['title']) . '</a>'
+            . '<span class="combo-item-artist">' . velorex_e($p['artist'] ?? '') . '</span>'
+            . ($oos ? '<span class="combo-item-oos">Out of stock</span>' : '')
+            . '</div>'
+            . '<div class="combo-item-actions"><span class="combo-item-price">₹'
+            . number_format((int)$p['price']) . '</span></div></li>';
+    }
+
+    // Buttons are deliberately omitted from the server-rendered markup: they
+    // need the combo in JS memory to work, and a button that does nothing until
+    // a script loads is worse than one that appears with the script. The SPA
+    // replaces this whole block on boot.
+    $detail = '<div class="combo-detail">'
+        . '<div class="combo-detail-media">'
+        . (!empty($c['image'])
+            ? '<img src="' . velorex_e(velorex_absolute_image($c['image'])) . '" alt="'
+              . velorex_e($c['title']) . '" decoding="async">'
+            : '<div class="combo-cover-empty">🎁</div>')
+        . '</div><div class="combo-detail-main">'
+        . '<h1 class="combo-detail-title">' . velorex_e($c['title']) . '</h1>'
+        . ($c['description'] ? '<p class="combo-detail-desc">' . velorex_e($c['description']) . '</p>' : '')
+        . '<ul class="combo-items">' . $rows . '</ul>'
+        . '<div class="combo-detail-buy"><div class="combo-detail-total">'
+        . '<span>' . (int)$c['itemCount'] . ' items together</span>'
+        . '<strong>₹' . number_format((int)$c['total']) . '</strong>'
+        . '<small>Total of the items above at their normal prices. Shipping is calculated at checkout.</small>'
+        . '</div></div></div></div>';
+
+    $html = velorex_shell();
+    $html = velorex_inject_head($html, $head);
+    $html = velorex_show_section($html, 'page-combo');
+    $html = velorex_set_div_inner($html, '<div id="combo-detail">', $detail);
+    echo $html;
+    exit;
+}
+
+// -----------------------------------------------------------------------------
 // Route: blog listing and single post
 // -----------------------------------------------------------------------------
 if ($route === 'blog' || $route === 'blogpost') {

@@ -181,6 +181,7 @@ var Seo = (function () {
       return pslug ? '/pre-owned/' + pslug : '/pre-owned';
     }
     if (page === 'combos') return '/combos';
+    if (page === 'combo') return params.slug ? '/combos/' + params.slug : '/combos';
     if (page === 'blog') return '/blog';
     if (page === 'blog-post') return params.slug ? '/blog/' + params.slug : '/blog';
 
@@ -208,6 +209,10 @@ var Seo = (function () {
     if (pom && SLUG_TO_CAT[pom[1]]) { params.cat = SLUG_TO_CAT[pom[1]]; return { page: 'preowned', params: params }; }
 
     if (path === '/combos') return { page: 'combos', params: params };
+    if (path.indexOf('/combos/') === 0) {
+      params.slug = path.slice(8);
+      return { page: 'combo', params: params };
+    }
     if (path === '/blog') return { page: 'blog', params: params };
     var bm = path.match(/^\/blog\/([A-Za-z0-9-]+)$/);
     if (bm) { params.slug = bm[1]; return { page: 'blog-post', params: params }; }
@@ -431,10 +436,29 @@ var Seo = (function () {
     });
   }
 
+  // A combo's title and description only exist after its fetch resolves, so
+  // PAGE_META cannot cover it — same situation as a blog post.
+  function syncCombo(combo) {
+    if (!combo || !combo.slug) return;
+    var desc = String(combo.description || '').replace(/\s+/g, ' ').trim();
+    if (!desc) {
+      desc = combo.itemCount + ' items bundled together by Velorex Music, '
+        + 'bought as a set at their normal prices. Shipped across India.';
+    }
+    if (desc.length > 160) desc = desc.slice(0, 157).replace(/\s+\S*$/, '') + '…';
+    applyTags({
+      title: combo.title + ' | Combo Offer | Velorex Music',
+      description: desc,
+      canonical: ORIGIN + '/combos/' + combo.slug,
+      image: combo.image ? absoluteImage(combo.image) : undefined
+    });
+  }
+
   return {
     ORIGIN: ORIGIN,
     slugify: slugify,
     syncBlogPost: syncBlogPost,
+    syncCombo: syncCombo,
     productPath: productPath,
     buildPath: buildPath,
     parsePath: parsePath,

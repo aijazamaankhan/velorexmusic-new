@@ -162,6 +162,16 @@ try {
             if ($c['updatedAt'] && (!$newest || $c['updatedAt'] > $newest)) $newest = $c['updatedAt'];
         }
         $xml .= velorex_sitemap_url(VELOREX_SITE_URL . '/combos', $newest, 'weekly', '0.7');
+        // Each combo's own page. These are where the descriptive copy and the
+        // outbound product links live, so they are the ones worth crawling.
+        foreach ($comboLive as $c) {
+            $xml .= velorex_sitemap_url(
+                VELOREX_SITE_URL . '/combos/' . $c['slug'],
+                $c['updatedAt'],
+                'weekly',
+                '0.6'
+            );
+        }
     }
 } catch (Throwable $e) {
     error_log('[sitemap] combos query failed: ' . $e->getMessage());

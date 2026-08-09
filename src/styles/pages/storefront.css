@@ -1327,3 +1327,130 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   .combo-grid { grid-template-columns: 1fr; gap: 1.1rem; }
   .combo-card-media { aspect-ratio: 2 / 1; }
 }
+
+/* ---- Combo detail page (/combos/<slug>) ---------------------------------- */
+
+.combo-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
+  padding-bottom: 3rem;
+}
+.combo-detail-media {
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  aspect-ratio: 1 / 1;
+  position: sticky;
+  top: 90px;
+}
+.combo-detail-media > img,
+.combo-detail-media .combo-collage,
+.combo-detail-media .combo-cover-empty { width: 100%; height: 100%; }
+/* contain, not cover: this is whatever artwork the admin uploaded, at whatever
+   aspect ratio. Cropping a promo image to a square can cut the title off it.
+   The card grid still uses cover, where uniform tiles matter more. */
+.combo-detail-media > img { object-fit: contain; display: block; }
+/* On the detail page the collage stacks rather than sitting in one row — a
+   square frame divided into three vertical slivers is unreadable. */
+.combo-detail-media .combo-collage { grid-auto-flow: row; grid-auto-rows: 1fr; }
+
+.combo-detail-main { min-width: 0; }
+.combo-detail-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem);
+  line-height: 1.2;
+  margin: 0 0 0.75rem;
+  color: var(--text);
+}
+.combo-detail-desc {
+  color: var(--text-muted);
+  line-height: 1.7;
+  margin: 0 0 1.5rem;
+  max-width: 65ch;
+}
+
+.combo-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.combo-item {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+}
+.combo-item.is-oos { opacity: 0.62; }
+.combo-item-media {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.combo-item-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.combo-item-noimg { font-size: 1.4rem; opacity: 0.6; }
+
+.combo-item-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.combo-item-title {
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.combo-item-title:hover { color: var(--accent); }
+.combo-item-artist { font-size: 0.82rem; color: var(--text-muted); }
+.combo-item-oos { font-size: 0.75rem; color: var(--danger); font-weight: 600; }
+
+.combo-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+.combo-item-price { font-weight: 700; color: var(--text); white-space: nowrap; }
+
+.combo-detail-buy {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+.combo-detail-total { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.combo-detail-total span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.combo-detail-total strong { font-size: 1.8rem; color: var(--accent); line-height: 1.1; }
+.combo-detail-total small { font-size: 0.75rem; color: var(--text-muted); max-width: 42ch; }
+.combo-detail-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+@media (max-width: 900px) {
+  .combo-detail { grid-template-columns: 1fr; gap: 1.5rem; }
+  /* Sticky is pointless once the image sits above the content rather than
+     beside it, and on a short viewport it would pin the cover over the list. */
+  .combo-detail-media { position: static; aspect-ratio: 16 / 10; }
+  .combo-detail-media .combo-collage { grid-auto-flow: column; grid-auto-rows: auto; }
+}
+@media (max-width: 600px) {
+  .combo-item { flex-wrap: wrap; }
+  .combo-item-actions { width: 100%; justify-content: space-between; }
+  .combo-detail-actions { width: 100%; }
+  .combo-detail-actions .btn { flex: 1; }
+}

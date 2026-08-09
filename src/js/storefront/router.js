@@ -431,6 +431,10 @@
         } else items.push({ name: 'Pre-owned', active: true });
       }
       else if (page === 'combos') items.push({ name: 'Combo Offers', active: true });
+      else if (page === 'combo') {
+        items.push({ name: 'Combo Offers', page: 'combos', params: {} });
+        items.push({ name: (window.CURRENT_COMBO && CURRENT_COMBO.title) || 'Combo', active: true });
+      }
       else if (page === 'blog') items.push({ name: 'Blog', active: true });
       else if (page === 'blog-post') {
         items.push({ name: 'Blog', page: 'blog', params: {} });
@@ -459,6 +463,7 @@
       else if (page === 'login') initPageLogin();
       else if (page === 'signup') initPageSignup();
       else if (page === 'combos') initPageCombos();
+      else if (page === 'combo') initPageCombo(params.slug);
       else if (page === 'preowned') initPagePreowned(params);
       else if (page === 'blog') initPageBlog();
       else if (page === 'blog-post') initPageBlogPost(params);

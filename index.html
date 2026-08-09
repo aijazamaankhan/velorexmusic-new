@@ -117,7 +117,7 @@
   <script src="src/js/api-base.js?v=0ce972cf"></script>
   <!-- URL vocabulary + live metadata. Must load before router.js and pages.js,
        both of which call Seo.buildPath()/Seo.productPath() to render hrefs. -->
-  <script src="src/js/seo.js?v=98bab247"></script>
+  <script src="src/js/seo.js?v=32f50bd7"></script>
   <script src="src/js/constants.js?v=b0f974a1"></script>
   <script src="src/js/storage.js?v=3f882b69"></script>
   <script src="src/js/auth.js?v=79e7221e"></script>
@@ -140,9 +140,9 @@
   <script src="src/js/storefront/pages.js?v=dd5ff446"></script>
   <!-- Blog views. Must load before router.js, whose initPage dispatcher calls
        initPageBlog / initPageBlogPost. -->
-  <script src="src/js/storefront/combos.js?v=394c0408"></script>
+  <script src="src/js/storefront/combos.js?v=898e4dd2"></script>
   <script src="src/js/storefront/blog.js?v=38e36528"></script>
-  <script src="src/js/storefront/router.js?v=f180737a"></script>
+  <script src="src/js/storefront/router.js?v=0ccda2b9"></script>
   <script src="src/js/storefront/checkout.js?v=123984d6"></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
        they can be shared between the storefront pages without duplication.
@@ -157,7 +157,7 @@
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
   <!-- Page-specific styles (hero, products, cart, profile, footer, etc.).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=f4f3a028">
+  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=3954df3c">
 </head>
 
 <body>
@@ -531,6 +531,13 @@
           <div class="combo-grid" id="combos-grid"><div class="loading-spinner"></div></div>
         </div>
       </section>
+    </div>
+
+    <!-- COMBO DETAIL -->
+    <div id="page-combo" class="page-section">
+      <div class="container" style="padding-top:1.5rem;">
+        <div id="combo-detail"><div class="loading-spinner"></div></div>
+      </div>
     </div>
 
     <!-- PRE-OWNED -->

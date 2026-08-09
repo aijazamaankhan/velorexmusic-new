@@ -47,6 +47,26 @@ try {
             exit;
         }
 
+        // Public single-combo read, used by the /combos/<slug> detail page so a
+        // deep link does not have to pull the whole feed. Published only — an
+        // unpublished slug 404s rather than 403s, so a draft's existence is not
+        // disclosed by the status code.
+        if (isset($_GET['slug'])) {
+            $st = $pdo->prepare("SELECT * FROM combo_offers WHERE slug = :s AND status = 'published' LIMIT 1");
+            $st->execute([':s' => (string)$_GET['slug']]);
+            $row = $st->fetch();
+            $one = $row ? combos_attach_products($pdo, [$row]) : [];
+            // A combo whose products have all been deleted is treated as gone
+            // rather than served as an empty bundle.
+            if (!$one || $one[0]['itemCount'] < 1) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Combo not found']);
+                exit;
+            }
+            echo json_encode($one[0]);
+            exit;
+        }
+
         if (!empty($_GET['all'])) {
             require_admin();
             $rows = $pdo->query('SELECT * FROM combo_offers ORDER BY sort_order, id DESC')->fetchAll();
