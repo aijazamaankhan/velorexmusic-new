@@ -132,10 +132,6 @@ body { padding-top: 70px; }
 .hero-title .highlight { background: var(--orange-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 .hero-desc { color: var(--text-muted); font-size: 1.1rem; max-width: 480px; margin-bottom: 2.5rem; line-height: 1.8; }
 .hero-cta { display: flex; gap: 1rem; flex-wrap: wrap; }
-.hero-stats { display: flex; gap: 2rem; margin-top: 3rem; flex-wrap: wrap; }
-.stat-item { text-align: left; }
-.stat-value { font-family: var(--font-display); font-size: 2rem; font-weight: 700; color: var(--accent); }
-.stat-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
 .hero-visual { position: relative; display: flex; align-items: center; justify-content: center; }
 .vinyl-showcase { position: relative; width: 380px; height: 380px; }
 .vinyl-record { width: 100%; height: 100%; border-radius: 50%; background: conic-gradient(from 0deg, #1a1a1a 0deg, #2a2a2a 10deg, #1a1a1a 20deg, #333 30deg, #1a1a1a 40deg, #2a2a2a 50deg, #1a1a1a 60deg, #333 70deg, #1a1a1a 80deg, #2a2a2a 90deg, #1a1a1a 100deg, #333 110deg, #1a1a1a 120deg, #2a2a2a 130deg, #1a1a1a 140deg, #333 150deg, #1a1a1a 160deg, #2a2a2a 170deg, #1a1a1a 180deg, #333 190deg, #1a1a1a 200deg, #2a2a2a 210deg, #1a1a1a 220deg, #333 230deg, #1a1a1a 240deg, #2a2a2a 250deg, #1a1a1a 260deg, #333 270deg, #1a1a1a 280deg, #2a2a2a 290deg, #1a1a1a 300deg, #333 310deg, #1a1a1a 320deg, #2a2a2a 330deg, #1a1a1a 340deg, #333 350deg, #1a1a1a 360deg); animation: spin 8s linear infinite; box-shadow: 0 0 60px rgba(255, 107, 53, 0.3), 0 0 120px rgba(83, 52, 131, 0.2); display: flex; align-items: center; justify-content: center; }
@@ -611,7 +607,6 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   .hero-container { grid-template-columns: 1fr; text-align: center; padding: 3rem 1.5rem; gap: 2rem; }
   .hero-visual { display: none; }
   .hero-cta { justify-content: center; flex-wrap: wrap; }
-  .hero-stats { justify-content: center; flex-wrap: wrap; }
   .categories-grid { grid-template-columns: 1fr 1fr; }
   .footer-grid { grid-template-columns: 1fr 1fr; gap: 2rem; }
   .admin-stats { grid-template-columns: 1fr 1fr; }
