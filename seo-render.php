@@ -552,6 +552,104 @@ if ($route === 'preowned') {
 }
 
 // -----------------------------------------------------------------------------
+// Route: combo offers
+//
+// Server-rendered for the same reason the catalogue is: a crawler that does not
+// run JavaScript must still see the bundle names, the products in them and the
+// links out to those products. The internal links are the real value here —
+// each combo page is a hand-curated cluster of related products, which is
+// exactly the kind of internal linking a listing grid cannot express.
+//
+// No Product/Offer JSON-LD is emitted for a combo. A combo is not a purchasable
+// SKU — you cannot buy "the combo", you buy its members — so marking it up as
+// an Offer with a price would be a false claim about a buyable item.
+// -----------------------------------------------------------------------------
+if ($route === 'combos') {
+    require_once __DIR__ . '/api/_combo_helpers.php';
+    try {
+        combos_ensure_table(db());
+        $st = db()->query("SELECT * FROM combo_offers WHERE status = 'published' ORDER BY sort_order ASC, id DESC");
+        $combos = combos_attach_products(db(), $st->fetchAll());
+        // A combo whose products have all been deleted renders as an empty
+        // card with a ₹0 total; drop it rather than publish nonsense.
+        $combos = array_values(array_filter($combos, static function ($c) { return $c['itemCount'] > 0; }));
+    } catch (Throwable $e) {
+        error_log('[seo-render] combos query failed: ' . $e->getMessage());
+        $combos = [];
+    }
+
+    $canonical = VELOREX_SITE_URL . '/combos';
+    $count = count($combos);
+
+    $head = velorex_meta_block([
+        'title'       => 'Combo Offers | Vinyl Bundles & Starter Kits | Velorex Music',
+        'description' => 'Curated bundles from Velorex Music — records paired with the care kit to keep them clean, and sets from the same era. Shipped across India.',
+        'canonical'   => $canonical,
+        'image'       => ($count && !empty($combos[0]['image']))
+            ? velorex_absolute_image($combos[0]['image'])
+            : VELOREX_DEFAULT_OG_IMAGE,
+        'imageAlt'    => 'Velorex Music combo offers',
+        // An empty page has nothing to rank for — same rule as an empty category.
+        'robots'      => $count > 0
+            ? 'index, follow, max-image-preview:large, max-snippet:-1'
+            : 'noindex, follow',
+    ]);
+    $head .= velorex_jsonld_site();
+    $head .= velorex_jsonld_breadcrumbs([
+        ['name' => 'Home', 'url' => VELOREX_SITE_URL . '/'],
+        ['name' => 'Combo Offers'],
+    ]);
+
+    $cardsHtml = '';
+    foreach ($combos as $c) {
+        $items = '';
+        foreach ($c['products'] as $p) {
+            $items .= '<li><a href="' . velorex_e(velorex_product_path($p)) . '">'
+                . velorex_e($p['title']) . '</a><span>₹'
+                . number_format((int)$p['price']) . '</span></li>';
+        }
+
+        if (!empty($c['image'])) {
+            $media = '<img src="' . velorex_e(velorex_absolute_image($c['image'])) . '" alt="'
+                . velorex_e($c['title']) . '" loading="lazy" decoding="async">';
+        } else {
+            $covers = '';
+            $n = 0;
+            foreach ($c['products'] as $p) {
+                if (empty($p['image']) || $n >= 3) continue;
+                $covers .= '<img src="' . velorex_e(velorex_absolute_image($p['image'])) . '" alt="'
+                    . velorex_e($p['title']) . '" loading="lazy" decoding="async">';
+                $n++;
+            }
+            $media = $covers ? '<div class="combo-collage">' . $covers . '</div>'
+                             : '<div class="combo-cover-empty">🎁</div>';
+        }
+
+        $cardsHtml .= '<article class="combo-card">'
+            . '<div class="combo-card-media">' . $media . '</div>'
+            . '<div class="combo-card-body">'
+            . '<h2 class="combo-card-title">' . velorex_e($c['title']) . '</h2>'
+            . ($c['description'] ? '<p class="combo-card-desc">' . velorex_e($c['description']) . '</p>' : '')
+            . '<ul class="combo-card-items">' . $items . '</ul>'
+            . '<div class="combo-card-foot"><div class="combo-card-total">'
+            . '<span>' . (int)$c['itemCount'] . ' items together</span>'
+            . '<strong>₹' . number_format((int)$c['total']) . '</strong>'
+            . '</div></div></div></article>';
+    }
+    if (!$count) {
+        $cardsHtml = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:3rem 1rem;">'
+            . '<p>No combo offers right now. <a href="/products">Browse everything</a>.</p></div>';
+    }
+
+    $html = velorex_shell();
+    $html = velorex_inject_head($html, $head);
+    $html = velorex_show_section($html, 'page-combos');
+    $html = velorex_set_div_inner($html, '<div class="combo-grid" id="combos-grid">', $cardsHtml);
+    echo $html;
+    exit;
+}
+
+// -----------------------------------------------------------------------------
 // Route: blog listing and single post
 // -----------------------------------------------------------------------------
 if ($route === 'blog' || $route === 'blogpost') {

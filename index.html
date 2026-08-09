@@ -117,7 +117,7 @@
   <script src="src/js/api-base.js?v=0ce972cf"></script>
   <!-- URL vocabulary + live metadata. Must load before router.js and pages.js,
        both of which call Seo.buildPath()/Seo.productPath() to render hrefs. -->
-  <script src="src/js/seo.js?v=3e3dd415"></script>
+  <script src="src/js/seo.js?v=98bab247"></script>
   <script src="src/js/constants.js?v=b0f974a1"></script>
   <script src="src/js/storage.js?v=3f882b69"></script>
   <script src="src/js/auth.js?v=79e7221e"></script>
@@ -129,7 +129,7 @@
        still live in the inline <script> for now (will move in PR 6). -->
   <script src="src/js/toast.js?v=d72083ef"></script>
   <script src="src/js/confirm-dialog.js?v=40a04cdd"></script>
-  <script src="src/js/cart.js?v=8e3fecdf"></script>
+  <script src="src/js/cart.js?v=f605a63a"></script>
   <script src="src/js/address-form.js?v=5d822cd1"></script>
   <!-- Storefront app layer extracted in PR 6. Load order: carriers (data
        only, no deps) → pages (renderers + initPage*) → router (uses
@@ -137,11 +137,12 @@
        end up in script-scope; the inline <script> at the bottom of <body>
        just bootstraps DOMContentLoaded. -->
   <script src="src/js/storefront/carriers.js?v=488bf189"></script>
-  <script src="src/js/storefront/pages.js?v=b9b3ec52"></script>
+  <script src="src/js/storefront/pages.js?v=dd5ff446"></script>
   <!-- Blog views. Must load before router.js, whose initPage dispatcher calls
        initPageBlog / initPageBlogPost. -->
+  <script src="src/js/storefront/combos.js?v=394c0408"></script>
   <script src="src/js/storefront/blog.js?v=38e36528"></script>
-  <script src="src/js/storefront/router.js?v=4aacaebf"></script>
+  <script src="src/js/storefront/router.js?v=f180737a"></script>
   <script src="src/js/storefront/checkout.js?v=123984d6"></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
        they can be shared between the storefront pages without duplication.
@@ -156,7 +157,7 @@
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
   <!-- Page-specific styles (hero, products, cart, profile, footer, etc.).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=c3abd81b">
+  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=f4f3a028">
 </head>
 
 <body>
@@ -265,6 +266,18 @@
               <div class="category-card-content"><div class="category-card-icon">🎞️</div><div class="category-card-title">DVDs</div><div class="category-card-count" id="dvd-count">Loading...</div></div>
             </a>
           </div>
+        </div>
+      </section>
+
+      <!-- Combo strip. Hidden by initHomeCombos() when there are none, the same
+           way the curated Best Selling / New Releases strips behave. -->
+      <section class="section" id="home-combos" style="display:none;">
+        <div class="container">
+          <div class="section-header">
+            <div><h2 class="section-title">🎁 Combo <span>Offers</span></h2><p class="section-subtitle">Bundles that belong together</p></div>
+            <a href="/combos" onclick="navigate('combos'); return false;" class="btn btn-secondary">View All →</a>
+          </div>
+          <div class="combo-grid" id="home-combos-grid"></div>
         </div>
       </section>
 
@@ -498,6 +511,24 @@
             </div>
             <div class="products-grid" id="related-grid"></div>
           </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- COMBO OFFERS -->
+    <div id="page-combos" class="page-section">
+      <div class="page-hero">
+        <div class="container">
+          <h1 class="page-hero-title">Combo Offers</h1>
+          <p style="color:var(--text-muted);margin-top:0.5rem;max-width:64ch;">
+            Bundles we put together because they belong together — a record and the
+            kit to keep it clean, or two pressings from the same era.
+          </p>
+        </div>
+      </div>
+      <section class="section" style="padding-top:0;">
+        <div class="container">
+          <div class="combo-grid" id="combos-grid"><div class="loading-spinner"></div></div>
         </div>
       </section>
     </div>

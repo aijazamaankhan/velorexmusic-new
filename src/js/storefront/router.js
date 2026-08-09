@@ -110,6 +110,7 @@
                 <a href="${P('products', {cat:'vinyl-care'})}" onclick="navigate('products', {cat:'vinyl-care'}); return false;" class="dropdown-item">All Vinyl Care</a>
               </div>
             </li>
+            <li class="nav-item"><a href="/combos" onclick="navigate('combos'); return false;" class="nav-link ${activePage === 'combos' ? 'active' : ''}">Combos</a></li>
             <li class="nav-item"><a href="/pre-owned" onclick="navigate('preowned'); return false;" class="nav-link ${activePage === 'preowned' ? 'active' : ''}">Pre-owned</a></li>
             <li class="nav-item"><a href="/blog" onclick="navigate('blog'); return false;" class="nav-link ${activePage === 'blog' || activePage === 'blog-post' ? 'active' : ''}">Blog</a></li>
           `}
@@ -178,6 +179,7 @@
             <div>
               <p class="footer-col-title">Help</p>
               <div class="footer-links">
+                <a href="/combos" onclick="navigate('combos'); return false;" class="footer-link">Combo Offers</a>
                 <a href="${P('preowned', {})}" onclick="navigate('preowned'); return false;" class="footer-link">Pre-owned</a>
                 <a href="/blog" onclick="navigate('blog'); return false;" class="footer-link">Blog</a>
                 <a href="/shipping.html" class="footer-link">Shipping Policy</a>
@@ -428,6 +430,7 @@
           items.push({ name: CAT_LABELS[params.cat] || params.cat, active: true });
         } else items.push({ name: 'Pre-owned', active: true });
       }
+      else if (page === 'combos') items.push({ name: 'Combo Offers', active: true });
       else if (page === 'blog') items.push({ name: 'Blog', active: true });
       else if (page === 'blog-post') {
         items.push({ name: 'Blog', page: 'blog', params: {} });
@@ -455,6 +458,7 @@
       else if (page === 'profile') initPageProfile();
       else if (page === 'login') initPageLogin();
       else if (page === 'signup') initPageSignup();
+      else if (page === 'combos') initPageCombos();
       else if (page === 'preowned') initPagePreowned(params);
       else if (page === 'blog') initPageBlog();
       else if (page === 'blog-post') initPageBlogPost(params);

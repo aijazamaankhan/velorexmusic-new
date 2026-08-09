@@ -84,6 +84,10 @@ var Seo = (function () {
       title: 'Pre-owned Vinyl, CDs & Cassettes | Buy Used Records India',
       description: 'Shop pre-owned vinyl records, audio CDs, cassettes, Blu-rays and DVDs in India. Second-hand and collector copies, condition-checked before dispatch.'
     },
+    combos: {
+      title: 'Combo Offers | Vinyl Bundles & Starter Kits | Velorex Music',
+      description: 'Curated vinyl bundles from Velorex Music — records paired with the care kit to keep them clean, and sets from the same era. Shipped across India.'
+    },
     blog: {
       title: 'Velorex Journal | Vinyl, Hindi Film Music & Collecting',
       description: 'Notes on vinyl records, Hindi film music and the pressings worth collecting — from the Velorex Music team in India.'
@@ -176,6 +180,7 @@ var Seo = (function () {
       var pslug = params.cat ? CAT_TO_SLUG[params.cat] : null;
       return pslug ? '/pre-owned/' + pslug : '/pre-owned';
     }
+    if (page === 'combos') return '/combos';
     if (page === 'blog') return '/blog';
     if (page === 'blog-post') return params.slug ? '/blog/' + params.slug : '/blog';
 
@@ -202,6 +207,7 @@ var Seo = (function () {
     var pom = path.match(/^\/pre-owned\/([a-z-]+)$/);
     if (pom && SLUG_TO_CAT[pom[1]]) { params.cat = SLUG_TO_CAT[pom[1]]; return { page: 'preowned', params: params }; }
 
+    if (path === '/combos') return { page: 'combos', params: params };
     if (path === '/blog') return { page: 'blog', params: params };
     var bm = path.match(/^\/blog\/([A-Za-z0-9-]+)$/);
     if (bm) { params.slug = bm[1]; return { page: 'blog-post', params: params }; }

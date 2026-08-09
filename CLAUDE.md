@@ -77,13 +77,15 @@ velorexmusic-new/
 │       │                        # degradation against localStorage quota, per-user cart
 │       ├── auth.js              # Auth — bearer token + session + login/signup/logout
 │       ├── addresses.js         # Addresses CRUD wrapper around /api/addresses.php
-│       ├── shipping.js          # Shipping.calculate(subtotal, address) — zone-based
-│       │                        # tiers (Delhi/NCR ₹49, rest ₹99, remote ₹199; free
-│       │                        # pan-India ≥ ₹5,000). PHP mirror in api/_shipping_helpers.php
-│       │                        # — keep both files in sync.
+│       ├── shipping.js          # Shipping.calculate(subtotal, address, items) — zone base
+│       │                        # rate (Delhi/NCR ₹49, rest ₹99, remote ₹199) overridden
+│       │                        # per product by free_shipping / shipping_charge. NO
+│       │                        # order-value free threshold — see §16. PHP mirror in
+│       │                        # api/_shipping_helpers.php — keep both files in sync.
 │       ├── toast.js             # showToast() — bottom-right pill, auto-dismisses (storefront)
 │       ├── confirm-dialog.js    # openConfirmDialog/closeConfirmDialog — styled window.confirm replacement
-│       ├── cart.js              # CartHelpers — addToCart/updateQty/getCartCount/getCartTotal + stock guards
+│       ├── cart.js              # CartHelpers — addToCart/updateQty/getCartCount/getCartTotal + stock guards.
+│       │                        # addToCart(id, qty, {silent}) — silent batches the toast, never the guard.
 │       ├── address-form.js      # openAddressModal + country-aware state/postal/landmark/GSTIN widgets +
 │       │                        # submitAddressForm + confirmDeleteAddress (shared by profile + checkout)
 │       ├── skeleton.js          # Skeleton.{productGrid, orderCards, statCards, tableRows,
@@ -100,6 +102,7 @@ velorexmusic-new/
 │       │   ├── router.js        # injectNavbar + injectFooter + theme/mobile-nav toggles +
 │       │   │                    # buildPageUrl/parsePageFromUrl/navigate/initPage dispatcher +
 │       │   │                    # currentPage/_detailQty/_detailMax/CURRENT_USER_ORDERS state
+│       │   ├── combos.js        # Combo offers — card rendering + "Add all to cart"
 │       │   └── checkout.js      # checkoutSPA + processPayment + guest contact/address form +
 │       │                        # guest-upgrade modal (Phase 1C) + renderCheckoutAddressPicker
 │       └── admin/
@@ -113,6 +116,7 @@ velorexmusic-new/
 │           │                    # notes/danger tabs) + all customer mutations
 │           ├── orders.js        # Orders panel + order detail modal + status taxonomy +
 │           │                    # inline shipment edit + patchOrder + print invoice
+│           ├── combos.js        # Combo Offers panel — list, editor, product picker
 │           ├── inventory.js     # Dashboard + products table + product modal (new + edit) +
 │           │                    # image gallery + bulk CSV upload
 │           └── toast.js         # Admin showToast (single-element pattern, distinct from
@@ -157,6 +161,9 @@ velorexmusic-new/
 │   │   ├── users.php            # GET (list) / POST (reset-password / update-profile / force-logout / update-notes / delete-user)
 │   │   ├── customer-detail.php  # GET ?userId=N → orders, addresses, sessions (batched for the admin drawer)
 │   │   └── guest-customers.php  # GET → rolled-up guest checkouts grouped by email (admin Guests filter)
+│   ├── combos.php               # GET (public/?all=1 admin/?id=N) / POST (admin upsert) / DELETE (admin)
+│   ├── _combo_helpers.php       # combo_offers bootstrap + live product resolution. Auto-creates
+│   │                            # the table, like the blog. NO price column — read the header.
 │   ├── _address_helpers.php     # Shared address validation + snapshot helpers (addresses.php + create-order.php)
 │   ├── _shipping_helpers.php    # shipping_calculate($subtotal,$address) — server mirror of
 │   │                            # src/js/shipping.js. Authoritative at /api/payments/create-order.php
@@ -352,6 +359,25 @@ CREATE TABLE payment_orders (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Curated product bundles. Created on demand by combos_ensure_table() on the
+-- first /api/combos.php hit — one of two tables (with blog_posts) that need no
+-- phpMyAdmin step. There is deliberately NO price/discount column: see the
+-- header of api/_combo_helpers.php and §17 below.
+CREATE TABLE combo_offers (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  slug VARCHAR(200) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  description VARCHAR(600) NULL,
+  image VARCHAR(500) NULL,              -- optional cover; falls back to a collage of product covers
+  product_ids JSON NOT NULL,            -- [12, 34, 56] — resolved live on every read
+  status ENUM("draft","published") NOT NULL DEFAULT "draft",
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_combo_slug (slug),
+  KEY idx_combo_status (status, sort_order)
+);
+
 INSERT INTO categories (name, sort_order) VALUES
   ('vinyl', 1), ('cd', 2), ('cassette', 3), ('bluray', 4), ('dvd', 5);
 ```
@@ -373,6 +399,7 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 | GET | `/api/products.php` | — | `ProductLean[]` — listing shape only (id, title, artist, category, language, price, originalPrice, image, rating, reviews, badge, stock, musicDirector). Heavy fields (description, full gallery, track listing, specs, people) are NOT included; fetch them via `/api/product.php?id=N`. This drops the list payload from ~27 MB to ~30 KB on a 66-product catalog. |
 | GET | `/api/product.php?id=N` | — | Full `Product` for that id (or 404 if missing). Heavy fields included. Called on the product-detail page only. |
 | GET | `/api/categories.php` | — | `string[]` (sorted by `sort_order`) |
+| GET | `/api/combos.php` | — | `Combo[]` — published combos with their products resolved live, plus the real `total` of current prices, `itemCount` and `inStock`. Combos whose products have all been deleted are omitted. |
 | POST | `/api/auth/signup.php` | `{ email, password, firstName, lastName? }` | `{ ok, token, user }` |
 | POST | `/api/auth/login.php` | `{ email, password }` | `{ ok, token, user }` |
 | POST | `/api/contact.php` | `{ fullName, email, subject, message }` | `{ ok, message }` — sends a support request from the contact page. |
@@ -403,6 +430,9 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 | POST | `/api/upload-product-image.php` | multipart `image` field (JPG/PNG/WebP, ≤5 MB) | `{ ok, url, bytes, mime }` — writes the file to `public_html/uploads/products/<hash>.<ext>` and returns the URL. Content-addressed and idempotent (same bytes → same hash → same URL → single file on disk). Called by the admin product modal in place of the old base64 FileReader path. |
 | DELETE | `/api/products.php?id=N` | — | `{ ok }` |
 | POST | `/api/categories.php` | `{ categories: string[] }` (full list) | `{ ok, count }` — transactional replace |
+| GET | `/api/combos.php?all=1` | — | `Combo[]` including drafts |
+| POST | `/api/combos.php` | `{ id?, title, description?, image?, productIds: number[], status?, sortOrder? }` | `{ ok, combo }` — `id` present = update. Requires 2–12 product ids and every one must exist. |
+| DELETE | `/api/combos.php?id=N` | — | `{ ok }` |
 | GET | `/api/orders.php` | — | `Order[]` (all orders, joined with user info) |
 | GET | `/api/admin/users.php` | — | `User[]` (each row includes `orderCount`, `totalSpent`, `activeSessionCount`, `addressCount`, `notes`) |
 | POST | `/api/admin/users.php` | `{ action: "reset-password", userId, newPassword? }` | `{ ok, generated, newPassword? }` — if `newPassword` is omitted the server generates a strong temp password and returns it once. Always invalidates all sessions for the user. |
@@ -1203,6 +1233,8 @@ See `PLAYWRIGHT_MCP_README.md` for the optional MCP server setup if you want bro
 | Email verification on signup | Skipped | Users can log in immediately after signup. Same SMTP dependency as above. |
 | International checkout | Gated by design | The Razorpay checkout flow is India-only today. Non-IN addresses surface a "We ship within India only — email us for a quote" block at checkout (`checkout-intl-block` in [index.html](index.html); `setCheckoutIntlBlocked` in [src/js/storefront/checkout.js](src/js/storefront/checkout.js)) and `api/payments/create-order.php` rejects them with `code: 'intl_not_supported'`. To re-enable: needs IEC code + Razorpay International KYC + a carrier-quote step. The address book still accepts intl addresses (saving is fine; checkout is what's gated). |
 | Address book CRUD | ✅ Shipped | India + international, multi-address per user, default flag, per-country state/postal rules. UI: profile tab + checkout picker. API: `api/addresses.php`. Orders snapshot `shippingAddress` into `orders.order_data` at place-order time. |
+| Combo offers | ✅ Shipped | Curated bundles, admin-managed, showcase-only by design — no discount is applied. See §17. |
+| Per-product shipping | ✅ Shipped | `free_shipping` / `shipping_charge` on products; the order-value free threshold was removed. See §16. |
 | Wishlist persistence | Stub | The Wishlist tab in profile shows the first 3 products as filler. Would need a `wishlist` table or per-user JSON. |
 | Order status updates | Local-only | Admin can change an order's status in the UI but it only updates localStorage on the admin's browser. Needs a PATCH endpoint on `orders.php`. |
 | Razorpay integration | ✅ Shipped | Server-side order creation + HMAC signature verification + webhook backstop. Both test and live keys live in the secrets file, switched via `RAZORPAY_MODE`. See [§10 Razorpay payment flow](#razorpay-payment-flow). |
@@ -1336,6 +1368,7 @@ Real paths now, served by `.htaccess` → `seo-render.php`:
 | `/vinyl-records/hindi`, `/vinyl-records/english` | Category + language facet | ✅ |
 | `/product/<id>-<title>-<artist>` | Product detail | ✅ |
 | `/products?search=…&sort=…&people=…` | Filter permutation | ❌ canonical → clean category |
+| `/combos` | Combo offers | ✅ (noindex when empty) |
 | `/cart`, `/profile`, `/login`, `/signup`, `/forgot`, `/track-order.html` | Transactional | ❌ noindex |
 
 The **id is authoritative**, the slug is decorative. `/product/12-anything` 301s to the
@@ -1578,3 +1611,89 @@ screenshot check, while silently swallowing every click on the site.
 4. **Re-scrape the social caches** so the new card replaces any previously cached blank:
    Facebook's [Sharing Debugger](https://developers.facebook.com/tools/debug/) → "Scrape
    Again" (this also covers WhatsApp).
+
+## 16. Shipping
+
+There is **no order-value free-shipping threshold**. It used to be "free
+pan-India over ₹5,000"; the owner asked for per-product control instead, so the
+rule now lives on the product.
+
+Two columns on `products`, both auto-added by `products_has_shipping_columns()`
+the same way `item_condition` is:
+
+| Column | Meaning |
+|---|---|
+| `free_shipping` TINYINT(1) | This item ships free. Set in the admin product form. |
+| `shipping_charge` INT NULL | A flat charge for this item, overriding the zone rate. `NULL` = use the zone rate. |
+
+The zone rate is the fallback: Delhi/NCR ₹49, rest of India ₹99, remote
+(North-East, J&K, Andaman, Lakshadweep) ₹199.
+
+**Mixed carts take the highest charge that applies, not the sum.** A cart of a
+free-shipping T-shirt and a ₹149 vinyl ships at ₹149, not ₹149 + ₹99. Charging
+per line would punish larger orders, which is the opposite of what a shipping
+policy is for. If **every** item in the cart is free-shipping, shipping is ₹0.
+
+```
+shipping = 0                              if every item has free_shipping
+         = max(shipping_charge ?? zone)   over the items that are NOT free
+```
+
+**`api/_shipping_helpers.php` is authoritative** — it runs inside
+`/api/payments/create-order.php`, which is what mints the Razorpay amount.
+`src/js/shipping.js` is a display mirror. **They must stay in sync**: if the
+cart quotes a number the server does not agree with, the customer sees one
+figure and is charged another. That exact bug shipped once already (see §9,
+"About `prep-deploy`"). When you change one, change the other and re-check the
+parity cases.
+
+`Shipping.cartShippingItems()` in the JS mirror builds the per-line shape from
+the product cache — one entry **per line, not per unit**, because the rule is a
+max over distinct items and multiplying by quantity would silently re-introduce
+per-unit charging.
+
+## 17. Combo offers
+
+Admin → **Combos**. A combo is a curated bundle: title, optional cover, a
+description, and 2–12 products. Rendered on `/combos` and as a homepage strip,
+both server-rendered by `seo-render.php`.
+
+**A combo does not change what anyone is charged, and this is deliberate.**
+`api/payments/create-order.php` recomputes every total from DB product prices —
+that is the security property that stops a tampered browser from setting its
+own price. A discount stored on a combo would therefore be ignored at checkout:
+the page would promise ₹4,499 and the till would take ₹5,497. So a combo shows
+the **real sum of its products' current prices**, and "Add all to cart" adds
+those products at their normal prices. What is shown and what is charged are
+the same number by construction.
+
+If a genuine bundle discount is ever wanted, it has to be enforced inside
+`create-order.php`. That is a payment-path change with all the care that
+implies — not a display tweak, and not something to bolt onto this table.
+
+| Piece | File |
+|---|---|
+| Table bootstrap, live product resolution | [api/_combo_helpers.php](api/_combo_helpers.php) |
+| CRUD endpoint | [api/combos.php](api/combos.php) |
+| Admin panel + product picker | [src/js/admin/combos.js](src/js/admin/combos.js) |
+| Storefront cards + "Add all to cart" | [src/js/storefront/combos.js](src/js/storefront/combos.js) |
+| Server render | `$route === 'combos'` in [seo-render.php](seo-render.php) |
+
+**Products are resolved live on every read**, never denormalised onto the
+combo. A price edit or a deletion is reflected immediately, so the total on the
+card cannot drift from what checkout will charge. A product deleted after the
+combo was built is skipped rather than rendering a broken row; a published
+combo left with zero products is hidden from the public feed (and from the
+sitemap) but still shown in the admin so it can be fixed.
+
+**No `Product`/`Offer` JSON-LD is emitted for a combo.** You cannot buy "the
+combo" — you buy its members — so marking it up as a purchasable Offer with a
+price would be a false claim about a buyable item, which is a rich-result
+violation. The SEO value here is the internal linking: each combo is a
+hand-curated cluster of related products, which a listing grid cannot express.
+
+**`CartHelpers.addToCart(id, qty, { silent: true })`** exists for this feature.
+Without it, adding a twelve-product combo stacks twelve toasts. `silent`
+changes what is *said*, never what is *allowed* — the stock guard runs
+identically, and a combo containing an out-of-stock item adds what it can and
+reports the shortfall once.

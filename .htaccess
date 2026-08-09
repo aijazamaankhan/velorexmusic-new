@@ -103,6 +103,7 @@ DirectoryIndex index.html index.php
 
   # /blog and /blog/<slug>. The slug charset is restricted to what
   # velorex_slugify() can emit, so no other shape reaches the front controller.
+  RewriteRule ^combos/?$ seo-render.php?_route=combos [L,QSA]
   RewriteRule ^blog/?$ seo-render.php?_route=blog [L,QSA]
   RewriteRule ^blog/([A-Za-z0-9-]+)/?$ seo-render.php?_route=blogpost&slug=$1 [L,QSA]
 

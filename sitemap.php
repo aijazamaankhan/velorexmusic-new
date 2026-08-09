@@ -143,6 +143,30 @@ try {
     error_log('[sitemap] pre-owned query failed: ' . $e->getMessage());
 }
 
+// ---- Combo offers -----------------------------------------------------------
+// Only listed when at least one published combo actually has products in it —
+// seo-render.php marks the page noindex when it is empty, and a sitemap entry
+// for a noindex URL is a contradictory signal.
+try {
+    require_once __DIR__ . '/api/_combo_helpers.php';
+    combos_ensure_table(db());
+    $comboRows = db()->query(
+        "SELECT * FROM combo_offers WHERE status = 'published' ORDER BY sort_order ASC, id DESC"
+    )->fetchAll();
+    $comboLive = array_filter(combos_attach_products(db(), $comboRows), static function ($c) {
+        return $c['itemCount'] > 0;
+    });
+    if ($comboLive) {
+        $newest = null;
+        foreach ($comboLive as $c) {
+            if ($c['updatedAt'] && (!$newest || $c['updatedAt'] > $newest)) $newest = $c['updatedAt'];
+        }
+        $xml .= velorex_sitemap_url(VELOREX_SITE_URL . '/combos', $newest, 'weekly', '0.7');
+    }
+} catch (Throwable $e) {
+    error_log('[sitemap] combos query failed: ' . $e->getMessage());
+}
+
 // ---- Blog -------------------------------------------------------------------
 // Only published posts. Drafts are noindex by construction (the public API
 // won't serve them), so listing one would be a contradictory signal.

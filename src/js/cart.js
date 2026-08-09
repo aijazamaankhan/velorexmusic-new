@@ -16,22 +16,27 @@
    ============================================================================= */
 
     const CartHelpers = {
-      addToCart(productId, qty = 1) {
+      // opts.silent suppresses this function's own toasts and lets the caller
+      // report once for the whole batch. Added for "Add all to cart" on a combo,
+      // which would otherwise stack up to twelve toasts. Stock guards are
+      // unaffected — silent changes what is SAID, never what is allowed.
+      addToCart(productId, qty = 1, opts = {}) {
+        const say = (msg, kind) => { if (!opts.silent) showToast(msg, kind); };
         const products = Storage.getProducts();
         const product = products.find(p => p.id === productId);
         if (!product || qty <= 0) return false;
-        if (product.stock === 0) { showToast('This item is out of stock', 'error'); return false; }
+        if (product.stock === 0) { say('This item is out of stock', 'error'); return false; }
         let cart = Storage.getCart();
         const existing = cart.find(item => item.id === productId);
         const reservedQty = existing ? existing.qty : 0;
         const available = Math.max(0, product.stock - reservedQty);
-        if (available === 0) { showToast('⚠️ Only ' + product.stock + ' available in stock', 'error'); return false; }
+        if (available === 0) { say('⚠️ Only ' + product.stock + ' available in stock', 'error'); return false; }
         const addQty = Math.min(qty, available);
         if (existing) existing.qty += addQty; else cart.push({ id: productId, qty: addQty });
         Storage.saveCart(cart);
         CartHelpers.updateBadge();
-        if (addQty < qty) showToast('⚠️ Only ' + product.stock + ' available. Cart quantity capped to stock.', 'error');
-        else showToast('"' + product.title + '" added to cart! 🎵', 'success');
+        if (addQty < qty) say('⚠️ Only ' + product.stock + ' available. Cart quantity capped to stock.', 'error');
+        else say('"' + product.title + '" added to cart! 🎵', 'success');
         return true;
       },
       removeFromCart(productId) { let cart = Storage.getCart().filter(item => item.id !== productId); Storage.saveCart(cart); this.updateBadge(); },

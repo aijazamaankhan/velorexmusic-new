@@ -30,7 +30,7 @@
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
   <!-- Page-specific styles (sidebar, header, panels, tables, drawer, dashboard).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/admin/pages/admin.css?v=1d06e468">
+  <link rel="stylesheet" href="src/styles/admin/pages/admin.css?v=1dca80ac">
   <!-- Admin JS modules extracted in PR 4. Plain scripts (not type="module") so
        the existing inline <script> + onclick= handlers resolve them via
        script-scope. Order: leaves first. -->
@@ -43,11 +43,12 @@
        script-scope. Load order: main first (defines shared helpers like
        adminAuthHeaders, switchPanel), then per-panel files, then toast last
        (the admin showToast — different shape from the storefront's). -->
-  <script src="src/js/admin/main.js?v=7008eee6"></script>
+  <script src="src/js/admin/main.js?v=13e291ed"></script>
   <script src="src/js/admin/customers.js?v=127735c1"></script>
   <script src="src/js/admin/orders.js?v=fef46ea8"></script>
   <script src="src/js/admin/inventory.js?v=12ef69e1"></script>
   <script src="src/js/admin/blog.js?v=7a085310"></script>
+  <script src="src/js/admin/combos.js?v=de76275c"></script>
   <script src="src/js/admin/toast.js?v=9a4bf3e8"></script>
 </head>
 
@@ -109,6 +110,11 @@
         <li class="nav-item">
           <a href="#" class="nav-link" onclick="switchPanel('blog', this)">
             <i class="fas fa-pen-nib"></i> Blog
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#" class="nav-link" onclick="switchPanel('combos', this)">
+            <i class="fas fa-layer-group"></i> Combos
           </a>
         </li>
         <li class="nav-item">
@@ -329,6 +335,40 @@
                 </tr>
               </thead>
               <tbody id="blog-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Combo offers. Curated bundles: they group products for display and
+           do NOT change the price charged. See api/_combo_helpers.php. -->
+      <div id="panel-combos" class="panel">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem;">
+            <div>
+              <h3 style="font-family: var(--font-display);margin-bottom:0.25rem;">Combo Offers</h3>
+              <p style="color:var(--text-muted);font-size:0.85rem;margin:0;max-width:62ch;">
+                Bundle products that go well together. They appear on the homepage and at
+                <code>/combos</code>. Combos group products for display — the customer is
+                charged each product&rsquo;s normal price, so the total shown is always what they pay.
+              </p>
+            </div>
+            <button type="button" class="btn btn-primary" onclick="openComboEditor(null)">
+              <i class="fas fa-plus"></i> New Combo
+            </button>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th style="width:74px;">Cover</th>
+                  <th>Combo</th>
+                  <th style="width:110px;">Status</th>
+                  <th style="width:70px;">Order</th>
+                  <th style="width:170px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="combo-tbody"></tbody>
             </table>
           </div>
         </div>
@@ -625,6 +665,66 @@
        formatting (bold, headings, lists, links) survives. Whatever is pasted is
        tidied client-side by blogHandlePaste() and then sanitised authoritatively
        server-side by blog_sanitize_html() before it is ever stored. -->
+  <!-- Combo editor. Deliberately has NO price field: create-order.php recomputes
+       totals from DB product prices, so a bundle price entered here would be
+       ignored at checkout and the customer charged full price. The editor shows
+       the real combined total instead. -->
+  <div class="modal-overlay" id="combo-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title" id="combo-modal-title">New Combo</h2>
+        <div class="modal-close" onclick="closeComboEditor()">✕</div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group full-width">
+          <label class="form-label">Combo Title *</label>
+          <input type="text" class="form-control" id="combo-title" placeholder="R.D. Burman Starter Pack">
+        </div>
+        <div class="form-group full-width">
+          <label class="form-label">Description</label>
+          <textarea class="form-control" id="combo-description" rows="2"
+            placeholder="Why these belong together — shown on the combo card."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-control" id="combo-status">
+            <option value="published">Published — visible on the site</option>
+            <option value="draft">Draft — only you can see it</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Display Order</label>
+          <input type="number" class="form-control" id="combo-sort" value="0">
+          <small style="display:block;margin-top:0.4rem;color:var(--text-muted);font-size:0.72rem;">
+            Lower numbers appear first.
+          </small>
+        </div>
+        <div class="form-group full-width">
+          <label class="form-label">Cover Image URL</label>
+          <input type="url" class="form-control" id="combo-image" placeholder="Optional — defaults to the first product&rsquo;s cover">
+        </div>
+
+        <div class="form-group full-width">
+          <label class="form-label">Products in this combo *</label>
+          <div id="combo-selected" class="combo-selected"></div>
+          <input type="text" class="form-control" id="combo-product-search" style="margin-top:0.75rem;"
+            placeholder="Search the catalogue…" oninput="renderComboPicker()">
+          <div id="combo-picker" class="combo-picker"></div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1.5rem;flex-wrap:wrap;">
+        <button type="button" class="btn" style="background:var(--surface);border:1px solid var(--border);"
+          onclick="closeComboEditor()">Cancel</button>
+        <button type="button" class="btn" style="background:var(--surface);border:1px solid var(--border);"
+          onclick="saveCombo('draft')">Save as Draft</button>
+        <button type="button" class="btn btn-primary" onclick="saveCombo('published')">
+          <i class="fas fa-check"></i> Publish
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="blog-modal">
     <div class="modal-content">
       <div class="modal-header">

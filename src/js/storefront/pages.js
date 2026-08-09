@@ -172,6 +172,10 @@
     }
 
     function initPageIndex() {
+      // Combos come from their own endpoint, not the product cache, so this
+      // runs regardless of which branch below returns. It hides its own
+      // section when there is nothing to show.
+      if (typeof initHomeCombos === 'function') initHomeCombos();
       var products = Storage.getProducts();
       var bsg = document.getElementById('best-selling-grid'), nrg = document.getElementById('new-releases-grid'), ug = document.getElementById('upcoming-grid');
       // Cold cache: skeleton the category counts, but keep the three curated
