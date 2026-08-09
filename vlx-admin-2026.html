@@ -26,6 +26,7 @@
   <link rel="stylesheet" href="src/styles/admin/components/buttons.css?v=2e544cc4">
   <link rel="stylesheet" href="src/styles/admin/components/forms.css?v=03e0888c">
   <link rel="stylesheet" href="src/styles/admin/components/modal.css?v=b1c80662">
+  <link rel="stylesheet" href="src/styles/admin/components/cropper.css?v=74b9e16a">
   <link rel="stylesheet" href="src/styles/admin/components/toast.css?v=e324991f">
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
   <!-- Page-specific styles (sidebar, header, panels, tables, drawer, dashboard).
@@ -46,8 +47,9 @@
   <script src="src/js/admin/main.js?v=13e291ed"></script>
   <script src="src/js/admin/customers.js?v=127735c1"></script>
   <script src="src/js/admin/orders.js?v=fef46ea8"></script>
-  <script src="src/js/admin/inventory.js?v=12ef69e1"></script>
-  <script src="src/js/admin/blog.js?v=7a085310"></script>
+  <script src="src/js/admin/image-cropper.js?v=0dfdbe4f"></script>
+  <script src="src/js/admin/inventory.js?v=01634e18"></script>
+  <script src="src/js/admin/blog.js?v=3698c8d7"></script>
   <script src="src/js/admin/combos.js?v=de76275c"></script>
   <script src="src/js/admin/toast.js?v=9a4bf3e8"></script>
 </head>
@@ -575,7 +577,7 @@
               <div class="upload-area" onclick="document.getElementById('f-image-upload').click()">
                 <div class="upload-icon">📁</div>
                 <div class="upload-text">Click to upload images or drag & drop</div>
-                <div class="upload-hint">PNG, JPG, GIF up to 5MB each</div>
+                <div class="upload-hint">PNG, JPG, WebP up to 5MB each · you'll crop each one before it uploads</div>
               </div>
               <div class="image-grid-preview" id="image-preview-grid" style="display:none;"></div>
             </div>
@@ -936,7 +938,7 @@
               <div class="upload-area" onclick="document.getElementById('e-image-upload').click()">
                 <div class="upload-icon">📁</div>
                 <div class="upload-text">Click to upload images or drag & drop</div>
-                <div class="upload-hint">PNG, JPG, GIF up to 5MB each</div>
+                <div class="upload-hint">PNG, JPG, WebP up to 5MB each · you'll crop each one before it uploads</div>
               </div>
             </div>
           </div>
@@ -1034,6 +1036,61 @@
       <div style="margin-top: 1.5rem; display:flex; justify-content:flex-end; gap: 0.75rem;">
         <button type="button" class="btn btn-cancel" id="admin-confirm-cancel" style="width:auto;">Cancel</button>
         <button type="button" class="btn btn-danger" id="admin-confirm-ok" style="width:auto;">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Cropper Modal.
+       Sits between the admin picking a file and the file reaching
+       /api/upload-product-image.php — see src/js/admin/image-cropper.js.
+       z-index is above the product modals (1000) so it stacks on top of the
+       Add/Edit Product form that opened it. -->
+  <div class="modal-overlay" id="image-cropper-modal" style="z-index: 1400;">
+    <div class="modal-content cropper-modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Crop image</h2>
+        <div class="modal-close" id="cropper-close">✕</div>
+      </div>
+
+      <p class="cropper-filename" id="cropper-filename"></p>
+
+      <!-- The stage is the letterboxed image plus the crop overlay on top.
+           Both are positioned against .cropper-stage, so every coordinate in
+           the JS is relative to this one box. -->
+      <div class="cropper-stage" id="cropper-stage">
+        <img id="cropper-image" alt="">
+        <div class="cropper-shade" id="cropper-shade"></div>
+        <div class="cropper-box" id="cropper-box">
+          <span class="cropper-grid-line cropper-grid-v1"></span>
+          <span class="cropper-grid-line cropper-grid-v2"></span>
+          <span class="cropper-grid-line cropper-grid-h1"></span>
+          <span class="cropper-grid-line cropper-grid-h2"></span>
+          <span class="cropper-handle" data-handle="nw"></span>
+          <span class="cropper-handle" data-handle="n"></span>
+          <span class="cropper-handle" data-handle="ne"></span>
+          <span class="cropper-handle" data-handle="e"></span>
+          <span class="cropper-handle" data-handle="se"></span>
+          <span class="cropper-handle" data-handle="s"></span>
+          <span class="cropper-handle" data-handle="sw"></span>
+          <span class="cropper-handle" data-handle="w"></span>
+        </div>
+      </div>
+
+      <div class="cropper-toolbar">
+        <div class="cropper-ratios" id="cropper-ratios">
+          <button type="button" class="cropper-ratio-btn is-active" data-ratio="1">1:1</button>
+          <button type="button" class="cropper-ratio-btn" data-ratio="0.8">4:5</button>
+          <button type="button" class="cropper-ratio-btn" data-ratio="1.3333">4:3</button>
+          <button type="button" class="cropper-ratio-btn" data-ratio="1.7778">16:9</button>
+          <button type="button" class="cropper-ratio-btn" data-ratio="0">Free</button>
+        </div>
+        <p class="cropper-readout" id="cropper-readout"></p>
+      </div>
+
+      <div class="cropper-actions">
+        <button type="button" class="btn btn-cancel" id="cropper-skip" style="width:auto;">Skip this image</button>
+        <button type="button" class="btn btn-cancel" id="cropper-original" style="width:auto;">Use original</button>
+        <button type="button" class="btn btn-primary" id="cropper-apply" style="width:auto;">Crop &amp; save</button>
       </div>
     </div>
   </div>

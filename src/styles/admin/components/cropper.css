@@ -1,0 +1,171 @@
+/* =============================================================================
+   Admin — image cropper
+   Used by: vlx-admin-2026.html (#image-cropper-modal)
+   Driven by: src/js/admin/image-cropper.js
+
+   Layout contract the JS depends on:
+     .cropper-stage is position:relative and is the coordinate origin for
+     everything inside it. #cropper-image is letterboxed inside it with
+     object-fit:contain, and the JS computes the drawn image's rect from the
+     natural dimensions — so the stage may be wider/taller than the image and
+     the crop box is still clamped to the pixels the admin can actually see.
+   ============================================================================= */
+
+.cropper-modal {
+  max-width: 720px;
+}
+
+.cropper-filename {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: -1rem 0 1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cropper-stage {
+  position: relative;
+  width: 100%;
+  height: 60vh;
+  max-height: 460px;
+  background:
+    repeating-conic-gradient(rgba(255, 255, 255, 0.05) 0% 25%, transparent 0% 50%)
+    50% / 20px 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  /* The pointer handlers call preventDefault, but touch devices still try to
+     pan/zoom the page unless the browser is told the gesture is ours. */
+  touch-action: none;
+  user-select: none;
+}
+
+.cropper-stage img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+/* The dimmed area outside the crop. One element with a huge spread shadow
+   rather than four side panels — no seams to keep in sync while dragging. */
+.cropper-shade {
+  position: absolute;
+  pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.62);
+}
+
+.cropper-box {
+  position: absolute;
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-sizing: border-box;
+  cursor: move;
+}
+
+.cropper-grid-line {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.28);
+  pointer-events: none;
+}
+.cropper-grid-v1, .cropper-grid-v2 { top: 0; bottom: 0; width: 1px; }
+.cropper-grid-v1 { left: 33.333%; }
+.cropper-grid-v2 { left: 66.666%; }
+.cropper-grid-h1, .cropper-grid-h2 { left: 0; right: 0; height: 1px; }
+.cropper-grid-h1 { top: 33.333%; }
+.cropper-grid-h2 { top: 66.666%; }
+
+.cropper-handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  border-radius: 3px;
+}
+.cropper-handle[data-handle="nw"] { top: -7px; left: -7px; cursor: nwse-resize; }
+.cropper-handle[data-handle="n"]  { top: -7px; left: 50%; margin-left: -7px; cursor: ns-resize; }
+.cropper-handle[data-handle="ne"] { top: -7px; right: -7px; cursor: nesw-resize; }
+.cropper-handle[data-handle="e"]  { top: 50%; right: -7px; margin-top: -7px; cursor: ew-resize; }
+.cropper-handle[data-handle="se"] { bottom: -7px; right: -7px; cursor: nwse-resize; }
+.cropper-handle[data-handle="s"]  { bottom: -7px; left: 50%; margin-left: -7px; cursor: ns-resize; }
+.cropper-handle[data-handle="sw"] { bottom: -7px; left: -7px; cursor: nesw-resize; }
+.cropper-handle[data-handle="w"]  { top: 50%; left: -7px; margin-top: -7px; cursor: ew-resize; }
+
+/* A locked aspect ratio makes the edge handles meaningless — dragging one
+   would have to move the opposite edge too, which reads as broken. Hide them
+   and leave the four corners. */
+.cropper-stage.ratio-locked .cropper-handle[data-handle="n"],
+.cropper-stage.ratio-locked .cropper-handle[data-handle="e"],
+.cropper-stage.ratio-locked .cropper-handle[data-handle="s"],
+.cropper-stage.ratio-locked .cropper-handle[data-handle="w"] {
+  display: none;
+}
+
+.cropper-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.cropper-ratios {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.cropper-ratio-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.cropper-ratio-btn:hover { color: var(--text); border-color: var(--secondary); }
+.cropper-ratio-btn.is-active {
+  background: var(--secondary);
+  border-color: var(--secondary);
+  color: #ffffff;
+}
+
+.cropper-readout {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
+
+.cropper-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1.25rem;
+}
+
+[data-theme="light"] .cropper-stage {
+  background:
+    repeating-conic-gradient(rgba(0, 0, 0, 0.05) 0% 25%, transparent 0% 50%)
+    50% / 20px 20px;
+}
+/* :not(.is-active) matters. Without it this rule ties .is-active on
+   specificity, wins on source order, and repaints the selected chip's
+   background near-white — leaving its white label invisible. */
+[data-theme="light"] .cropper-ratio-btn:not(.is-active) { background: rgba(0, 0, 0, 0.03); }
+
+@media (max-width: 600px) {
+  .cropper-stage { height: 48vh; }
+  .cropper-actions { justify-content: stretch; }
+  .cropper-actions .btn { flex: 1 1 auto; }
+  .cropper-filename { margin-top: -0.5rem; }
+}
