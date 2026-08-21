@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+a image croping option when we upload the image therr<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -140,9 +140,9 @@
   <script src="src/js/storefront/pages.js?v=dd5ff446"></script>
   <!-- Blog views. Must load before router.js, whose initPage dispatcher calls
        initPageBlog / initPageBlogPost. -->
-  <script src="src/js/storefront/combos.js?v=898e4dd2"></script>
+  <script src="src/js/storefront/combos.js?v=52ddd306"></script>
   <script src="src/js/storefront/blog.js?v=38e36528"></script>
-  <script src="src/js/storefront/router.js?v=0ccda2b9"></script>
+  <script src="src/js/storefront/router.js?v=456d12a3"></script>
   <script src="src/js/storefront/checkout.js?v=123984d6"></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
        they can be shared between the storefront pages without duplication.
@@ -240,30 +240,39 @@
             </div>
           </div>
           <div class="categories-grid">
-            <a href="#" onclick="navigate('products', {cat:'vinyl'}); return false;" class="category-card">
+            <a href="/vinyl-records" onclick="navigate('products', {cat:'vinyl'}); return false;" class="category-card">
               <div class="category-card-bg" style="background: linear-gradient(135deg, #1a0a2e, #533483);"></div>
               <div class="category-card-overlay"></div>
               <div class="category-card-content"><div class="category-card-icon">💿</div><div class="category-card-title">Vinyl Records</div><div class="category-card-count" id="vinyl-count">Loading...</div></div>
             </a>
-            <a href="#" onclick="navigate('products', {cat:'cd'}); return false;" class="category-card">
+            <a href="/audio-cds" onclick="navigate('products', {cat:'cd'}); return false;" class="category-card">
               <div class="category-card-bg" style="background: linear-gradient(135deg, #0f3460, #16213e);"></div>
               <div class="category-card-overlay"></div>
               <div class="category-card-content"><div class="category-card-icon">💽</div><div class="category-card-title">Audio CDs</div><div class="category-card-count" id="cd-count">Loading...</div></div>
             </a>
-            <a href="#" onclick="navigate('products', {cat:'cassette'}); return false;" class="category-card">
+            <a href="/cassettes" onclick="navigate('products', {cat:'cassette'}); return false;" class="category-card">
               <div class="category-card-bg" style="background: linear-gradient(135deg, #3d1a00, #8b4513);"></div>
               <div class="category-card-overlay"></div>
               <div class="category-card-content"><div class="category-card-icon">📼</div><div class="category-card-title">Cassettes</div><div class="category-card-count" id="cassette-count">Loading...</div></div>
             </a>
-            <a href="#" onclick="navigate('products', {cat:'bluray'}); return false;" class="category-card">
+            <a href="/blu-ray-movies" onclick="navigate('products', {cat:'bluray'}); return false;" class="category-card">
               <div class="category-card-bg" style="background: linear-gradient(135deg, #004d40, #00251a);"></div>
               <div class="category-card-overlay"></div>
               <div class="category-card-content"><div class="category-card-icon">🎬</div><div class="category-card-title">Blu-rays</div><div class="category-card-count" id="bluray-count">Loading...</div></div>
             </a>
-            <a href="#" onclick="navigate('products', {cat:'dvd'}); return false;" class="category-card">
+            <a href="/dvd-movies" onclick="navigate('products', {cat:'dvd'}); return false;" class="category-card">
               <div class="category-card-bg" style="background: linear-gradient(135deg, #4a148c, #1a0033);"></div>
               <div class="category-card-overlay"></div>
               <div class="category-card-content"><div class="category-card-icon">🎞️</div><div class="category-card-title">DVDs</div><div class="category-card-count" id="dvd-count">Loading...</div></div>
+            </a>
+            <!-- Combos sit alongside the formats here, but they are not a product
+                 category — the card is hidden until initHomeCombos() confirms
+                 there is at least one published combo, so it can never lead to an
+                 empty page. Same rule as the combo strip below. -->
+            <a href="/combos" onclick="navigate('combos'); return false;" class="category-card" id="combos-category-card" style="display:none;">
+              <div class="category-card-bg" style="background: linear-gradient(135deg, #7a1f1f, #2b0a0a);"></div>
+              <div class="category-card-overlay"></div>
+              <div class="category-card-content"><div class="category-card-icon">🎁</div><div class="category-card-title">Combo Offers</div><div class="category-card-count" id="combos-count">Loading...</div></div>
             </a>
           </div>
         </div>

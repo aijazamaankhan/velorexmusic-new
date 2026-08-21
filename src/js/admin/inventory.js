@@ -644,7 +644,10 @@
 
     async function addFilesToGallery(fileList) {
       ensureImageState();
-      var files = Array.from(fileList || []);
+      // Crop first, upload second — see src/js/admin/image-cropper.js. The
+      // admin can drop a file per image; anything they skip never reaches the
+      // server, so no orphaned full-size file is left on disk.
+      var files = await ImageCropper.run(fileList);
       if (!files.length) return;
 
       for (var i = 0; i < files.length; i++) {
@@ -691,7 +694,13 @@
       const input = document.getElementById(inputId);
       if (!input) return;
       input.addEventListener('change', function (e) {
-        addHandler(e.target.files);
+        // Copy out of the live FileList BEFORE clearing the input — clearing
+        // empties the list itself, so a reference to it would go blank.
+        const picked = Array.from(e.target.files || []);
+        // Clear the input so picking the same file again still fires `change`.
+        // That used to be harmless; now it blocks a re-crop after "Skip".
+        input.value = '';
+        addHandler(picked);
       });
       // The upload-area sits next to the file input; find it by walking up to
       // the nearest .image-upload-section.
@@ -1109,7 +1118,7 @@
 
     async function addEditFilesToGallery(fileList) {
       ensureEditImageState();
-      const files = Array.from(fileList || []);
+      const files = await ImageCropper.run(fileList);   // see addFilesToGallery
       if (!files.length) return;
       for (let i = 0; i < files.length; i++) {
         try {

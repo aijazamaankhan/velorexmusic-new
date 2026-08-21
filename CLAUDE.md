@@ -109,6 +109,9 @@ velorexmusic-new/
 │       └── admin/
 │           ├── storage.js       # Admin Storage helper — caches products/orders/categories
 │           │                    # with the same 3-tier degradation pattern
+│           ├── image-cropper.js # Crop-before-upload modal. Sits between the file picker
+│           │                    # and /api/upload-product-image.php. Crop rect is held in
+│           │                    # SOURCE pixels, not screen pixels — see §18.
 │           ├── main.js          # adminAuthHeaders + last-save badge + category helpers +
 │           │                    # checkAuth/showAdminLayout/handleLogin/handleLogout +
 │           │                    # theme + toggleAdminSidebar + switchPanel + load listeners
@@ -1713,3 +1716,43 @@ Without it, adding a twelve-product combo stacks twelve toasts. `silent`
 changes what is *said*, never what is *allowed* — the stock guard runs
 identically, and a combo containing an out-of-stock item adds what it can and
 reports the shortfall once.
+
+## 18. Image cropping (admin)
+
+Every admin image upload goes through a crop step first:
+[src/js/admin/image-cropper.js](src/js/admin/image-cropper.js) +
+[src/styles/admin/components/cropper.css](src/styles/admin/components/cropper.css),
+markup in `#image-cropper-modal`.
+
+| Surface | Default ratio | Entry point |
+|---|---|---|
+| Product images (Add + Edit modals) | 1:1 | `ImageCropper.run(fileList)` in `addFilesToGallery` / `addEditFilesToGallery` |
+| Blog cover | 16:9 | `ImageCropper.open(file, label, {ratio})` in `handleBlogCoverUpload` |
+| Blog body image | Free | `handleBlogInlineUpload` |
+
+Three actions: **Crop & save**, **Use original** (upload untouched), **Skip this
+image** (never uploads). A multi-file pick opens the modal once per file.
+
+**The crop happens before the upload, not after, and that is the point.**
+Uploaded files are content-addressed — the filename is a hash of the bytes. A
+server-side crop would necessarily write the original first and the crop
+second, leaving a full-size orphan on disk that nothing references and nothing
+cleans up.
+
+**The crop rectangle is stored in SOURCE pixels, never screen pixels.** Display
+coordinates are derived on every render through the letterbox transform in
+`layout()`; pointer deltas are divided by the scale on the way in. This is what
+makes a window resize or an orientation change a pure re-render with no
+coordinate migration and no drift. Don't "simplify" it by tracking the box in
+CSS pixels.
+
+**The preview uses a FileReader `data:` URL, NOT `URL.createObjectURL`.** The
+admin page's CSP is `img-src 'self' https: data:` — a `blob:` URL is blocked
+outright and the image silently never loads. Widening the CSP for a preview
+would be the wrong trade.
+
+Output keeps the source format for jpeg/png/webp; anything else (a GIF the
+picker still offers) is re-encoded to JPEG, which the upload endpoint accepts
+and a GIF was never accepted. If a re-encode busts the 5 MB ceiling that
+`processImageFile` and the server both enforce, it retries at lower JPEG
+quality rather than failing the upload with an opaque error.

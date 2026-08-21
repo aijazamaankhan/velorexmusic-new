@@ -199,7 +199,11 @@
     }
 
     async function handleBlogCoverUpload(input) {
-      const file = input.files && input.files[0];
+      const picked = input.files && input.files[0];
+      if (!picked) return;
+      input.value = '';   // so re-picking the same file after a skip still fires
+      // 16:9 default — a blog cover renders as a banner, not a square tile.
+      const file = await ImageCropper.open(picked, 'Blog cover', { ratio: 16 / 9 });
       if (!file) return;
       try {
         showToast('Uploading cover…');
@@ -211,7 +215,11 @@
     }
 
     async function handleBlogInlineUpload(input) {
-      const file = input.files && input.files[0];
+      const picked = input.files && input.files[0];
+      if (!picked) return;
+      input.value = '';
+      // Free crop for body images — there is no fixed slot they land in.
+      const file = await ImageCropper.open(picked, 'Body image', { ratio: 0 });
       if (!file) return;
       try {
         showToast('Uploading image…');

@@ -219,16 +219,28 @@
     // Hidden entirely when there are no combos, matching how the Best Selling /
     // New Releases strips behave — an empty section with a heading reads as a
     // broken shop.
+    //
+    // The Shop by Category grid carries a Combos card too, and it follows the
+    // same rule: revealed here, from the same fetch, so the card and the strip
+    // can never disagree about whether combos exist.
     async function initHomeCombos() {
       var grid = document.getElementById('home-combos-grid');
       var section = document.getElementById('home-combos');
-      if (!grid) return;
+      var card = document.getElementById('combos-category-card');
+      var cardCount = document.getElementById('combos-count');
+      if (!grid && !card) return;
       var combos = await fetchCombos();
       if (!combos.length) {
         if (section) section.style.display = 'none';
-        grid.innerHTML = '';
+        if (card) card.style.display = 'none';
+        if (grid) grid.innerHTML = '';
         return;
       }
+      if (card) card.style.display = '';
+      if (cardCount) {
+        cardCount.textContent = combos.length + ' bundle' + (combos.length === 1 ? '' : 's') + ' available';
+      }
+      if (!grid) return;
       if (section) section.style.display = '';
       grid.innerHTML = combos.slice(0, 3).map(comboCardHtml).join('');
     }
