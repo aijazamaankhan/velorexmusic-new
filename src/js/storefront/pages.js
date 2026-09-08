@@ -33,12 +33,24 @@
      - All checkout entry points — from checkout.js
    ============================================================================= */
 
+    // Facet values are compared case-insensitively everywhere.
+    //
+    // The admin form is free text and the DB collation is *_ci, so the same
+    // facet arrives in several casings — the live catalogue holds both "hindi"
+    // and "Hindi". MySQL does not care (seo-render.php's `WHERE language = :l`
+    // matched all of them), but JS `===` does, so the server-rendered
+    // /vinyl-records/hindi listed 65 products and the SPA cut it to 56 the
+    // instant it booted. Those nine also rendered a "English" pill on their
+    // card. Normalise on read rather than rewriting the rows: this keeps
+    // working whatever casing the next admin entry uses.
+    function facetVal(v) { return String(v == null ? '' : v).trim().toLowerCase(); }
+
     function createProductCard(product) {
       const badgeHtml = product.badge ? `<span class="product-badge badge-${product.badge}"><i class="fas fa-${product.badge === 'hot' ? 'fire' : product.badge === 'new' ? 'sparkles' : product.badge === 'upcoming' ? 'clock' : 'tag'}"></i> ${Utils.escape(product.badge === 'hot' ? 'Hot' : product.badge === 'new' ? 'New' : product.badge === 'upcoming' ? 'Soon' : 'Sale')}</span>` : '';
       const stars = '<i class="fas fa-star" style="color:var(--accent);"></i>'.repeat(Math.round(product.rating)) + '<i class="far fa-star" style="color:var(--accent);"></i>'.repeat(5 - Math.round(product.rating));
       const priceHtml = product.originalPrice ? `<span class="product-price">₹${product.price.toLocaleString()}</span><span class="product-price-original">₹${product.originalPrice.toLocaleString()}</span>` : `<span class="product-price">₹${product.price.toLocaleString()}</span>`;
       const catLabel = product.category === 'vinyl' ? '<i class="fas fa-compact-disc"></i> Vinyl' : product.category === 'cd' ? '<i class="fas fa-compact-disc"></i> CD' : product.category === 'cassette' ? '<i class="fas fa-tape"></i> Cassette' : product.category === 'bluray' ? '<i class="fas fa-film"></i> Blu-ray' : '<i class="fas fa-film"></i> DVD';
-      const langLabel = product.language === 'hindi' ? '<i class="fas fa-globe"></i> Hindi' : '<i class="fas fa-earth-americas"></i> English';
+      const langLabel = facetVal(product.language) === 'hindi' ? '<i class="fas fa-globe"></i> Hindi' : '<i class="fas fa-earth-americas"></i> English';
       // Three image states:
       //   1. image is a real string         → render <img>
       //   2. image missing + not synced yet → render skeleton (stripped cache;
@@ -252,78 +264,235 @@
         if (sc) sc.innerHTML = Skeleton.inlineLine('10rem');
         return;
       }
+      // Rebuild the data-driven sections first — the pre-tick below queries
+      // the inputs this creates.
+      renderCategoryFilterOptions(allProducts);
       document.querySelectorAll('#page-products input[name="cat"]').forEach(cb => cb.checked = false);
+      document.querySelectorAll('#page-products input[name="cond"]').forEach(cb => cb.checked = false);
+      document.querySelectorAll('#page-products input[name="artist"]').forEach(cb => cb.checked = false);
       document.querySelectorAll('#page-products input[name="lang"]').forEach(cb => cb.checked = false);
       document.querySelectorAll('#page-products input[name="people"]').forEach(cb => cb.checked = false);
       if (params && params.cat) {
-        document.querySelectorAll('#page-products input[name="cat"]').forEach(cb => cb.checked = cb.value === params.cat);
-        var labels = { vinyl: 'Vinyl Records', cd: 'Audio CDs', cassette: 'Cassettes', bluray: 'Blu-ray Movies', dvd: 'DVD Movies',
-                       merchandise: 'Merchandise', 'vinyl-care': 'Vinyl Care' };
+        document.querySelectorAll('#page-products input[name="cat"]').forEach(cb => cb.checked = facetVal(cb.value) === facetVal(params.cat));
         // A subcategory is the specific thing being sold, so it becomes the
         // heading rather than the department it sits under.
         var subLabel = (Seo.SUBCATS[params.cat] || {})[params.sub];
         var pt = document.getElementById('page-title');
-        if (pt) pt.textContent = subLabel || labels[params.cat] || 'Products';
+        if (pt) pt.textContent = subLabel || catLabel(params.cat) || 'Products';
       } else { var pt2 = document.getElementById('page-title'); if (pt2) pt2.textContent = 'All Products'; }
       if (params && params.lang) document.querySelectorAll('#page-products input[name="lang"]').forEach(cb => cb.checked = cb.value === params.lang);
       updateCountsProducts(allProducts);
       applyFilters(params ? params.search : null);
     }
 
+    // One label per category for the products page: the sidebar, the
+    // active-filter tags and the page heading. These lived in three separate
+    // literals before, which is how Merchandise and Vinyl Care ended up
+    // present in one and absent from the others. Named apart from router.js's
+    // CAT_LABELS — these scripts share one script scope, so two top-level
+    // declarations of the same name is a hard SyntaxError that takes the whole
+    // storefront down, not a shadowed variable.
+    var FILTER_CAT_LABELS = {
+      vinyl:        { icon: '💿', long: 'Vinyl Records',  short: 'Vinyl' },
+      cd:           { icon: '💽', long: 'Audio CDs',      short: 'CD' },
+      cassette:     { icon: '📼', long: 'Cassettes',      short: 'Cassette' },
+      bluray:       { icon: '🎬', long: 'Blu-ray Movies', short: 'Blu-ray' },
+      dvd:          { icon: '🎞️', long: 'DVD Movies',     short: 'DVD' },
+      merchandise:  { icon: '👕', long: 'Merchandise',    short: 'Merch' },
+      'vinyl-care': { icon: '🧴', long: 'Vinyl Care',     short: 'Vinyl Care' }
+    };
+    function catLabel(cat, key) {
+      var e = FILTER_CAT_LABELS[cat];
+      return e ? e[key || 'long'] : String(cat || '');
+    }
+
+    var COND_LABELS = { 'new': { icon: '✨', long: 'New / Sealed' }, 'pre-owned': { icon: '♻️', long: 'Pre-owned' } };
+
+    // Build the Category and Condition options from the catalogue rather than
+    // from a hand-written list, so the sidebar can never disagree with what is
+    // actually for sale. Anything with zero products is left out: an option
+    // whose only outcome is an empty grid is a dead end, and an unknown value
+    // coming back from the admin still gets a row (labelled by its raw slug)
+    // instead of being silently unfilterable.
+    //
+    // Must run BEFORE initPageProducts pre-ticks a box from the URL, or the
+    // re-render would wipe that tick.
+    function renderFacetOptions(products, opts) {
+      var host = document.getElementById(opts.hostId);
+      if (!host) return;
+      var counts = {};
+      products.forEach(function (p) {
+        var v = opts.valueOf(p);
+        if (v) counts[v] = (counts[v] || 0) + 1;
+      });
+      // Known values first, in taxonomy order; then anything unexpected.
+      var labels = opts.labels;
+      var keys = Object.keys(labels).filter(function (k) { return counts[k]; });
+      Object.keys(counts).forEach(function (k) { if (keys.indexOf(k) === -1) keys.push(k); });
+
+      // Preserve ticks across a re-render — Storage.syncFromServer() can land
+      // mid-session and re-run this while the shopper has boxes checked.
+      var wasChecked = Array.from(host.querySelectorAll('input:checked')).map(function (i) { return i.value; });
+
+      host.innerHTML = keys.map(function (k) {
+        var meta = labels[k];
+        var text = meta ? (meta.icon + ' ' + Utils.escape(meta.long)) : Utils.escape(k);
+        return '<label class="filter-option"><input type="checkbox" name="' + opts.inputName + '" value="' + Utils.escape(k) + '"'
+             + (wasChecked.indexOf(k) !== -1 ? ' checked' : '')
+             + ' onchange="applyFilters()">' + text
+             + '<span class="filter-count">' + counts[k] + '</span></label>';
+      }).join('');
+
+      // A single option is not a choice — ticking it changes nothing. Hide the
+      // section rather than offering a no-op control.
+      var section = document.getElementById(opts.sectionId);
+      if (section) section.hidden = keys.length < 2;
+    }
+
+    // Artist is high-cardinality and free text, so it gets a search box and is
+    // ordered by stock depth rather than by a fixed taxonomy — the names a
+    // shopper is most likely to want are the ones the shop actually has most
+    // of. Values are the raw artist strings; matching is case-folded via
+    // facetVal so "R. D. Burman" and "r. d. burman" are one row, not two.
+    function renderArtistFilterOptions(products) {
+      var host = document.getElementById('artist-filter-options');
+      var section = document.getElementById('fsec-artist');
+      if (!host) return;
+      var counts = {}, display = {};
+      products.forEach(function (p) {
+        var key = facetVal(p.artist);
+        if (!key) return;
+        counts[key] = (counts[key] || 0) + 1;
+        if (!display[key]) display[key] = String(p.artist).trim();
+      });
+      var keys = Object.keys(counts).sort(function (a, b) {
+        return counts[b] - counts[a] || display[a].localeCompare(display[b]);
+      });
+      var wasChecked = Array.from(host.querySelectorAll('input:checked')).map(function (i) { return i.value; });
+      host.innerHTML = keys.map(function (k) {
+        return '<label class="filter-option people-option"><input type="checkbox" name="artist" value="' + Utils.escape(k) + '"'
+             + (wasChecked.indexOf(k) !== -1 ? ' checked' : '')
+             + ' onchange="applyFilters()">' + Utils.escape(display[k])
+             + '<span class="filter-count">' + counts[k] + '</span></label>';
+      }).join('');
+      if (section) section.hidden = keys.length < 2;
+      applyOptionVisibility('artist-filter-options');
+    }
+
+    function renderCategoryFilterOptions(products) {
+      renderArtistFilterOptions(products);
+      renderFacetOptions(products, {
+        hostId: 'category-filter-options', sectionId: 'fsec-cat', inputName: 'cat', labels: FILTER_CAT_LABELS,
+        valueOf: function (p) { return facetVal(p.category); }
+      });
+      renderFacetOptions(products, {
+        hostId: 'condition-filter-options', sectionId: 'fsec-cond', inputName: 'cond', labels: COND_LABELS,
+        // A row with no condition set is New — the same default
+        // row_to_product_lean() applies — not an unlabelled third bucket.
+        valueOf: function (p) { return facetVal(p.condition) || 'new'; }
+      });
+    }
+
     function updateCountsProducts(products) {
+      // Category counts are emitted inline by renderFacetOptions(); only the
+      // static Language rows still need filling in here.
       var countMap = {
-        'count-vinyl': p => p.category === 'vinyl',
-        'count-cd': p => p.category === 'cd',
-        'count-cassette': p => p.category === 'cassette',
-        'count-bluray': p => p.category === 'bluray',
-        'count-dvd': p => p.category === 'dvd',
-        'count-hindi': p => p.language === 'hindi',
-        'count-english': p => p.language === 'english'
+        'count-hindi': p => facetVal(p.language) === 'hindi',
+        'count-english': p => facetVal(p.language) === 'english'
       };
       Object.keys(countMap).forEach(id => {
         var el = document.getElementById(id);
         if (el) el.textContent = products.filter(countMap[id]).length;
       });
-      // Update people counts
+      // Update people counts, and mark the ones no product carries.
+      //
+      // The People list is 33 hand-written names covering a catalogue that may
+      // have tagged none of them. An option whose only possible outcome is
+      // "No products found" is not a filter, it is a dead end, so a zero-count
+      // row is flagged here and hidden by applyOptionVisibility() — which also
+      // owns the search box's show/hide so the two cannot fight over the same
+      // style property. The section header goes with the last visible row.
+      var anyPeople = false;
       Object.keys(PEOPLE_LABELS).forEach(slug => {
+        var n = products.filter(p => p.people && p.people.indexOf(slug) !== -1).length;
         var el = document.getElementById('count-' + slug);
-        if (el) el.textContent = products.filter(p => p.people && p.people.indexOf(slug) !== -1).length;
+        if (el) el.textContent = n;
+        var opt = el && el.closest ? el.closest('.people-option') : null;
+        if (opt) opt.dataset.empty = n ? '' : '1';
+        if (n) anyPeople = true;
       });
+      var peopleSection = document.getElementById('fsec-people');
+      // Hide the whole section (and keep it out of the mobile chip strip) when
+      // nothing in the catalogue is tagged at all.
+      if (peopleSection) peopleSection.hidden = !anyPeople;
+      applyOptionVisibility('people-filter-options');
     }
 
+    // searchOverride is optional. Every `onchange` in the sidebar calls
+    // applyFilters() with no argument, so taking the argument as the only
+    // source of the query silently dropped it the moment any checkbox or the
+    // sort dropdown was touched: search "sholay", tick Vinyl, and the grid
+    // jumped back to the whole catalogue while the URL still said
+    // ?search=sholay. Fall back to the routed param, which is what the URL and
+    // the navbar box already agree on.
     function applyFilters(searchOverride) {
       var allProds = Storage.getProducts(), filtered = allProds.slice();
+      var search = (searchOverride != null && searchOverride !== '')
+        ? searchOverride
+        : (currentParams && currentParams.search) || '';
 
       // Category filter.
       //
-      // The sidebar has a checkbox per music FORMAT only. The Merchandise and
-      // Vinyl Care departments have no checkbox, so relying on the sidebar
-      // alone silently showed the whole catalogue on /merchandise — the filter
-      // found nothing checked and concluded "no filter". Fall back to the
-      // routed category whenever the sidebar has no say.
-      var selCats = Array.from(document.querySelectorAll('#page-products input[name="cat"]:checked')).map(i => i.value);
+      // The sidebar only offers a checkbox for a category that has stock, so
+      // the routed category still needs a fallback: /merchandise would
+      // otherwise find nothing ticked, conclude "no filter", and show the
+      // whole catalogue.
+      //
+      // But the fallback must apply ONLY when the sidebar has no checkbox for
+      // that category. Firing it whenever nothing is ticked meant unticking
+      // Vinyl on /vinyl-records re-applied Vinyl from the URL — the box moved,
+      // the grid did not, and the filter looked broken.
+      var catBoxes = Array.from(document.querySelectorAll('#page-products input[name="cat"]'));
+      var selCats = catBoxes.filter(i => i.checked).map(i => facetVal(i.value));
+      var routedCat = currentParams && currentParams.cat ? facetVal(currentParams.cat) : '';
       if (selCats.length) {
-        filtered = filtered.filter(p => selCats.indexOf(p.category) !== -1);
-      } else if (currentParams && currentParams.cat) {
-        filtered = filtered.filter(p => p.category === currentParams.cat);
+        filtered = filtered.filter(p => selCats.indexOf(facetVal(p.category)) !== -1);
+      } else if (routedCat && !catBoxes.some(i => facetVal(i.value) === routedCat)) {
+        filtered = filtered.filter(p => facetVal(p.category) === routedCat);
+      }
+
+      // Condition (New / Sealed vs Pre-owned). row_to_product_lean() defaults a
+      // missing value to 'new', but the cache can predate that, so an absent
+      // condition reads as 'new' here too rather than matching nothing.
+      var selCond = Array.from(document.querySelectorAll('#page-products input[name="cond"]:checked')).map(i => facetVal(i.value));
+      if (selCond.length) {
+        filtered = filtered.filter(p => selCond.indexOf(facetVal(p.condition) || 'new') !== -1);
       }
 
       // Subcategory (departments only) — always driven by the URL, since there
       // is no sidebar control for it.
       if (currentParams && currentParams.sub) {
-        filtered = filtered.filter(p => p.subcategory === currentParams.sub);
+        filtered = filtered.filter(p => facetVal(p.subcategory) === facetVal(currentParams.sub));
       }
 
       // Language filter
       var selLangs = Array.from(document.querySelectorAll('#page-products input[name="lang"]:checked')).map(i => i.value);
-      if (selLangs.length) filtered = filtered.filter(p => selLangs.indexOf(p.language) !== -1);
+      if (selLangs.length) filtered = filtered.filter(p => selLangs.indexOf(facetVal(p.language)) !== -1);
 
-      // Price filter
+      // Price filter.
+      //
+      // The top bucket is open-ended and its value carries no upper bound
+      // ("2000-"). It used to be "2000-9999", which quietly hid anything dearer
+      // than ₹9,999 from the one filter whose label ("₹2,000+") promises the
+      // opposite — the ₹12,999 Sholay 50th Anniversary edition, the most
+      // expensive thing in the catalogue, was unreachable from the sidebar.
       var selPrices = Array.from(document.querySelectorAll('#page-products input[name="price"]:checked')).map(i => i.value);
       if (selPrices.length) {
         filtered = filtered.filter(p => selPrices.some(range => {
-          var parts = range.split('-').map(Number);
-          return p.price >= parts[0] && p.price <= parts[1];
+          var parts = String(range).split('-');
+          var min = Number(parts[0]) || 0;
+          var max = (parts[1] === undefined || parts[1] === '') ? Infinity : Number(parts[1]);
+          return p.price >= min && p.price <= max;
         }));
       }
 
@@ -333,16 +502,26 @@
         filtered = filtered.filter(p => (selAvail.indexOf('instock') !== -1 && p.stock > 0) || (selAvail.indexOf('outofstock') !== -1 && p.stock === 0));
       }
 
+      // ---- ARTIST FILTER ----
+      var selArtists = Array.from(document.querySelectorAll('#page-products input[name="artist"]:checked')).map(i => facetVal(i.value));
+      if (selArtists.length) {
+        filtered = filtered.filter(p => selArtists.indexOf(facetVal(p.artist)) !== -1);
+      }
+
       // ---- PEOPLE FILTER ----
       var selPeople = Array.from(document.querySelectorAll('#page-products input[name="people"]:checked')).map(i => i.value);
       if (selPeople.length) {
         filtered = filtered.filter(p => p.people && selPeople.some(slug => p.people.indexOf(slug) !== -1));
       }
 
-      // Search override
-      if (searchOverride) {
-        var q = searchOverride.toLowerCase();
-        filtered = filtered.filter(p => p.title.toLowerCase().indexOf(q) !== -1 || p.artist.toLowerCase().indexOf(q) !== -1);
+      // Search. Also matches the music director, which is the field people
+      // actually type when they are hunting a soundtrack by its composer.
+      if (search) {
+        var q = String(search).toLowerCase().trim();
+        filtered = filtered.filter(p =>
+          facetVal(p.title).indexOf(q) !== -1 ||
+          facetVal(p.artist).indexOf(q) !== -1 ||
+          facetVal(p.musicDirector).indexOf(q) !== -1);
       }
 
       // Sort
@@ -370,20 +549,42 @@
       var sortEl = document.getElementById('sortSelect'); if (sortEl) sortEl.value = '';
       var pt = document.getElementById('page-title'); if (pt) pt.textContent = 'All Products';
       var ps = document.getElementById('peopleSearch'); if (ps) { ps.value = ''; filterPeopleOptions(''); }
-      applyFilters();
+      var as = document.getElementById('artistSearch'); if (as) { as.value = ''; filterArtistOptions(''); }
+      // "Clear All" has to include the routed category/subcategory and the
+      // search, or it unticks every box and leaves the grid exactly as narrow
+      // as it was — the fallbacks in applyFilters() re-apply them from the URL.
+      if (currentParams) { delete currentParams.cat; delete currentParams.sub; delete currentParams.lang; }
+      clearProductSearch();
     }
 
     function setView(view) { var g = document.getElementById('products-grid'); if (g) g.style.gridTemplateColumns = view === 'list' ? '1fr' : ''; }
 
-    // ---- People search box inside filter ----
-    function filterPeopleOptions(query) {
-      var q = query.toLowerCase().trim();
-      document.querySelectorAll('#people-filter-options .people-option').forEach(label => {
-        var text = label.textContent.toLowerCase();
-        label.style.display = (!q || text.indexOf(q) !== -1) ? '' : 'none';
+    // ---- Search boxes inside the Artist and People filters ----
+    function filterPeopleOptions(query) { setOptionQuery('people-filter-options', query); }
+    function filterArtistOptions(query) { setOptionQuery('artist-filter-options', query); }
+
+    var _optionQueries = {};
+    function setOptionQuery(hostId, query) {
+      _optionQueries[hostId] = String(query || '').toLowerCase().trim();
+      applyOptionVisibility(hostId);
+    }
+
+    // Single owner of a searchable option list's visibility. A row shows when
+    // it has at least one product AND matches the search box. Two independent
+    // writers to .style.display would race — the search would resurrect rows
+    // that match nothing, and re-counting would undo an active search.
+    function applyOptionVisibility(hostId) {
+      var host = document.getElementById(hostId);
+      if (!host) return;
+      var q = _optionQueries[hostId] || '';
+      host.querySelectorAll('.people-option').forEach(label => {
+        var isEmpty = label.dataset.empty === '1';
+        var matches = !q || label.textContent.toLowerCase().indexOf(q) !== -1;
+        label.style.display = (!isEmpty && matches) ? '' : 'none';
       });
-      // Show/hide group labels based on visible siblings
-      document.querySelectorAll('#people-filter-options .people-group-label').forEach(header => {
+      // Show/hide group labels based on visible siblings (People only — the
+      // artist list is flat, so this finds nothing and no-ops).
+      host.querySelectorAll('.people-group-label').forEach(header => {
         var next = header.nextElementSibling;
         var anyVisible = false;
         while (next && next.classList.contains('people-option')) {
@@ -398,15 +599,32 @@
       var container = document.getElementById('activeFilters'); if (!container) return;
       var tags = [];
       Array.from(document.querySelectorAll('#page-products input[name="cat"]:checked')).forEach(i => {
-        var labels = { vinyl: '💿 Vinyl', cd: '💽 CD', cassette: 'Cassette', bluray: '🎬 Blu-ray', dvd: '🎞️ DVD' };
-        tags.push({ label: labels[i.value] || i.value, input: i });
+        var meta = FILTER_CAT_LABELS[i.value];
+        tags.push({ label: meta ? meta.icon + ' ' + meta.short : Utils.escape(i.value), input: i });
+      });
+      Array.from(document.querySelectorAll('#page-products input[name="cond"]:checked')).forEach(i => {
+        var meta = COND_LABELS[i.value];
+        tags.push({ label: meta ? meta.icon + ' ' + meta.long : Utils.escape(i.value), input: i });
       });
       Array.from(document.querySelectorAll('#page-products input[name="lang"]:checked')).forEach(i => {
         tags.push({ label: i.value === 'hindi' ? '🇮🇳 Hindi' : '🌍 English', input: i });
       });
+      Array.from(document.querySelectorAll('#page-products input[name="artist"]:checked')).forEach(i => {
+        // The checkbox value is the case-folded key; the label text alongside
+        // it is the artist as the catalogue spells them.
+        var shown = i.parentElement ? i.parentElement.textContent.replace(/\s*\d+\s*$/, '').trim() : i.value;
+        tags.push({ label: '🎙 ' + Utils.escape(shown), input: i });
+      });
       Array.from(document.querySelectorAll('#page-products input[name="people"]:checked')).forEach(i => {
         tags.push({ label: '🎬 ' + (PEOPLE_LABELS[i.value] || i.value), input: i });
       });
+      // The search term narrows the grid exactly like a checkbox does, and now
+      // that it survives a filter change it has to be visible and removable —
+      // otherwise a stale query from a previous navigation silently suppresses
+      // results with nothing on screen to explain why.
+      if (currentParams && currentParams.search) {
+        tags.push({ label: '🔍 ' + Utils.escape(currentParams.search), search: true });
+      }
       container.innerHTML = tags.map((tag, idx) => `<span class="filter-tag">${tag.label}<span class="filter-tag-remove" onclick="removeFilterProduct(${idx})">✕</span></span>`).join('');
       window._filterTags = tags;
       // Refresh the mobile/tablet chip strip too — count bubbles flip as
@@ -434,8 +652,10 @@
     // Add a row here too.
     var FILTER_CHIP_SECTIONS = [
       { id: 'fsec-cat',    label: '📁 Category',  inputName: 'cat' },
+      { id: 'fsec-artist', label: '🎙 Artist',    inputName: 'artist' },
       { id: 'fsec-lang',   label: '🌐 Language',  inputName: 'lang' },
       { id: 'fsec-price',  label: '💰 Price',     inputName: 'price' },
+      { id: 'fsec-cond',   label: '🏷 Condition', inputName: 'cond' },
       { id: 'fsec-avail',  label: '📦 Stock',     inputName: 'avail' },
       { id: 'fsec-people', label: '🎬 People',    inputName: 'people' },
     ];
@@ -448,7 +668,13 @@
       // the markup is ready the moment the viewport shrinks.
       bar.removeAttribute('hidden');
       var totalActive = 0;
-      var html = FILTER_CHIP_SECTIONS.map(function (s) {
+      var html = FILTER_CHIP_SECTIONS.filter(function (s) {
+        // updateCountsProducts() hides a section with nothing to offer (People,
+        // when no product is tagged). A chip opening an empty popover is worse
+        // than no chip.
+        var el = document.getElementById(s.id);
+        return el && !el.hidden;
+      }).map(function (s) {
         var checked = document.querySelectorAll('#page-products input[name="' + s.inputName + '"]:checked').length;
         totalActive += checked;
         var activeCls = checked > 0 ? ' active' : '';
@@ -514,7 +740,27 @@
     });
 
     function removeFilterProduct(idx) {
-      if (window._filterTags && window._filterTags[idx]) { window._filterTags[idx].input.checked = false; applyFilters(); }
+      var tag = window._filterTags && window._filterTags[idx];
+      if (!tag) return;
+      if (tag.search) { clearProductSearch(); return; }
+      tag.input.checked = false;
+      applyFilters();
+    }
+
+    // Drop the search term from the route, the URL and the navbar box together.
+    // Clearing only one of the three leaves the others asserting a query that
+    // is no longer being applied.
+    function clearProductSearch() {
+      if (currentParams) delete currentParams.search;
+      var box = document.getElementById('globalSearch'); if (box) box.value = '';
+      try {
+        window.history.replaceState(
+          { page: 'products', params: currentParams || {} },
+          '',
+          Seo.buildPath('products', currentParams || {})
+        );
+      } catch (e) { /* history is best-effort; the grid is the thing that matters */ }
+      applyFilters();
     }
 
     function openProduct(id) { navigate('product', { id: id }); return false; }
@@ -583,7 +829,7 @@
     function renderProductDetail(product) {
       var stars = '★'.repeat(Math.round(product.rating)) + '☆'.repeat(5 - Math.round(product.rating));
       var catLabel = product.category === 'vinyl' ? '💿 Vinyl Record' : product.category === 'cd' ? '💽 Audio CD' : product.category === 'cassette' ? '📼 Cassette' : product.category === 'bluray' ? '🎬 Blu-ray' : '🎞️ DVD';
-      var langLabel = product.language === 'hindi' ? '🇮🇳 Hindi' : '🌍 English';
+      var langLabel = facetVal(product.language) === 'hindi' ? '🇮🇳 Hindi' : '🌍 English';
       var isOOS = product.stock === 0;
       var discount = product.originalPrice ? Math.round((1 - product.price / product.originalPrice) * 100) : null;
       var specsHtml = '';
@@ -729,7 +975,7 @@
     }
 
     function renderRelatedProducts(product, products) {
-      var related = products.filter(p => p.id !== product.id && (p.category === product.category || p.language === product.language)).slice(0, 4);
+      var related = products.filter(p => p.id !== product.id && (facetVal(p.category) === facetVal(product.category) || facetVal(p.language) === facetVal(product.language))).slice(0, 4);
       var sec = document.getElementById('related-section'), grid = document.getElementById('related-grid');
       if (related.length && sec && grid) { sec.style.display = 'block'; grid.innerHTML = related.map(createProductCard).join(''); fixProductLinks('page-product'); }
       else if (sec) sec.style.display = 'none';
