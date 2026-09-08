@@ -37,18 +37,18 @@
        script-scope. Order: leaves first. -->
   <script src="src/js/utils.js?v=15bf1815"></script>
   <script src="src/js/api-base.js?v=0ce972cf"></script>
-  <script src="src/js/admin/storage.js?v=43f70677"></script>
+  <script src="src/js/admin/storage.js?v=8df73787"></script>
   <script src="src/js/skeleton.js?v=6ca28cb2"></script>
   <!-- Admin app layer extracted in PR 7. Plain scripts (not type="module") so
        the inline onclick= handlers throughout the markup keep resolving via
        script-scope. Load order: main first (defines shared helpers like
        adminAuthHeaders, switchPanel), then per-panel files, then toast last
        (the admin showToast — different shape from the storefront's). -->
-  <script src="src/js/admin/main.js?v=13e291ed"></script>
+  <script src="src/js/admin/main.js?v=0fce0afd"></script>
   <script src="src/js/admin/customers.js?v=127735c1"></script>
   <script src="src/js/admin/orders.js?v=fef46ea8"></script>
   <script src="src/js/admin/image-cropper.js?v=0dfdbe4f"></script>
-  <script src="src/js/admin/inventory.js?v=01634e18"></script>
+  <script src="src/js/admin/inventory.js?v=ed88bb79"></script>
   <script src="src/js/admin/blog.js?v=3698c8d7"></script>
   <script src="src/js/admin/combos.js?v=de76275c"></script>
   <script src="src/js/admin/toast.js?v=9a4bf3e8"></script>
@@ -169,34 +169,33 @@
 
       <!-- Dashboard Panel -->
       <div id="panel-dashboard" class="panel active">
+        <!-- Every value and sub-line here is computed by renderDashboardStats()
+             in src/js/admin/inventory.js from the products/orders caches.
+             They used to be hardcoded: "12% vs last month", "5 Urgent",
+             "24% vs last month", a 4.9 rating and "Top 1% Seller" were literal
+             markup that never changed, so the panel reported a healthy store
+             with pending orders it did not have. A dashboard that invents its
+             own numbers is worse than one that shows none. -->
         <div class="stats-grid">
           <div class="stat-card">
             <span class="stat-label">Stock Items</span>
             <div class="stat-value" id="stat-total-products">0</div>
-            <div class="stat-delta up">
-              <i class="fas fa-arrow-up"></i> 12% vs last month
-            </div>
+            <div class="stat-delta" id="stat-products-delta"></div>
           </div>
           <div class="stat-card">
             <span class="stat-label">Pending Orders</span>
-            <div class="stat-value">0</div>
-            <div class="stat-delta warning">
-              <i class="fas fa-clock"></i> 5 Urgent
-            </div>
+            <div class="stat-value" id="stat-pending-orders">0</div>
+            <div class="stat-delta" id="stat-pending-delta"></div>
           </div>
           <div class="stat-card">
             <span class="stat-label">Total Revenue</span>
-            <div class="stat-value">₹0</div>
-            <div class="stat-delta up">
-              <i class="fas fa-arrow-up"></i> 24% vs last month
-            </div>
+            <div class="stat-value" id="stat-revenue">₹0</div>
+            <div class="stat-delta" id="stat-revenue-delta"></div>
           </div>
           <div class="stat-card">
             <span class="stat-label">Store Rating</span>
-            <div class="stat-value">4.9</div>
-            <div class="stat-delta up">
-              <i class="fas fa-star"></i> Top 1% Seller
-            </div>
+            <div class="stat-value" id="stat-rating">—</div>
+            <div class="stat-delta" id="stat-rating-delta"></div>
           </div>
         </div>
 
