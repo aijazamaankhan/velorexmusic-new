@@ -400,7 +400,7 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 
 | Method | Path | Body / Query | Returns |
 |---|---|---|---|
-| GET | `/api/products.php` | — | `ProductLean[]` — listing shape only (id, title, artist, category, language, price, originalPrice, image, rating, reviews, badge, stock, musicDirector). Heavy fields (description, full gallery, track listing, specs, people) are NOT included; fetch them via `/api/product.php?id=N`. This drops the list payload from ~27 MB to ~30 KB on a 66-product catalog. |
+| GET | `/api/products.php` | — | `ProductLean[]` — listing shape only (id, title, artist, category, language, price, originalPrice, image, rating, reviews, badge, stock, musicDirector, condition, subcategory, freeShipping, shippingCharge, people). Heavy fields (description, full gallery, track listing, specs) are NOT included; fetch them via `/api/product.php?id=N`. This drops the list payload from ~27 MB to ~30 KB on a 66-product catalog. `people` is in the lean shape despite being a JSON column — it is a short slug array the products-page People filter reads off this payload. |
 | GET | `/api/product.php?id=N` | — | Full `Product` for that id (or 404 if missing). Heavy fields included. Called on the product-detail page only. |
 | GET | `/api/categories.php` | — | `string[]` (sorted by `sort_order`) |
 | GET | `/api/combos.php` | — | `Combo[]` — published combos with their products resolved live, plus the real `total` of current prices, `itemCount` and `inStock`. Combos whose products have all been deleted are omitted. |
@@ -1756,3 +1756,72 @@ picker still offers) is re-encoded to JPEG, which the upload endpoint accepts
 and a GIF was never accepted. If a re-encode busts the 5 MB ceiling that
 `processImageFile` and the server both enforce, it retries at lower JPEG
 quality rather than failing the upload with an opaque error.
+
+## 19. Products-page filters
+
+The sidebar on `/products` and every category route. `applyFilters()` in
+[src/js/storefront/pages.js](src/js/storefront/pages.js) is the single place
+the grid is narrowed; every control feeds it and nothing else filters.
+
+**Facet values are compared case-folded, through `facetVal()`.** The admin form
+is free text and MySQL collations are `_ci`, so the same facet arrives in
+several casings — the live catalogue holds both `hindi` and `Hindi`. The
+server's `WHERE language = :l` matched all of them while JS `===` did not, so
+`/vinyl-records/hindi` server-rendered 65 products and the SPA cut it to 56 on
+boot, and those nine rows showed an "English" pill. Normalise on read; do not
+"fix" it by rewriting rows, which only holds until the next admin entry.
+
+**Category, Condition and Artist options are rendered from the catalogue**, not
+hardcoded in `index.html`. Hardcoding listed the five music formats only, so
+Merchandise and Vinyl Care had no checkbox at all while formats with no stock
+were offered as filters that could only return "No products found". A facet
+section with fewer than two live values hides itself — a lone option is not a
+choice.
+
+**The routed category is a fallback, not an override.** `applyFilters()` applies
+`currentParams.cat` only when the sidebar has no checkbox for it (departments).
+Applying it whenever nothing was ticked meant unticking Vinyl on
+`/vinyl-records` silently re-applied Vinyl from the URL.
+
+**The search term lives in `currentParams.search`, not in the argument.** Every
+`onchange` calls `applyFilters()` with no argument, so reading the query only
+from the parameter dropped it the moment any checkbox moved. It is also
+rendered as a removable active-filter tag, since a filter that survives but is
+invisible has no way to be undone.
+
+**Price buckets may be open-ended** — `value="2000-"` means "no upper bound".
+It was `2000-9999`, which hid the ₹12,999 Sholay edition from the one filter
+whose label promises the opposite.
+
+The **People** filter needs `products.people` populated by the admin; it is
+hidden entirely while nothing is tagged. **Artist** is the one that works on
+today's data, since every product has one.
+
+## 20. Admin dashboard stat cards
+
+The four cards on the admin dashboard are filled by `renderDashboardStats()` in
+[src/js/admin/inventory.js](src/js/admin/inventory.js). They were previously
+literal markup — `12% vs last month`, `5 Urgent`, `24% vs last month`, a `4.9`
+rating and `Top 1% Seller` — which never changed and reported pending orders
+and a rating the shop did not have. **Don't reintroduce a placeholder number.**
+A value that cannot be derived renders as `—` with an honest sub-line
+(`No reviews yet`), never as a plausible-looking figure.
+
+Rating is weighted by review count and excludes products with no reviews, so a
+single 5-star review cannot outrank a well-reviewed item. Revenue excludes
+cancelled orders.
+
+**A failed sync must not look like a slow one.** `Storage._syncError` in
+[src/js/admin/storage.js](src/js/admin/storage.js) records why the last
+`syncFromServer()` failed; the renderers show an error row with a Retry button
+instead of skeletons when the cache is cold *and* the fetch failed. Without it
+an offline admin or a host error page left the Inventory table shimmering
+forever with nothing on screen saying anything was wrong.
+
+**The last-save badge expires after 24h** (`LAST_SAVE_TTL_MS` in
+[src/js/admin/main.js](src/js/admin/main.js)). The record lives in
+localStorage and nothing used to clear it, so a months-old failure was replayed
+on every page load — reporting a broken server that was fine. Raw error bodies
+are summarised by `summariseSaveError()`: an HTML doctype in the response means
+the request never reached our JSON API (host error page or WAF), which is a
+different problem from an API rejection and reads as such.

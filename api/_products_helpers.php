@@ -229,9 +229,10 @@ function row_to_product(array $r): array {
 }
 
 // Lean shape for the products list endpoint. Excludes the heavy fields
-// (description, full image gallery, track_listing, specs, people) that are
+// (description, full image gallery, track_listing, specs) that are
 // only needed on the product detail page — those are served by /api/product.php
-// keyed by id. This is the reason /api/products.php drops from ~27 MB to ~30 KB
+// keyed by id. `people` stays in: it is a short slug array, and the products
+// page filters on it off this very payload. This is the reason /api/products.php drops from ~27 MB to ~30 KB
 // for a 66-product catalog after migration: the per-product cover URL is
 // short (~50 bytes) instead of a base64 payload (~400 KB).
 function row_to_product_lean(array $r): array {
@@ -253,5 +254,9 @@ function row_to_product_lean(array $r): array {
         'subcategory' => $r['subcategory'] ?? null,
         'freeShipping' => !empty($r['free_shipping']),
         'shippingCharge' => isset($r['shipping_charge']) && $r['shipping_charge'] !== null ? (int)$r['shipping_charge'] : null,
+        // Powers the products page's People filter. Guarded with isset() so a
+        // caller that hasn't selected the column still gets [] rather than a
+        // PHP 8 undefined-key warning.
+        'people' => isset($r['people']) && $r['people'] ? json_decode($r['people'], true) : [],
     ];
 }

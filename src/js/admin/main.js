@@ -46,6 +46,16 @@
     // just stashed in localStorage). Survives page reloads via localStorage.
     const LAST_SAVE_KEY = 'vv_admin_last_save';
 
+    // How long a save result stays worth showing. The record lives in
+    // localStorage so it survives a reload, but nothing ever cleared it: a
+    // failure from months ago kept rendering as "✕ Save FAILED 6/12/2026 —
+    // HTTP 402: <!DOCTYPE html>" on every single page load, long after the
+    // cause was gone. On a control panel whose one job is to answer "did my
+    // change save?", a stale failure is worse than no badge — it reports a
+    // broken server that is in fact fine. Past this age the badge falls back
+    // to its neutral empty state.
+    const LAST_SAVE_TTL_MS = 24 * 60 * 60 * 1000;
+
     function recordSaveResult(entry) {
       // entry: { status: 'ok' | 'error', op: string, detail?: string, error?: string }
       var record = {
@@ -62,7 +72,16 @@
     function getLastSave() {
       try {
         var raw = localStorage.getItem(LAST_SAVE_KEY);
-        return raw ? JSON.parse(raw) : null;
+        if (!raw) return null;
+        var rec = JSON.parse(raw);
+        if (!rec || typeof rec.at !== 'number') return null;
+        if (Date.now() - rec.at > LAST_SAVE_TTL_MS) {
+          // Drop it rather than just hiding it, so it cannot resurface if the
+          // clock moves.
+          try { localStorage.removeItem(LAST_SAVE_KEY); } catch (e) {}
+          return null;
+        }
+        return rec;
       } catch (e) { return null; }
     }
 
@@ -99,9 +118,32 @@
         el.title = 'Server confirmed at ' + fullTime + (r.op ? ' (' + r.op + ')' : '');
       } else {
         el.classList.add('is-err');
-        el.textContent = '✕ Save FAILED ' + when + ' — ' + (r.error || 'unknown error');
+        // The raw error can be an entire HTML error page from the host (a WAF
+        // or 5xx interstitial). Show a short, honest summary in the badge and
+        // keep the full text in the tooltip.
+        el.textContent = '✕ Save FAILED ' + when + ' — ' + summariseSaveError(r.error);
         el.title = 'Attempted at ' + fullTime + (r.op ? ' (' + r.op + ')' : '') + '. ' + (r.error || '');
       }
+    }
+
+    // Collapse a server error into one readable line. An HTML body means the
+    // request never reached our JSON API (host error page, WAF block), which is
+    // a different problem from an API-level rejection and should read that way.
+    function summariseSaveError(err) {
+      var text = String(err || '').trim();
+      if (!text) return 'unknown error';
+      var status = (text.match(/^HTTP (\d{3})/) || [])[1] || '';
+      if (/<!DOCTYPE|<html/i.test(text)) {
+        return status
+          ? 'HTTP ' + status + ' from the host (not the API) — see tooltip'
+          : 'the host returned an error page, not the API — see tooltip';
+      }
+      try {
+        var body = text.replace(/^HTTP \d{3}:\s*/, '');
+        var parsed = JSON.parse(body);
+        if (parsed && parsed.error) return (status ? 'HTTP ' + status + ': ' : '') + parsed.error;
+      } catch (e) { /* not JSON — fall through to the truncated raw text */ }
+      return text.length > 120 ? text.slice(0, 117) + '…' : text;
     }
 
     // Tick the relative-time label every 30s while the page is open.

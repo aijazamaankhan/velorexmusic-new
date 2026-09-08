@@ -32,24 +32,127 @@
     // =============================================
     // DASHBOARD LOGIC
     // =============================================
+    // A cold cache and a failed fetch look identical to a renderer — both have
+    // zero products — but they must not look identical to the operator. A
+    // skeleton says "wait"; if the data is never coming, waiting is the wrong
+    // advice and the panel shimmers indefinitely with no explanation.
+    function syncFailure() {
+      return (!Storage.getProducts().length && Storage._syncError) ? Storage._syncError : null;
+    }
+
+    function syncErrorRow(colspan) {
+      return '<tr><td colspan="' + colspan + '" style="padding:1.5rem;text-align:center;color:var(--text-muted);">'
+           + '<div style="font-weight:700;color:#ff6b6b;margin-bottom:0.35rem;">Could not load products</div>'
+           + '<div style="font-size:0.8rem;margin-bottom:0.75rem;">' + escapeHTML(syncFailure() || '') + '</div>'
+           + '<button class="btn btn-primary" onclick="retryAdminSync()">Retry</button>'
+           + '</td></tr>';
+    }
+
+    // Exposed for the Retry buttons above.
+    async function retryAdminSync() {
+      await Storage.syncFromServer();
+      initDashboard();
+    }
+
+    // Fill the four dashboard stat cards from the caches. Anything that cannot
+    // be derived from real data is left blank rather than filled with a
+    // plausible-looking number — see the markup comment in vlx-admin-2026.html.
+    function renderDashboardStats(products, failed) {
+      var set = function (id, html) {
+        var el = document.getElementById(id);
+        if (el) el.innerHTML = html;
+      };
+      // The tone (up / warning) belongs on the .stat-delta element itself —
+      // nesting a second .stat-delta inside it would double the padding and
+      // font styling.
+      var setDelta = function (id, tone, html) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.className = 'stat-delta' + (tone ? ' ' + tone : '');
+        el.innerHTML = html || '';
+      };
+
+      // --- Stock Items -------------------------------------------------
+      var totalEl = document.getElementById('stat-total-products');
+      if (totalEl) {
+        if (products.length) totalEl.textContent = products.length;
+        else if (failed) totalEl.textContent = '—';
+        else totalEl.innerHTML = Skeleton.inlineLine('2rem');
+      }
+      if (products.length) {
+        var oos = products.filter(function (p) { return Number(p.stock) === 0; }).length;
+        var low = products.filter(function (p) { var n = Number(p.stock); return n > 0 && n < 5; }).length;
+        setDelta('stat-products-delta', oos ? 'warning' : 'up',
+          (oos
+            ? '<i class="fas fa-triangle-exclamation"></i> ' + oos + ' out of stock'
+            : '<i class="fas fa-check"></i> All in stock')
+          + (low ? ' · ' + low + ' low' : ''));
+      } else {
+        setDelta('stat-products-delta', '', '');
+      }
+
+      // --- Orders ------------------------------------------------------
+      // Storage.getOrders() is empty both before the sync lands and when the
+      // shop genuinely has no orders; _orders distinguishes them, the same
+      // test renderOrdersTable() uses.
+      var orders = Storage.getOrders() || [];
+      var ordersLoaded = Array.isArray(Storage._orders);
+      if (!ordersLoaded && !orders.length) {
+        set('stat-pending-orders', failed ? '—' : Skeleton.inlineLine('2rem'));
+        setDelta('stat-pending-delta', '', '');
+        set('stat-revenue', failed ? '—' : Skeleton.inlineLine('3rem'));
+        setDelta('stat-revenue-delta', '', '');
+      } else {
+        var open = orders.filter(function (o) {
+          var st = normalizeOrderStatus(o.status);
+          return st === 'pending' || st === 'processing';
+        });
+        set('stat-pending-orders', String(open.length));
+        var awaitingDispatch = orders.filter(function (o) { return normalizeOrderStatus(o.status) === 'pending'; }).length;
+        setDelta('stat-pending-delta', open.length ? 'warning' : 'up', open.length
+          ? '<i class="fas fa-clock"></i> ' + awaitingDispatch + ' awaiting dispatch'
+          : '<i class="fas fa-check"></i> Nothing outstanding');
+
+        // Revenue counts every order that was not cancelled. Cancelled orders
+        // were never money the shop kept, so including them would overstate it.
+        var earning = orders.filter(function (o) { return normalizeOrderStatus(o.status) !== 'cancelled'; });
+        var revenue = earning.reduce(function (sum, o) { return sum + (Number(o.total) || 0); }, 0);
+        set('stat-revenue', '₹' + revenue.toLocaleString('en-IN'));
+        setDelta('stat-revenue-delta', earning.length ? 'up' : '', earning.length
+          ? '<i class="fas fa-receipt"></i> across ' + earning.length + ' order' + (earning.length === 1 ? '' : 's')
+          : '<i class="fas fa-receipt"></i> No orders yet');
+      }
+
+      // --- Store Rating ------------------------------------------------
+      // Weighted by review count: a 5.0 from one review should not outweigh a
+      // 4.2 from two hundred. Products with no reviews are excluded entirely
+      // rather than counted as zero, which would drag the average down.
+      var rated = products.filter(function (p) { return Number(p.reviews) > 0 && Number(p.rating) > 0; });
+      var reviewTotal = rated.reduce(function (n, p) { return n + Number(p.reviews); }, 0);
+      if (rated.length && reviewTotal) {
+        var weighted = rated.reduce(function (n, p) { return n + Number(p.rating) * Number(p.reviews); }, 0) / reviewTotal;
+        set('stat-rating', weighted.toFixed(1));
+        setDelta('stat-rating-delta', 'up', '<i class="fas fa-star"></i> from '
+          + reviewTotal.toLocaleString('en-IN') + ' review' + (reviewTotal === 1 ? '' : 's'));
+      } else {
+        set('stat-rating', '—');
+        setDelta('stat-rating-delta', '', products.length ? '<i class="fas fa-star"></i> No reviews yet' : '');
+      }
+    }
+
     function initDashboard() {
       renderCategorySelectors();
       renderLastSaveBadge();
       const products = Storage.getProducts();
-      const totalEl = document.getElementById('stat-total-products');
-      // Cold cache: replace the stat value with an inline shimmer until the
-      // sync pipeline calls initDashboard again with real data.
-      if (totalEl) {
-        if (products.length) totalEl.textContent = products.length;
-        else totalEl.innerHTML = Skeleton.inlineLine('2rem');
-      }
+      const failed = syncFailure();
+      renderDashboardStats(products, failed);
       renderOrdersTable();
       renderProductsTable();
 
       const recentList = document.getElementById('recent-products-list');
       if (!recentList) return;
       if (!products.length) {
-        recentList.innerHTML = Skeleton.tableRows(5, 4);
+        recentList.innerHTML = failed ? syncErrorRow(4) : Skeleton.tableRows(5, 4);
         return;
       }
       const recent = products.slice(-5).reverse();
@@ -106,7 +209,7 @@
       // user has applied a search/filter so an "0 results" doesn't flash as
       // skeletons.
       if (!allProducts.length && !searchQuery && !catFilter) {
-        tbody.innerHTML = Skeleton.tableRows(5, 7);
+        tbody.innerHTML = syncFailure() ? syncErrorRow(7) : Skeleton.tableRows(5, 7);
         return;
       }
 

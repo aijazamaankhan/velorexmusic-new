@@ -34,6 +34,13 @@
       _orders: null,
       _categories: null,
 
+      // Why the last sync failed, or null if it succeeded. Renderers use this
+      // to tell "still loading" apart from "could not load": both used to
+      // present as an endless skeleton shimmer, so an offline admin or a host
+      // error page left the Inventory table shimmering forever with nothing
+      // on screen saying anything was wrong.
+      _syncError: null,
+
       // Best-effort localStorage write with graceful degradation:
       //   1. Try the full value.
       //   2. If quota exceeded and a `stripper` is supplied, try the stripped variant.
@@ -81,6 +88,7 @@
         // cache with whatever the server returned (including empty arrays — that means
         // the admin has deleted everything). Each setItem is wrapped in _tryCache so
         // one fetch's storage quota failure doesn't break the others.
+        this._syncError = null;
         try {
           const [pRes, cRes] = await Promise.all([
             fetch(API_BASE + '/products.php', { cache: 'no-store' }),
@@ -92,7 +100,11 @@
             if (Array.isArray(products)) {
               this._products = products;
               this._tryCache('vv_products', products, Storage._productStripper);
+            } else {
+              this._syncError = 'Products endpoint returned an unexpected shape.';
             }
+          } else {
+            this._syncError = 'Products request failed (HTTP ' + pRes.status + ').';
           }
 
           if (cRes.ok) {
@@ -117,7 +129,8 @@
             }
           }
         } catch (e) {
-          console.warn('[Storage] syncFromServer failed; using cached data:', e.message);
+          this._syncError = e && e.message ? e.message : 'Network error';
+          console.warn('[Storage] syncFromServer failed; using cached data:', this._syncError);
         }
       },
 

@@ -137,7 +137,7 @@
        end up in script-scope; the inline <script> at the bottom of <body>
        just bootstraps DOMContentLoaded. -->
   <script src="src/js/storefront/carriers.js?v=488bf189"></script>
-  <script src="src/js/storefront/pages.js?v=dd5ff446"></script>
+  <script src="src/js/storefront/pages.js?v=e7b2d9da"></script>
   <!-- Blog views. Must load before router.js, whose initPage dispatcher calls
        initPageBlog / initPageBlogPost. -->
   <script src="src/js/storefront/combos.js?v=52ddd306"></script>
@@ -350,16 +350,33 @@
                 <button class="btn btn-sm btn-secondary" onclick="clearAllFilters()">Clear All</button>
               </div>
 
-              <!-- Category Filter -->
+              <!-- Category Filter — options are rendered by
+                   renderCategoryFilterOptions() in src/js/storefront/pages.js
+                   from the catalogue itself. Hardcoding them here listed the
+                   five music formats only, so the Merchandise and Vinyl Care
+                   departments had no checkbox at all, and formats the shop
+                   does not currently stock were offered as filters that could
+                   only ever return "No products found". -->
               <div class="filter-section" id="fsec-cat" data-section="cat" data-label="📁 Category">
                 <p class="filter-title">📁 Category</p>
-                <div class="filter-options">
-                  <label class="filter-option"><input type="checkbox" name="cat" value="vinyl" onchange="applyFilters()">💿 Vinyl Records<span class="filter-count" id="count-vinyl">0</span></label>
-                  <label class="filter-option"><input type="checkbox" name="cat" value="cd" onchange="applyFilters()">💽 Audio CDs<span class="filter-count" id="count-cd">0</span></label>
-                  <label class="filter-option"><input type="checkbox" name="cat" value="cassette" onchange="applyFilters()">📼 Cassettes<span class="filter-count" id="count-cassette">0</span></label>
-                  <label class="filter-option"><input type="checkbox" name="cat" value="bluray" onchange="applyFilters()">🎬 Blu-rays<span class="filter-count" id="count-bluray">0</span></label>
-                  <label class="filter-option"><input type="checkbox" name="cat" value="dvd" onchange="applyFilters()">🎞️ DVDs<span class="filter-count" id="count-dvd">0</span></label>
-                </div>
+                <div class="filter-options" id="category-filter-options"></div>
+              </div>
+
+              <!-- Artist Filter — built from the catalogue by
+                   renderArtistFilterOptions(). Every product carries an
+                   artist, which makes it the one high-cardinality facet the
+                   shop can actually filter on; the People section below only
+                   works once products are tagged. -->
+              <div class="filter-section filter-section-collapsible" id="fsec-artist" data-section="artist" data-label="🎙 Artist" hidden>
+                <p class="filter-title">🎙 Artist</p>
+                <input
+                  type="text"
+                  class="people-search-input"
+                  id="artistSearch"
+                  placeholder="Search artists…"
+                  oninput="filterArtistOptions(this.value)"
+                />
+                <div class="filter-options" id="artist-filter-options"></div>
               </div>
 
               <!-- Language Filter -->
@@ -378,8 +395,17 @@
                   <label class="filter-option"><input type="checkbox" name="price" value="0-499" onchange="applyFilters()">Under ₹500</label>
                   <label class="filter-option"><input type="checkbox" name="price" value="500-999" onchange="applyFilters()">₹500 – ₹999</label>
                   <label class="filter-option"><input type="checkbox" name="price" value="1000-1999" onchange="applyFilters()">₹1,000 – ₹1,999</label>
-                  <label class="filter-option"><input type="checkbox" name="price" value="2000-9999" onchange="applyFilters()">₹2,000+</label>
+                  <label class="filter-option"><input type="checkbox" name="price" value="2000-" onchange="applyFilters()">₹2,000+</label>
                 </div>
+              </div>
+
+              <!-- Condition — rendered from the catalogue like Category.
+                   products.item_condition already drives the Pre-owned badge
+                   and the /pre-owned route; the sidebar was the one place a
+                   shopper could not act on it. -->
+              <div class="filter-section" id="fsec-cond" data-section="cond" data-label="🏷 Condition" hidden>
+                <p class="filter-title">🏷 Condition</p>
+                <div class="filter-options" id="condition-filter-options"></div>
               </div>
 
               <!-- Availability -->

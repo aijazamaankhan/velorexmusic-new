@@ -9,8 +9,14 @@ try {
     if ($method === 'GET') {
         // Lean list shape — see row_to_product_lean() in _products_helpers.php
         // for why the heavy columns (description, images gallery, track_listing,
-        // specs, people) are NOT fetched here. Heavy detail is served by
+        // specs) are NOT fetched here. Heavy detail is served by
         // /api/product.php?id=N on demand from the product detail page.
+        //
+        // `people` IS fetched despite living in that group: it is a short array
+        // of slugs (tens of bytes), not a LONGTEXT, and the products page's
+        // People filter reads it off the list cache. Omitting it did not make
+        // the filter degrade — it made every one of its checkboxes count 0 and
+        // match nothing.
         //
         // Selecting an explicit column list (rather than `SELECT *`) means
         // MySQL doesn't ship the multi-MB LONGTEXT columns over the
@@ -19,11 +25,21 @@ try {
         // item_condition is only named in the SELECT when it exists — the helper
         // adds it on first call, but if that ALTER ever failed we must not
         // hard-error the storefront's main listing over a cosmetic column.
+        //
+        // free_shipping/shipping_charge are likewise required, not optional:
+        // row_to_product_lean() has always published them, but they were never
+        // in this SELECT, so every product reported freeShipping=false and
+        // shippingCharge=null no matter what the admin set. The cart's quote in
+        // src/js/shipping.js reads exactly those fields, so it would quote the
+        // zone rate on an item the server then ships free — the client/server
+        // shipping split §16 warns about.
         $condCol = products_has_condition_column($pdo) ? 'item_condition, ' : '';
         $subCol  = products_has_subcategory_column($pdo) ? 'subcategory, ' : '';
+        $shipCol = products_has_shipping_columns($pdo) ? 'free_shipping, shipping_charge, ' : '';
         $stmt = $pdo->query(
             'SELECT id, title, artist, category, language, price, original_price, '
-          . 'image, rating, reviews, badge, stock, ' . $condCol . $subCol . 'music_director '
+          . 'image, rating, reviews, badge, stock, people, '
+          . $condCol . $subCol . $shipCol . 'music_director '
           . 'FROM products ORDER BY id'
         );
         $rows = $stmt->fetchAll();
