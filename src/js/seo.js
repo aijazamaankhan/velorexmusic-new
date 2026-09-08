@@ -24,6 +24,9 @@ var Seo = (function () {
   'use strict';
 
   var ORIGIN = 'https://velorexmusic.com';
+  // Mirrors VELOREX_SITE_NAME in src/seo/seo-lib.php — productTitle() appends it
+  // on both sides and the two must produce the same string.
+  var SITE_NAME = 'Velorex Music';
 
   // DB category value → URL slug. Mirrors velorex_categories() in seo-lib.php.
   var CAT_TO_SLUG = {
@@ -241,6 +244,71 @@ var Seo = (function () {
   }
 
   // ---------------------------------------------------------------------------
+  // Product <title> construction
+  // ---------------------------------------------------------------------------
+  //
+  // MIRRORED IN PHP: velorex_product_title() in src/seo/seo-lib.php. The header
+  // there carries the full rationale. Both sides run their containment test
+  // through slugify(), whose cross-language parity is already enforced, so the
+  // two implementations cannot drift on casing, punctuation or accents.
+  //
+  // The old pair disagreed outright: PHP said "Vinyl Records" and JS said
+  // "Vinyl Record" for the same product, so hydration silently rewrote the
+  // server's title on every product page.
+
+  // Singular per-item labels. The plural forms name category PAGES; one record
+  // is a "Vinyl Record". Departments get none — "Merchandise" is not a format.
+  var FORMAT_LABELS = {
+    vinyl: 'Vinyl Record', cd: 'Audio CD', cassette: 'Cassette',
+    bluray: 'Blu-ray', dvd: 'DVD'
+  };
+  // Plural page labels, matching velorex_categories() in seo-lib.php. Used only
+  // by the generated fallback description, which must also agree across the two
+  // implementations.
+  var CATEGORY_LABELS = {
+    vinyl: 'Vinyl Records', cd: 'Audio CDs', cassette: 'Cassettes',
+    bluray: 'Blu-ray Movies', dvd: 'DVD Movies',
+    merchandise: 'Merchandise', 'vinyl-care': 'Vinyl Care'
+  };
+
+  var TITLE_SOFT_LIMIT = 60;
+
+  function titleContains(haystack, needle) {
+    var n = slugify(needle);
+    return n !== '' && slugify(haystack).indexOf(n) !== -1;
+  }
+
+  // The artist column is free text and sometimes holds a whole cast list; take
+  // the first name, which is both the strongest search term and the reason the
+  // longest live title reached 225 characters.
+  function primaryArtist(artist) {
+    var first = String(artist == null ? '' : artist).trim().split(/\s*[,;\/]\s*|\s+&\s+/)[0] || '';
+    return first.replace(/\s+/g, ' ').trim();
+  }
+
+  function productTitle(p) {
+    var name = String((p && p.title) || '').replace(/\s+/g, ' ').trim();
+    if (!name) return SITE_NAME;
+
+    var artist = primaryArtist(p && p.artist);
+    var format = FORMAT_LABELS[p && p.category] || '';
+
+    // Core: never dropped, because these are the terms people search.
+    var title = name;
+    if (artist && !titleContains(title, artist)) title += ' — ' + artist;
+
+    // Tail: added only while it fits. Whole parts are dropped, never cut.
+    if (format && !titleContains(title, format)
+        && (title + ' | ' + format).length <= TITLE_SOFT_LIMIT) {
+      title += ' | ' + format;
+    }
+    if ((title + ' | ' + SITE_NAME).length <= TITLE_SOFT_LIMIT) {
+      title += ' | ' + SITE_NAME;
+    }
+    return title;
+  }
+
+  // ---------------------------------------------------------------------------
   // DOM metadata
   // ---------------------------------------------------------------------------
 
@@ -287,8 +355,11 @@ var Seo = (function () {
       setMeta('meta[name="twitter:image"]', 'content', o.image);
     }
     setMeta('meta[property="og:type"]', 'content', o.type || 'website');
+    // Must match the default in velorex_meta_block() (src/seo/seo-lib.php) and
+    // the static one in index.html, or hydration silently rewrites the robots
+    // directive the server sent.
     setMeta('meta[name="robots"]', 'content',
-      o.robots || 'index, follow, max-image-preview:large, max-snippet:-1');
+      o.robots || 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
   }
 
   function absoluteImage(src) {
@@ -298,8 +369,33 @@ var Seo = (function () {
     return ORIGIN + '/' + src.replace(/^\/+/, '');
   }
 
+  // seo-render.php stamps <meta name="velorex-ssr" content="<path>"> on every
+  // page it renders. The router calls update() once during boot for the page
+  // the browser landed on, and that call used to overwrite tags the server had
+  // already set correctly — replacing an empty category's "noindex, follow"
+  // with "index, follow", and rewriting server titles to different strings.
+  // Since Googlebot indexes the rendered DOM, that undid the server's work.
+  //
+  // So the first update() is skipped when the marker matches the current path.
+  // Only the first: every later call is a real client-side navigation to a page
+  // the server never rendered, and must update the tags.
+  // Read lazily, NOT at module-eval time: seo-render.php injects its block
+  // immediately before </head>, which is after this script's own tag, so at the
+  // moment this file executes the parser has not reached the marker yet and the
+  // lookup would always return null.
+  var _ssrHonoured = false;
+  function ssrRenderedPath() {
+    var m = document.head.querySelector('meta[name="velorex-ssr"]');
+    return m ? m.getAttribute('content') : null;
+  }
+
   // Called by router.navigate() on every view change.
   function update(page, params) {
+    if (!_ssrHonoured) {
+      _ssrHonoured = true;
+      var ssr = ssrRenderedPath();
+      if (ssr && ssr === window.location.pathname) return;
+    }
     params = params || {};
     var canonical = ORIGIN + buildPath(page, params);
 
@@ -376,11 +472,10 @@ var Seo = (function () {
   }
 
   function applyProduct(p, canonical) {
-    var catLabels = {
-      vinyl: 'Vinyl Record', cd: 'Audio CD', cassette: 'Cassette',
-      bluray: 'Blu-ray', dvd: 'DVD'
-    };
-    var catLabel = catLabels[p.category] || 'Music';
+    // Plural label here: the fallback description reads "… on Vinyl Records at
+    // Velorex Music", matching what seo-render.php generates. The <title> uses
+    // the singular form via productTitle().
+    var catLabel = CATEGORY_LABELS[p.category] || 'Music';
     var price = Number(p.price || 0).toLocaleString('en-IN');
     var desc = String(p.description || '').replace(/\s+/g, ' ').trim();
     if (!desc) {
@@ -393,7 +488,7 @@ var Seo = (function () {
     if (desc.length > 160) desc = desc.slice(0, 157).replace(/\s+\S*$/, '') + '…';
 
     applyTags({
-      title: p.title + ' — ' + p.artist + ' | ' + catLabel + ' | Buy Online India',
+      title: productTitle(p),
       description: desc,
       canonical: canonical || (ORIGIN + productPath(p)),
       image: absoluteImage(p.image),
@@ -457,6 +552,7 @@ var Seo = (function () {
   return {
     ORIGIN: ORIGIN,
     slugify: slugify,
+    productTitle: productTitle,
     syncBlogPost: syncBlogPost,
     syncCombo: syncCombo,
     productPath: productPath,

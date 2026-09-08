@@ -1205,6 +1205,17 @@ Admin panel → **Products** → click **Bulk Upload** (next to **New Product**)
 - It will not upload images. Add them per-product via the existing edit modal after the import. (Decided at design time — CSVs with embedded base64 images get huge and slow to parse.)
 - It will not delete products. The endpoint is purely additive/update — anything not in your CSV stays untouched. To remove products, use the per-row delete button.
 
+**The template's example rows must match its header count.** They are
+`BULK_TEMPLATE_COLUMNS` and `BULK_TEMPLATE_EXAMPLES` in
+[src/js/admin/inventory.js](src/js/admin/inventory.js), and they had drifted to
+24 headers against 20 values — which silently shifted `description` into
+`condition`, `music_director` into `subcategory`, and so on, so anyone filling
+in the downloaded template by following its example row imported garbage.
+`downloadBulkTemplate()` now refuses to generate a mismatched file. Keep the
+example values matching real inventory conventions too (lowercase `hindi`, real
+labels like `Saregama`) — for most people this file is the only documentation
+they will read before importing.
+
 **Implementation:**
 - Endpoint: [api/products-bulk-upsert.php](api/products-bulk-upsert.php) — admin-only (`X-Admin-Pass`), runs in a single transaction. Returns `{ ok, inserted, updated, errors[], products[] }`.
 - Shared persistence: [api/_products_helpers.php](api/_products_helpers.php) holds `upsert_product()` / `row_to_product()` / `products_has_images_column()` so both `products.php` and `products-bulk-upsert.php` write rows identically.
@@ -1398,6 +1409,66 @@ GET /product/12-sholay-r-d-burman
 
 A crawler that never runs JavaScript still gets a complete, indexable page. One that
 does run JavaScript gets `src/js/seo.js` keeping the tags correct as the user navigates.
+
+### The shell's SEO tags are STRIPPED, not overwritten
+
+`velorex_shell()` calls `velorex_strip_shell_seo()` before any route injects its
+own tags. Injection alone left both copies in the document — with the
+**homepage's** title, description and canonical **first**, because they sit
+higher in `index.html`. Google discards a page's canonical entirely when it
+finds more than one, and any crawler that does not execute JavaScript read the
+homepage's title on all 72 product pages. `src/js/seo.js` repaired it after
+hydration, which is exactly why it went unnoticed for so long.
+
+The strippable tags live between `<!-- velorex:seo-head:start -->` and
+`<!-- velorex:seo-head:end -->` in `index.html`. **Only put a tag inside those
+markers if `velorex_meta_block()`/`velorex_jsonld_site()` also emit it** — a tag
+that is stripped but not re-emitted disappears from every server-rendered page.
+`theme-color` and the favicons sit outside the markers for that reason. If the
+markers are ever lost, `velorex_strip_shell_seo()` falls back to removing the
+exact tags by pattern, so the failure mode is "no duplicates" rather than a
+silent return of this bug.
+
+`/` is unaffected: it is served as static `index.html` and never reaches
+`seo-render.php`, so it keeps that one correct set.
+
+Guarded by `tests/seo-head-dedupe.php`.
+
+### The SPA must not overwrite server-rendered tags
+
+`velorex_meta_block()` stamps `<meta name="velorex-ssr" content="<path>">`, and
+`Seo.update()` skips its **first** call when that marker matches
+`location.pathname`. Every later call is a real client-side navigation and
+updates tags normally.
+
+Without this the router's boot-time `Seo.update()` replaced what the server had
+just rendered — and because Googlebot indexes the rendered DOM, an empty
+category's `noindex, follow` came back as `index, follow`, undoing the
+thin-page protection. Read the marker **lazily**, inside the call: the injected
+block sits immediately before `</head>`, after `seo.js`'s own `<script>`, so a
+module-eval-time lookup always finds `null`.
+
+### Product titles are built by one shared function
+
+`velorex_product_title()` (PHP) and `Seo.productTitle()` (JS) must return
+identical strings — the same rule as `slugify`, and they had already drifted
+("Vinyl Records" vs "Vinyl Record"). Both run their containment test through
+`slugify()`, so parity is inherited rather than re-derived.
+
+The formula keeps the product name, adds the artist **only if the name does not
+already contain it**, then adds the format and the brand **only while they fit**
+60 characters. Nothing is cut mid-word — whole optional parts are dropped, so a
+title is always a complete phrase. The old formula
+(`<Product> — <Artist> | <Category> | Buy Online India`) stated the artist and
+the format twice and averaged 77 characters, past what Google renders; 66 of 72
+products exceeded the limit, the worst at 217. Now the average is 53 and one
+product exceeds 60.
+
+The `artist` column is free text and sometimes holds a cast list, so only the
+first name is used — that is what produced the 217-character title.
+
+Guarded by `tests/seo-title-parity.js` (run with `node tests/seo-title-parity.js`;
+pass a products-JSON snapshot to fold the live catalogue into the cases).
 
 ### Slug parity — the one rule that will bite you
 

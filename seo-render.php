@@ -61,9 +61,21 @@ function velorex_shell(): string {
     // nested path (/product/12-x), where a relative ref would resolve to
     // /product/src/js/... and 404. Rewrite to root-absolute.
     $html = preg_replace('#(\s(?:src|href)=")(src/)#', '$1/$2', $html);
-    return $html;
-}
 
+    // Drop the shell's own SEO tags. Every route below injects its own
+    // title/description/canonical/OG/Twitter set plus Organization+WebSite
+    // JSON-LD, and injection alone left BOTH copies in the document — with the
+    // homepage's copy first, because it is higher up the file. Google discards
+    // a page's canonical entirely when it finds more than one, and a crawler
+    // that does not execute JavaScript read the homepage's <title> on every
+    // product page. src/js/seo.js did repair it after hydration, which is
+    // exactly why this went unnoticed; server-rendered HTML has to be correct
+    // before any script runs.
+    //
+    // The homepage is unaffected: "/" is served as static index.html by
+    // .htaccess and never reaches this file, so it keeps this one correct set.
+    return velorex_strip_shell_seo($html); // src/seo/seo-lib.php
+}
 // Insert a block immediately before </head>.
 function velorex_inject_head(string $html, string $block): string {
     $pos = stripos($html, '</head>');
@@ -208,19 +220,21 @@ if ($route === 'product') {
     $inStock   = (int)($p['stock'] ?? 0) > 0;
     $priceFmt  = number_format((int)$p['price']);
 
-    // Title formula: <Product> — <Artist> | <Format> | Buy Online India
-    // Keeps the primary entity first (what people search) and the commercial
-    // qualifier last, inside the ~60 char window Google renders.
-    $title = $p['title'] . ' — ' . $p['artist'] . ' | ' . $catLabel . ' | Buy Online India';
+    // Shared with Seo.productTitle() in src/js/seo.js — see the header on
+    // velorex_product_title() in src/seo/seo-lib.php for the formula and why
+    // the old one overflowed Google's display width on every product.
+    $title = velorex_product_title($p);
 
     // Prefer the real description; fall back to a generated one so no product
     // ever ships with an empty meta description.
     $descSource = trim((string)($p['description'] ?? ''));
     if ($descSource === '') {
+        // No "free shipping over ₹5,000" here: that threshold was removed in
+        // favour of per-product shipping (§16), so the sentence was a false
+        // claim being published straight into search results.
         $descSource = 'Buy ' . $p['title'] . ' by ' . $p['artist'] . ' on ' . $catLabel
             . ' at Velorex Music. ₹' . $priceFmt . '. '
-            . ($inStock ? 'In stock and ready to ship across India.' : 'Available to pre-order.')
-            . ' Free shipping over ₹5,000.';
+            . ($inStock ? 'In stock and ready to ship across India.' : 'Available to pre-order.');
     } else {
         $descSource = '₹' . $priceFmt . ' · ' . $descSource;
     }

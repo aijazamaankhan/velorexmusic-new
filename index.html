@@ -29,11 +29,25 @@
            that renders JavaScript reads values matching the view it landed on.
        Keep the tag NAMES stable — seo.js targets them by selector and will
        append duplicates if one is renamed. -->
+  <!-- velorex:seo-head:start
+       EVERYTHING BETWEEN THESE TWO MARKERS IS THE HOMEPAGE'S SEO SET, AND IS
+       STRIPPED BY velorex_shell() IN seo-render.php BEFORE PER-PAGE TAGS ARE
+       INJECTED. Without that strip, every server-rendered product/category
+       page shipped two titles, two descriptions and two canonicals — with
+       the homepage's copy FIRST. src/js/seo.js corrected them after hydration,
+       but Google discards a page's canonical outright when it finds more than
+       one, and any crawler that does not run JavaScript read the homepage's
+       title on all 72 product pages.
+
+       So: only add a tag here if seo-render.php also emits it (see
+       velorex_meta_block + velorex_jsonld_site in src/seo/seo-lib.php). A tag
+       that lives here but is NOT re-emitted would vanish from every
+       server-rendered page — put that kind outside the markers, as
+       theme-color and the favicons are. -->
   <title>Velorex Music | Buy Vinyl Records, CDs &amp; Cassettes Online India</title>
   <meta name="description" content="Buy original vinyl records, audio CDs, cassettes, Blu-rays and DVDs online in India. Hindi film soundtracks, English albums and rare collector pressings. Delivered across India.">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
   <link rel="canonical" href="https://velorexmusic.com/">
-  <meta name="theme-color" content="#0d0d0d">
 
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Velorex Music">
@@ -46,15 +60,6 @@
   <meta name="twitter:title" content="Velorex Music | Buy Vinyl Records, CDs &amp; Cassettes Online India">
   <meta name="twitter:description" content="Buy original vinyl records, audio CDs, cassettes, Blu-rays and DVDs online in India.">
   <meta name="twitter:image" content="https://velorexmusic.com/src/img/og-default.jpg">
-
-  <!-- SVG first (crisp at every size, and modern browsers prefer it); PNGs are
-       the fallback for older browsers and feed readers that ignore image/svg+xml.
-       iOS ignores SVG favicons entirely, hence the 180px apple-touch-icon. -->
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
-  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png">
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-
   <!-- Organization + WebSite. The SearchAction lets Google render a sitelinks
        search box for brand queries ("velorex music"). LocalBusiness lives on
        the category pages (emitted by seo-render.php) and contact.html. -->
@@ -101,6 +106,16 @@
     }
   }
   </script>
+  <!-- velorex:seo-head:end -->
+
+  <meta name="theme-color" content="#0d0d0d">
+  <!-- SVG first (crisp at every size, and modern browsers prefer it); PNGs are
+       the fallback for older browsers and feed readers that ignore image/svg+xml.
+       iOS ignores SVG favicons entirely, hence the 180px apple-touch-icon. -->
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
   <!-- ================== /SEO ==================== -->
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -117,7 +132,7 @@
   <script src="src/js/api-base.js?v=0ce972cf"></script>
   <!-- URL vocabulary + live metadata. Must load before router.js and pages.js,
        both of which call Seo.buildPath()/Seo.productPath() to render hrefs. -->
-  <script src="src/js/seo.js?v=32f50bd7"></script>
+  <script src="src/js/seo.js?v=76572bc9"></script>
   <script src="src/js/constants.js?v=b0f974a1"></script>
   <script src="src/js/storage.js?v=3f882b69"></script>
   <script src="src/js/auth.js?v=79e7221e"></script>

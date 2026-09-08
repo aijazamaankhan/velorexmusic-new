@@ -284,6 +284,121 @@ function velorex_trim_text(?string $s, int $max = 160): string {
 // 'noindex, follow' for pages that must never enter the index (cart, profile,
 // search results, auth screens).
 // -----------------------------------------------------------------------------
+// Remove the marked SEO block from the shell. Falls back to removing the exact
+// tags velorex_meta_block()/velorex_jsonld_site() re-emit, so that an edit to
+// index.html that loses the markers degrades to "still no duplicates" rather
+// than silently resurrecting the bug this function exists to prevent.
+function velorex_strip_shell_seo(string $html): string {
+    $start = strpos($html, '<!-- velorex:seo-head:start');
+    $end   = strpos($html, '<!-- velorex:seo-head:end -->');
+    if ($start !== false && $end !== false && $end > $start) {
+        return substr($html, 0, $start)
+             . substr($html, $end + strlen('<!-- velorex:seo-head:end -->'));
+    }
+
+    $patterns = [
+        '#[ 	]*<title>.*?</title>\R?#is',
+        '#[ 	]*<meta\s+name="(?:description|robots|twitter:[a-z:]+)"[^>]*>\R?#i',
+        '#[ 	]*<meta\s+property="(?:og|product):[a-z:]+"[^>]*>\R?#i',
+        '#[ 	]*<link\s+rel="canonical"[^>]*>\R?#i',
+        // Only the site-level nodes seo-lib re-emits; a page's own JSON-LD is
+        // injected later and is never present in the shell.
+        '#[ 	]*<script type="application/ld\+json">\s*\{[^<]*?"@id":\s*"[^"]*/\#(?:organization|website)"[^<]*?\}\s*</script>\R?#is',
+    ];
+    foreach ($patterns as $re) {
+        $out = preg_replace($re, '', $html);
+        if ($out !== null) $html = $out;
+    }
+    return $html;
+}
+
+// -----------------------------------------------------------------------------
+// Product <title> construction
+// -----------------------------------------------------------------------------
+//
+// MIRRORED IN JS: Seo.productTitle() in src/js/seo.js must return byte-identical
+// output for the same product. Same rule as velorex_slugify() — if they drift,
+// the server declares one title and the SPA rewrites it to another on hydration.
+// There is a parity test in tests/seo-title-parity.js.
+//
+// The formula used to be:
+//     <Product> — <Artist> | <Category, plural> | Buy Online India
+// which produced, for a product literally named "Meenaxi Vinyl record - Tabu -
+// A. R. Rehman" by "A R Rehman":
+//     Meenaxi Vinyl record - Tabu - A. R. Rehman — A R Rehman | Vinyl Records | Buy Online India
+// 90 characters, with the artist stated twice and the format stated twice.
+// Google renders roughly the first 60, so the part that actually distinguishes
+// one record from another was routinely cut off. Every one of the 20 titles
+// sampled on the live site exceeded the limit (median 73, longest 225).
+//
+// Now: keep the product name, add the artist ONLY if the name does not already
+// carry it, then add the format and the brand ONLY while they fit. Nothing is
+// truncated mid-word — whole optional parts are dropped instead, so a title is
+// always a complete phrase.
+
+// Singular, per-item format labels. velorex_category_label_for_key() stays
+// plural ("Vinyl Records") because it labels category PAGES; one record is a
+// "Vinyl Record". Departments get no format qualifier — "Merchandise" is not a
+// format and reads as noise in a product title.
+function velorex_format_label_for_key(string $key): string {
+    $map = [
+        'vinyl'    => 'Vinyl Record',
+        'cd'       => 'Audio CD',
+        'cassette' => 'Cassette',
+        'bluray'   => 'Blu-ray',
+        'dvd'      => 'DVD',
+    ];
+    return $map[$key] ?? '';
+}
+
+// Soft budget for the optional tail. Google truncates display around here; the
+// name and artist are never sacrificed to it, only the format and brand.
+const VELOREX_TITLE_SOFT_LIMIT = 60;
+
+// Does $haystack already say $needle? Compared through velorex_slugify() so the
+// test is immune to case, punctuation and accents ("A. R. Rehman" vs
+// "A R Rehman"), and so PHP and JS agree by reusing a function whose parity is
+// already enforced. Substring rather than token match, so "cassettes" counts as
+// already containing "Cassette".
+function velorex_title_contains(string $haystack, string $needle): bool {
+    $h = velorex_slugify($haystack);
+    $n = velorex_slugify($needle);
+    return $n !== '' && strpos($h, $n) !== false;
+}
+
+// The artist column is free text and sometimes holds a full cast list
+// ("Waheeda Rehman, Rajesh Khanna, Dharmendra, …" — 130 characters on one live
+// row). Take the first name: it is the strongest search term, and appending the
+// whole list is what produced the 225-character title.
+function velorex_primary_artist(string $artist): string {
+    $first = preg_split('/\s*[,;\/]\s*|\s+&\s+/u', trim($artist))[0] ?? '';
+    return trim(preg_replace('/\s+/u', ' ', $first));
+}
+
+function velorex_product_title(array $p): string {
+    $name = trim(preg_replace('/\s+/u', ' ', (string)($p['title'] ?? '')));
+    if ($name === '') return VELOREX_SITE_NAME;
+
+    $artist = velorex_primary_artist((string)($p['artist'] ?? ''));
+    $format = velorex_format_label_for_key((string)($p['category'] ?? ''));
+
+    // Core: never dropped, because these are the terms people search.
+    $title = $name;
+    if ($artist !== '' && !velorex_title_contains($title, $artist)) {
+        $title .= ' — ' . $artist;
+    }
+
+    // Tail: added only while it fits, longest-value-first.
+    if ($format !== '' && !velorex_title_contains($title, $format)
+        && mb_strlen($title . ' | ' . $format) <= VELOREX_TITLE_SOFT_LIMIT) {
+        $title .= ' | ' . $format;
+    }
+    if (mb_strlen($title . ' | ' . VELOREX_SITE_NAME) <= VELOREX_TITLE_SOFT_LIMIT) {
+        $title .= ' | ' . VELOREX_SITE_NAME;
+    }
+    return $title;
+}
+
 function velorex_meta_block(array $o): string {
     $title       = $o['title'] ?? VELOREX_SITE_NAME;
     $description = velorex_trim_text($o['description'] ?? '', 160);
@@ -292,7 +407,19 @@ function velorex_meta_block(array $o): string {
     $type        = $o['type'] ?? 'website';
     $robots      = $o['robots'] ?? 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
 
-    $out  = '  <title>' . velorex_e($title) . "</title>\n";
+    // Marks this page as server-rendered, and says for which path. src/js/seo.js
+    // reads it and skips its FIRST tag rewrite when the marker matches the URL
+    // the browser actually landed on, so hydration cannot overwrite what the
+    // server already decided. Without this the SPA replaced the server's tags
+    // on load — most damagingly turning an empty category's "noindex, follow"
+    // back into "index, follow", so a thin page Google was told to skip became
+    // indexable again on the render pass.
+    $ssrPath = parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH);
+    if (!is_string($ssrPath) || $ssrPath === '') {
+        $ssrPath = parse_url($canonical, PHP_URL_PATH) ?: '/';
+    }
+    $out  = '  <meta name="velorex-ssr" content="' . velorex_e($ssrPath) . "\">\n";
+    $out .= '  <title>' . velorex_e($title) . "</title>\n";
     $out .= '  <meta name="description" content="' . velorex_e($description) . "\">\n";
     $out .= '  <meta name="robots" content="' . velorex_e($robots) . "\">\n";
     $out .= '  <link rel="canonical" href="' . velorex_e($canonical) . "\">\n";
