@@ -328,24 +328,76 @@
       if (input) input.value = '';
     }
 
-    function downloadBulkTemplate() {
-      const headers = [
-        'id', 'title', 'artist', 'category', 'price',
-        'language', 'original_price', 'stock', 'badge', 'condition', 'subcategory',
-        'free_shipping', 'shipping_charge', 'description',
-        'music_director', 'track_listing', 'people',
-        'specs_format', 'specs_speed', 'specs_label', 'specs_year',
-        'specs_tracks', 'specs_genre', 'specs_theme',
-      ];
-      const example = [
-        '', 'Sholay', 'R. D. Burman', 'vinyl', '1499',
-        'Hindi', '1999', '5', 'hot',
+    // Column order for the bulk-upload template. Kept next to the example rows
+    // below so the two are read together — they previously drifted: 24 headers
+    // against 20 example values, which silently shifted `description` under
+    // `condition`, `music_director` under `subcategory` and so on. Anyone who
+    // filled the template in by copying the example row got a garbage import.
+    // TEMPLATE_EXAMPLES is asserted against this at generation time now.
+    const BULK_TEMPLATE_COLUMNS = [
+      'id', 'title', 'artist', 'category', 'price',
+      'language', 'original_price', 'stock', 'badge', 'condition', 'subcategory',
+      'free_shipping', 'shipping_charge', 'description',
+      'music_director', 'track_listing', 'people',
+      'specs_format', 'specs_speed', 'specs_label', 'specs_year',
+      'specs_tracks', 'specs_genre', 'specs_theme',
+    ];
+
+    // Three rows, chosen to answer the questions people actually hit:
+    //   1. what a fully-populated row looks like
+    //   2. which columns are genuinely required (everything else blank)
+    //   3. how to UPDATE an existing product, and how the pre-owned /
+    //      free-shipping flags are written
+    //
+    // Values mirror the live catalogue rather than being invented: lowercase
+    // `hindi` (the rows stored as "Hindi" are exactly the ones that used to fall
+    // out of the storefront's language filter), `vinyl`, and real specs
+    // (LP / 33 RPM / Saregama). Keep them realistic — this file is the only
+    // documentation most people will read before importing.
+    const BULK_TEMPLATE_EXAMPLES = [
+      [
+        '',                     // id — blank = server assigns the next one
+        'Sholay',               // title      (required)
+        'R. D. Burman',         // artist     (required)
+        'vinyl',                // category   (required) vinyl|cd|cassette|bluray|dvd|merchandise|vinyl-care
+        '1499',                 // price      (required) integer rupees, no symbol
+        'hindi',                // language   lowercase: hindi | english
+        '1999',                 // original_price — shown struck through
+        '5',                    // stock
+        'hot',                  // badge      hot | new | upcoming (blank for none)
+        'new',                  // condition  new | pre-owned
+        '',                     // subcategory — merchandise / vinyl-care only
+        '0',                    // free_shipping  1 = always ships free
+        '',                     // shipping_charge — flat ₹ for this item; blank = zone rate
         'Original soundtrack from the 1975 Bollywood classic.',
-        'R. D. Burman', 'Title Music|Mehbooba Mehbooba|Yeh Dosti',
-        'rd-burman|amitabh-bachchan',
-        'LP', '33 RPM', 'EMI', '1975', '8', 'Bollywood', 'Soundtrack',
-      ];
-      const csv = bulkRowToCsv(headers) + '\n' + bulkRowToCsv(example) + '\n';
+        'R. D. Burman',         // music_director
+        'Title Music|Mehbooba Mehbooba|Yeh Dosti',  // track_listing — pipe separated
+        'rd-burman|amitabh-bachchan',               // people — pipe separated slugs
+        'LP', '33 RPM', 'Saregama', '1975', '8', 'Bollywood', 'Soundtrack',
+      ],
+      // Minimum viable row — every other column may be left empty.
+      ['', 'Anndata', 'Salil Chowdury', 'vinyl', '899',
+       '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''],
+      // Existing id = UPDATE that product. Pre-owned, ships free.
+      ['42', 'Yeh Vaada Raha', 'R. D. Burman', 'cassette', '499',
+       'hindi', '', '2', '', 'pre-owned', '', '1', '', 'Second-hand cassette, plays well.',
+       'R. D. Burman', '', '', 'Cassette', '', 'HMV', '1982', '10', 'Bollywood', 'Soundtrack'],
+    ];
+
+    function downloadBulkTemplate() {
+      const headers = BULK_TEMPLATE_COLUMNS;
+
+      // Guard rather than trust: a mismatch here is invisible in the generated
+      // file (the columns just silently shift) and corrupts every import made
+      // from it. Fail loudly at the one moment someone is looking.
+      const bad = BULK_TEMPLATE_EXAMPLES.filter(r => r.length !== headers.length);
+      if (bad.length) {
+        showToast('❌ Template is broken: ' + bad.length + ' example row(s) do not match the '
+          + headers.length + ' columns. Fix BULK_TEMPLATE_EXAMPLES.', 'danger');
+        return;
+      }
+
+      const csv = [headers, ...BULK_TEMPLATE_EXAMPLES].map(bulkRowToCsv).join('\n') + '\n';
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');

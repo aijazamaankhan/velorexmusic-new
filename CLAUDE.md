@@ -1205,6 +1205,17 @@ Admin panel → **Products** → click **Bulk Upload** (next to **New Product**)
 - It will not upload images. Add them per-product via the existing edit modal after the import. (Decided at design time — CSVs with embedded base64 images get huge and slow to parse.)
 - It will not delete products. The endpoint is purely additive/update — anything not in your CSV stays untouched. To remove products, use the per-row delete button.
 
+**The template's example rows must match its header count.** They are
+`BULK_TEMPLATE_COLUMNS` and `BULK_TEMPLATE_EXAMPLES` in
+[src/js/admin/inventory.js](src/js/admin/inventory.js), and they had drifted to
+24 headers against 20 values — which silently shifted `description` into
+`condition`, `music_director` into `subcategory`, and so on, so anyone filling
+in the downloaded template by following its example row imported garbage.
+`downloadBulkTemplate()` now refuses to generate a mismatched file. Keep the
+example values matching real inventory conventions too (lowercase `hindi`, real
+labels like `Saregama`) — for most people this file is the only documentation
+they will read before importing.
+
 **Implementation:**
 - Endpoint: [api/products-bulk-upsert.php](api/products-bulk-upsert.php) — admin-only (`X-Admin-Pass`), runs in a single transaction. Returns `{ ok, inserted, updated, errors[], products[] }`.
 - Shared persistence: [api/_products_helpers.php](api/_products_helpers.php) holds `upsert_product()` / `row_to_product()` / `products_has_images_column()` so both `products.php` and `products-bulk-upsert.php` write rows identically.
