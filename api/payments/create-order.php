@@ -191,8 +191,11 @@ try {
         $subtotal += $lineTotal;
         $itemsSnapshot[] = [
             'id'        => $pid,
-            'name'      => $r['title'],
-            'artist'    => $r['artist'],
+            // Decoded, not raw: this snapshot is frozen into orders.order_data
+            // and is what the receipt email, the invoice and the admin drawer
+            // print as TEXT. See products_decode_text() in _products_helpers.php.
+            'name'      => products_decode_text($r['title']),
+            'artist'    => products_decode_text($r['artist']),
             'price'     => $price,
             'qty'       => $qty,
             'lineTotal' => $lineTotal,

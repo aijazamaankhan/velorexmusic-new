@@ -43,6 +43,8 @@ velorexmusic-new/
 │       │   ├── modal.css        # .modal-overlay > .modal pattern + mobile scroll-the-overlay fix
 │       │   ├── payment-modal.css# .payment-modal > .payment-card (Razorpay overlay)
 │       │   ├── toast.css        # .toast-container + .toast variants + keyframes
+│       │   ├── hero-carousel.css # Homepage hero banner — owns .hero and every .hero-*
+│       │   │                     # rule. NOT in pages/storefront.css; see §21.
 │       │   └── skeleton.css     # Shared skeleton loaders — shimmer keyframe + card/row/
 │       │                        # order/stat/drawer shapes. Used by storefront + admin.
 │       ├── pages/
@@ -96,6 +98,9 @@ velorexmusic-new/
 │       │                        # navigation. slugify() MUST stay byte-identical to
 │       │                        # velorex_slugify() in src/seo/seo-lib.php — see §15.
 │       ├── storefront/
+│       │   ├── hero.js          # Homepage hero carousel — brand slide + featured-product
+│       │   │                    # slides, auto-switch, dots/arrows/swipe. The brand slide is
+│       │   │                    # static markup in index.html; see §21.
 │       │   ├── carriers.js      # CARRIERS_META + carrier helpers (inline SVG logos, tracking URLs)
 │       │   ├── pages.js         # createProductCard + all initPageXxx + page renderers
 │       │   │                    # (login/signup/home/products/product-detail/cart/profile)
@@ -1273,6 +1278,8 @@ See `PLAYWRIGHT_MCP_README.md` for the optional MCP server setup if you want bro
 - **Navigation links must be real `<a href>`.** Crawlers follow hrefs and never fire `onclick`. Build the path with `Seo.buildPath()` / `Seo.productPath()` and keep the `onclick` for the SPA transition. Reverting any link to `href="#"` re-hides that part of the site from search. See [§15](#15-seo-architecture).
 - **Slug functions are mirrored.** `velorex_slugify()` (PHP) and `Seo.slugify()` (JS) must produce identical output. Change both together or you create duplicate URLs.
 - **Don't remove `.gitattributes`.** LF line endings are required for `bump-cache.js` hashes to match between a Windows clone and the Linux host. See [§15](#15-seo-architecture).
+- **Never HTML-escape on the way into the database.** Write payloads store raw text; escape at every point of output instead. Escaping on write put `&#39;` in real product titles and corrupted their canonical URLs — see [§22](#22-never-html-escape-on-the-way-into-the-database).
+- **The homepage hero's brand slide stays in `index.html`.** `/` is served as static HTML with no server render, so the `<h1>`, description and category links have to be in the file. Only the product slides are built by JS — see [§21](#21-homepage-hero-carousel).
 - **Update this doc.** If you change the schema, add an endpoint, or change a major convention, update the relevant section in `CLAUDE.md` in the same commit.
 
 ## 14. Storefront performance roadmap
@@ -1896,3 +1903,81 @@ on every page load — reporting a broken server that was fine. Raw error bodies
 are summarised by `summariseSaveError()`: an HTML doctype in the response means
 the request never reached our JSON API (host error page or WAF), which is a
 different problem from an API rejection and reads as such.
+
+## 21. Homepage hero carousel
+
+The banner on `/`. One `<section id="hero-carousel">` that auto-switches
+between a **brand slide** (who Velorex is, plus the **All Products** and
+**Shop Categories** calls to action) and up to **five product slides** carrying
+short details — format, language, music director, rating, stock, price — with
+**View Details** and **Add to Cart**.
+
+| Piece | File |
+|---|---|
+| Brand slide markup + controls | `#hero-carousel` in [index.html](index.html) |
+| Slide building + switching | [src/js/storefront/hero.js](src/js/storefront/hero.js) |
+| All styling | [src/styles/components/hero-carousel.css](src/styles/components/hero-carousel.css) |
+| Entry point | `HeroCarousel.init()` at the top of `initPageIndex()` in [src/js/storefront/pages.js](src/js/storefront/pages.js) |
+
+**The brand slide is static markup and the product slides are not, deliberately.**
+The homepage is served as plain `index.html` and never reaches
+`seo-render.php` (see §15), so whatever is in that file is all a non-executing
+crawler gets. Keeping the `<h1>`, the description and the six category links in
+the served HTML means the carousel added zero SEO risk, and it is also what
+makes the banner degrade to the plain static hero it replaced if `hero.js`
+fails to load. **Don't move the brand slide into JS.**
+
+**`.hero` and every `.hero-*` rule now live in the component file, not in
+`pages/storefront.css`.** Both are same-specificity class selectors, so having
+two definitions makes the winner depend on `<link>` order — the classic "I
+edited the hero and nothing changed" trap. Only `@keyframes spin` stays in
+`storefront.css`, because `.loading-spinner` and `payment-modal.css` also
+animate with it.
+
+**Slides are grid-stacked (`grid-area: slide`), not absolutely positioned.**
+The banner's height is the tallest slide's, so switching never shifts layout
+and no height has to be hard-coded. Inactive slides are `visibility: hidden`,
+which also removes them from the tab order — that is why there is no `inert`
+or `tabindex` bookkeeping.
+
+**`init()` is idempotent.** `initPageIndex()` runs once on first paint with a
+cold cache and again after the background sync resolves. A rebuild is skipped
+unless the chosen products actually changed, so a sync that returns the same
+catalogue cannot yank a slide out from under someone mid-read.
+
+Auto-advance is 6.5 s and stops for: hover, keyboard focus inside the banner, a
+hidden tab, a single-slide catalogue, and `prefers-reduced-motion`. The active
+dot fills left-to-right over the dwell so the banner says when it is about to
+move. Arrows, dots, ←/→ keys and swipe all drive it. **Don't remove the pause
+rules** — a banner that moves while someone is reading it or reaching for a
+button is the one thing everybody hates about carousels.
+
+Product selection: badged first (`hot` → `new` → `upcoming`, the admin's
+Homepage Placement), then best-reviewed, capped at five. Sold-out products are
+excluded — featuring an unbuyable item in the largest element on the page is
+worse than showing one fewer. `upcoming` is the exception, since a pre-order
+with no stock is still buyable-soon; those render **Browse All** instead of
+**Add to Cart**.
+
+## 22. Never HTML-escape on the way INTO the database
+
+The admin product form used to send `Utils.escape(...)` values to the API, so
+the DATABASE held entity-encoded text: a title typed as `Gulzar's Fursat Ke
+Raat Din` was stored as `Gulzar&#39;s Fursat Ke Raat Din`. It looked fine
+anywhere the value reached `innerHTML` and broken everywhere it did not —
+breadcrumbs, the detail page-hero, the `<title>` tag, receipt emails — and
+`velorex_slugify()` minted `/product/12-gulzar-39-s-fursat-ke-raat-din` as the
+canonical URL. It also **compounded**: each re-save escaped the ampersands
+again (`&amp;#39;`).
+
+**Escaping is a render-time concern.** Store raw; escape at every point of
+output — `Utils.escape()` in the storefront, `velorex_e()` in the SSR layer,
+`escapeHTML()` in the admin. Do not reintroduce escaping in a write payload.
+
+`products_decode_text()` in [api/_products_helpers.php](api/_products_helpers.php)
+decodes entities on read inside `row_to_product()` and `row_to_product_lean()`,
+which is why the heal reaches the SPA, `seo-render.php`, the sitemap and the
+mailer from one place. It is not a temporary shim — decoding a clean string is
+a no-op, so it stays correct once every row has been re-saved. `sitemap.php`
+and `api/payments/create-order.php` call it directly because they read the
+`products` table without going through those two shapers.

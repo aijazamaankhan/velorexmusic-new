@@ -1050,8 +1050,22 @@
 
       const productData = {
         id: isEditing ? editIdNum : Math.floor(Date.now() / 1000),
-        title: Utils.escape(document.getElementById('f-title').value),
-        artist: Utils.escape(document.getElementById('f-artist').value),
+        // Text fields are stored RAW. They used to be run through
+        // Utils.escape() here, which put HTML entities in the DATABASE: a title
+        // typed as "Gulzar's Fursat Ke Raat Din" was persisted as
+        // "Gulzar&#39;s Fursat Ke Raat Din". Anything rendering it as text
+        // rather than as HTML then showed the entity literally (breadcrumbs,
+        // the detail page-hero, <title>, emails), and velorex_slugify() minted
+        // /product/12-gulzar-39-s-... as the canonical URL. Worse, it compounds
+        // — every re-save escaped the ampersands again (&amp;#39;).
+        //
+        // Escaping is a RENDER-time concern and every render path already does
+        // it (Utils.escape in the storefront, htmlspecialchars in PHP). Do not
+        // reintroduce it here. api/_products_helpers.php decodes entities on
+        // read so rows written by the old code display correctly and heal on
+        // their next save.
+        title: document.getElementById('f-title').value.trim(),
+        artist: document.getElementById('f-artist').value.trim(),
         category: document.getElementById('f-category').value,
         language: document.getElementById('f-language').value,
         price: parseInt(document.getElementById('f-price').value),
@@ -1060,8 +1074,8 @@
         rating: parseFloat(document.getElementById('f-rating').value),
         image: primaryImage,
         images: images,
-        description: Utils.escape(document.getElementById('f-description').value),
-        musicDirector: Utils.escape(document.getElementById('f-music-director').value.trim()),
+        description: document.getElementById('f-description').value,
+        musicDirector: document.getElementById('f-music-director').value.trim(),
         trackListing: flattenedTrackListing,
         trackListingSides: trackListingSides,
         reviews: 0,
@@ -1416,8 +1430,22 @@
       const stockVal = parseInt(document.getElementById('e-stock').value);
       const updates = {
         id: editId,
-        title: Utils.escape(document.getElementById('e-title').value),
-        artist: Utils.escape(document.getElementById('e-artist').value),
+        // Text fields are stored RAW. They used to be run through
+        // Utils.escape() here, which put HTML entities in the DATABASE: a title
+        // typed as "Gulzar's Fursat Ke Raat Din" was persisted as
+        // "Gulzar&#39;s Fursat Ke Raat Din". Anything rendering it as text
+        // rather than as HTML then showed the entity literally (breadcrumbs,
+        // the detail page-hero, <title>, emails), and velorex_slugify() minted
+        // /product/12-gulzar-39-s-... as the canonical URL. Worse, it compounds
+        // — every re-save escaped the ampersands again (&amp;#39;).
+        //
+        // Escaping is a RENDER-time concern and every render path already does
+        // it (Utils.escape in the storefront, htmlspecialchars in PHP). Do not
+        // reintroduce it here. api/_products_helpers.php decodes entities on
+        // read so rows written by the old code display correctly and heal on
+        // their next save.
+        title: document.getElementById('e-title').value.trim(),
+        artist: document.getElementById('e-artist').value.trim(),
         category: document.getElementById('e-category').value,
         language: document.getElementById('e-language').value,
         price: parseInt(document.getElementById('e-price').value),
@@ -1426,8 +1454,8 @@
         rating: parseFloat(document.getElementById('e-rating').value),
         image: primaryImage,
         images: images,
-        description: Utils.escape(document.getElementById('e-description').value),
-        musicDirector: Utils.escape(document.getElementById('e-music-director').value.trim()),
+        description: document.getElementById('e-description').value,
+        musicDirector: document.getElementById('e-music-director').value.trim(),
         trackListing: flattenedTrackListing,
         trackListingSides: trackSides,
         // See the note on `badge` in handleProductSubmit. It must be present in
