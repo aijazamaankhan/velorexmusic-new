@@ -172,6 +172,52 @@ var HeroCarousel = (function () {
     return slide;
   }
 
+  // ---- Brand slide: floating vinyl cards -----------------------------------
+  //
+  // Swaps the three placeholder cards in index.html for real vinyl titles.
+  // Every card is labelled "Vinyl Record" — the trio is there to sell the
+  // flagship format, not to enumerate the catalogue — so only vinyl products
+  // are eligible. Picking any other category would print a label that
+  // contradicts the product named directly beneath it.
+  //
+  // Bails silently unless three in-stock vinyls are available: the
+  // hand-written placeholders are generic collection names that sit correctly
+  // under a "Vinyl Record" label, so leaving them is better than a mix of real
+  // and placeholder cards, and far better than empty ones.
+  function fillFloatCards(products) {
+    var host = document.getElementById('hero-float-cards');
+    if (!host) return;
+    var cards = host.querySelectorAll('.hero-float-card');
+    if (cards.length < 3) return;
+
+    var vinyl = products.filter(function (p) { return p && p.category === 'vinyl' && p.title; });
+    // In-stock first, but sold-out vinyl is still vinyl inventory and these
+    // cards are decoration, not buy buttons — so fall back to the rest rather
+    // than dropping to placeholders on a shop that happens to be sold out of
+    // three records. Concat, not a second filter pass, keeps the order stable.
+    var picks = vinyl.filter(function (p) { return (p.stock | 0) > 0; })
+      .concat(vinyl.filter(function (p) { return (p.stock | 0) <= 0; }))
+      .slice(0, 3);
+    if (picks.length < 3) return;
+
+    picks.forEach(function (p, i) {
+      var label = cards[i].querySelector('.hero-float-label');
+      var name = cards[i].querySelector('.hero-float-name');
+      if (label) label.textContent = 'Vinyl Record';
+      // These sit in a nowrap card beside the record; a full-length Bollywood
+      // title would run off the slide, so clip on a word boundary.
+      if (name) name.textContent = truncate(p.title, 22);
+    });
+  }
+
+  function truncate(str, max) {
+    str = String(str).trim();
+    if (str.length <= max) return str;
+    var cut = str.slice(0, max);
+    var sp = cut.lastIndexOf(' ');
+    return (sp > max * 0.5 ? cut.slice(0, sp) : cut).replace(/[\s,\-–—]+$/, '') + '…';
+  }
+
   // ---- Switching ----------------------------------------------------------
 
   function show(next) {
@@ -291,6 +337,8 @@ var HeroCarousel = (function () {
     var products = [];
     try { products = pickProducts(Storage.getProducts() || []); }
     catch (e) { products = []; }
+
+    try { fillFloatCards(Storage.getProducts() || []); } catch (e) { /* placeholders stand */ }
 
     var sig = products.map(function (p) { return p.id + ':' + p.price + ':' + (p.image || ''); }).join('|');
     if (built && sig === signature) return;

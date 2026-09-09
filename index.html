@@ -143,6 +143,9 @@
        UI — toast, confirm dialog, cart, address modal. Page-level renderers
        still live in the inline <script> for now (will move in PR 6). -->
   <script src="src/js/toast.js?v=d72083ef"></script>
+  <!-- Custom cursor. Self-initialising and self-disabling on touch /
+       reduced-motion; see src/js/cursor.js. -->
+  <script src="src/js/cursor.js?v=242bd112"></script>
   <script src="src/js/confirm-dialog.js?v=40a04cdd"></script>
   <script src="src/js/cart.js?v=f605a63a"></script>
   <script src="src/js/address-form.js?v=5d822cd1"></script>
@@ -152,15 +155,18 @@
        end up in script-scope; the inline <script> at the bottom of <body>
        just bootstraps DOMContentLoaded. -->
   <script src="src/js/storefront/carriers.js?v=488bf189"></script>
-  <script src="src/js/storefront/pages.js?v=62e966c6"></script>
+  <script src="src/js/storefront/pages.js?v=77c92223"></script>
   <!-- Blog views. Must load before router.js, whose initPage dispatcher calls
        initPageBlog / initPageBlogPost. -->
   <!-- Homepage hero carousel. Must load before router.js: its initPage
        dispatcher runs initPageIndex, which calls HeroCarousel.init(). -->
-  <script src="src/js/storefront/hero.js?v=ee717112"></script>
+  <script src="src/js/storefront/hero.js?v=25800217"></script>
+  <!-- Global search. Must load before router.js, whose injectNavbar calls
+       VelorexSearch.bindNavbar(). -->
+  <script src="src/js/storefront/search.js?v=5aef8bee"></script>
   <script src="src/js/storefront/combos.js?v=52ddd306"></script>
   <script src="src/js/storefront/blog.js?v=38e36528"></script>
-  <script src="src/js/storefront/router.js?v=456d12a3"></script>
+  <script src="src/js/storefront/router.js?v=7d882242"></script>
   <script src="src/js/storefront/checkout.js?v=123984d6"></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
        they can be shared between the storefront pages without duplication.
@@ -173,10 +179,12 @@
   <link rel="stylesheet" href="src/styles/components/payment-modal.css?v=02096d61">
   <link rel="stylesheet" href="src/styles/components/toast.css?v=1b13f717">
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
-  <link rel="stylesheet" href="src/styles/components/hero-carousel.css?v=01a06e2d">
+  <link rel="stylesheet" href="src/styles/components/hero-carousel.css?v=cfa114f1">
+  <link rel="stylesheet" href="src/styles/components/cursor.css?v=fb46709c">
+  <link rel="stylesheet" href="src/styles/components/search.css?v=046a8aed">
   <!-- Page-specific styles (hero, products, cart, profile, footer, etc.).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=0d518bc2">
+  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=c0298276">
 </head>
 
 <body>
@@ -275,6 +283,28 @@
                       <div class="label-title">Velorex Music</div>
                       <div class="label-sub">&#9834; PREMIUM &#9834;</div>
                     </div>
+                  </div>
+                </div>
+                <!-- Three glass cards drifting around the record. Brand slide
+                     only. hero.js swaps these placeholder format names for real
+                     catalogue titles once the product cache is warm; the values
+                     below are what a cold load and a non-JS crawler see, so they
+                     have to read as finished copy rather than "Loading…".
+                     aria-hidden: they are decorative garnish, and the products
+                     they name are all reachable from real links elsewhere on
+                     the page. -->
+                <div class="hero-float-cards" id="hero-float-cards" aria-hidden="true">
+                  <div class="hero-float-card">
+                    <span class="hero-float-label">Vinyl Record</span>
+                    <span class="hero-float-name">Bollywood Classics</span>
+                  </div>
+                  <div class="hero-float-card">
+                    <span class="hero-float-label">Vinyl Record</span>
+                    <span class="hero-float-name">Golden Era Hits</span>
+                  </div>
+                  <div class="hero-float-card">
+                    <span class="hero-float-label">Vinyl Record</span>
+                    <span class="hero-float-name">Retro Collection</span>
                   </div>
                 </div>
               </div>
@@ -381,7 +411,11 @@
         <div class="container">
           <div style="background: var(--vinyl-gradient); border-radius: var(--radius-lg); padding: 3rem; text-align: center; position: relative; overflow: hidden;">
             <div style="position:absolute;inset:0;background:radial-gradient(ellipse at center, rgba(255,107,53,0.2), transparent);pointer-events:none;"></div>
-            <h2 style="font-family:var(--font-display);font-size:2rem;margin-bottom:1rem;">🎧 Join 10,000+ Music Lovers</h2>
+            <!-- No subscriber count here. It read "Join 10,000+ Music Lovers",
+                 which was never a real figure — same rule as the hero stats and
+                 the admin dashboard cards (CLAUDE.md §20): a number we cannot
+                 derive does not get invented. -->
+            <h2 style="font-family:var(--font-display);font-size:2rem;margin-bottom:1rem;">🎧 Join the Velorex Record Club</h2>
             <p style="color:var(--text-muted);margin-bottom:2rem;max-width:500px;margin-left:auto;margin-right:auto;">Subscribe to our newsletter and get exclusive early access to new arrivals.</p>
             <div class="newsletter-form" style="display:flex;max-width:400px;margin:0 auto;gap:0.75rem;">
               <input type="email" placeholder="Enter your email..." style="flex:1;min-width:0;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;padding:0.75rem 1rem;font-size:0.9rem;">
@@ -1165,8 +1199,13 @@
 
       setTimeout(function() {
         document.querySelectorAll('.navbar-brand').forEach(b => b.addEventListener('click', e => { e.preventDefault(); navigate('index'); }));
-        var gs = document.getElementById('globalSearch');
-        if (gs) gs.addEventListener('keydown', e => { if (e.key === 'Enter' && gs.value.trim()) navigate('products', { search: gs.value.trim() }); });
+        // The search field is wired by VelorexSearch.bindNavbar(), called from
+        // injectNavbar(). A second Enter handler used to be attached here too,
+        // and it made choosing a suggestion with the keyboard impossible: the
+        // first handler opened the highlighted product, then this one fired on
+        // the same keypress and navigated to /products?search=<raw query> on
+        // top of it. Whatever binds the field must be the ONLY thing that
+        // binds it.
       }, 150);
 
       var initial = parsePageFromUrl();

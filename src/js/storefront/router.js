@@ -116,8 +116,9 @@
             <li class="nav-item"><a href="/blog" onclick="navigate('blog'); return false;" class="nav-link ${activePage === 'blog' || activePage === 'blog-post' ? 'active' : ''}">Blog</a></li>
           `}
         </ul>
-        ${isAdmin ? '' : `<div class="navbar-search"><span class="search-icon"><i class="fas fa-magnifying-glass"></i></span><input type="text" id="globalSearch" placeholder="Search albums, artists..." autocomplete="off"></div>`}
+        ${isAdmin ? '' : `<div class="navbar-search"><span class="search-icon"><i class="fas fa-magnifying-glass"></i></span><input type="search" id="globalSearch" placeholder="Search albums, artists..." autocomplete="off" autocorrect="off" spellcheck="false" role="combobox" aria-expanded="false" aria-autocomplete="list"><kbd class="search-kbd">/</kbd><button type="button" class="search-clear" aria-label="Clear search"><i class="fas fa-xmark"></i></button></div>`}
         <div class="navbar-actions">
+          ${isAdmin ? '' : `<button type="button" class="nav-action-btn search-trigger" onclick="VelorexSearch.open()" aria-label="Search" title="Search"><i class="fas fa-magnifying-glass"></i></button>`}
           ${isAdmin ? '' : `<a href="/cart" rel="nofollow" onclick="navigate('cart'); return false;" class="nav-action-btn"><i class="fas fa-shopping-cart"></i><span class="cart-badge" id="cartBadge"></span></a>`}
           <button class="nav-action-btn" id="themeToggle" onclick="toggleTheme()" title="Toggle Theme"><i class="fas fa-moon"></i></button>
           ${Auth.isLoggedIn()
@@ -131,7 +132,17 @@
       const searchInput = document.getElementById('globalSearch');
       if (searchInput) {
         searchInput.value = currentParams && currentParams.search ? currentParams.search : '';
-        searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && searchInput.value.trim()) navigate('products', { search: searchInput.value.trim() }); });
+        // Suggestions, keyboard nav and the mobile sheet all live in
+        // src/js/storefront/search.js. The navbar is rebuilt on every
+        // navigation, so this re-binds against the fresh input each time —
+        // bindNavbar() registers nothing that could stack up.
+        if (typeof VelorexSearch !== 'undefined') {
+          try { VelorexSearch.bindNavbar(); } catch (e) { console.warn('search bind failed:', e); }
+        } else {
+          // search.js absent (load failure) — keep plain Enter-to-search
+          // working rather than leaving the field inert.
+          searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && searchInput.value.trim()) navigate('products', { search: searchInput.value.trim() }); });
+        }
       }
     }
 

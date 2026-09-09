@@ -1,0 +1,218 @@
+/* =============================================================================
+   Velorex Music — global search
+   Used by: index.html
+
+   Two presentations of one search, driven by src/js/storefront/search.js:
+
+     > 1100px   inline pill in the navbar, with a suggestions dropdown
+     <= 1100px  an icon button in the navbar actions that opens a full-screen
+                sheet with the same input and the same suggestions
+
+   The navbar collapses to a hamburger at 1100px and search used to be
+   `display: none` below that — so on every tablet and every phone the catalogue
+   could only be reached by browsing categories. The sheet exists so search is
+   reachable at every width, which is where most of a music shop's intent lives
+   ("do you have Sholay?").
+   ============================================================================= */
+
+/* ---- Inline navbar field (desktop) --------------------------------------- */
+.navbar-search { flex: 1; max-width: 420px; position: relative; }
+.navbar-search input {
+  width: 100%;
+  padding: 0.62rem 2.4rem 0.62rem 2.6rem;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 50px;
+  color: var(--text);
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: var(--transition);
+}
+.navbar-search input::placeholder { color: var(--text-muted); }
+/* type="search" gets the browser's own clear affordance, which sat next to
+   OUR .search-clear button — two X's in the same field. Ours stays because it
+   is themed and keyboard reachable; the native one goes. */
+.navbar-search input::-webkit-search-cancel-button,
+.navbar-search input::-webkit-search-decoration,
+.search-overlay-field input::-webkit-search-cancel-button,
+.search-overlay-field input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }
+.navbar-search input:hover { border-color: rgba(255, 107, 53, 0.4); }
+.navbar-search input:focus {
+  outline: none;
+  border-color: var(--secondary);
+  background: var(--surface);
+  box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.14);
+}
+.navbar-search .search-icon {
+  position: absolute; left: 0.95rem; top: 50%; transform: translateY(-50%);
+  color: var(--text-muted); font-size: 0.85rem; pointer-events: none;
+  transition: color 0.2s ease;
+}
+.navbar-search input:focus ~ .search-icon,
+.navbar-search:focus-within .search-icon { color: var(--secondary); }
+
+/* "/" focuses the field — the shortcut most shopping and docs sites use. The
+   hint hides as soon as there is a value or focus, so it never sits on top of
+   what someone is typing. */
+.search-kbd {
+  position: absolute; right: 0.6rem; top: 50%; transform: translateY(-50%);
+  display: flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 0.35rem;
+  border: 1px solid var(--border); border-radius: 5px;
+  background: var(--card-bg); color: var(--text-muted);
+  font-size: 0.7rem; font-weight: 700; line-height: 1;
+  pointer-events: none; transition: opacity 0.2s ease;
+}
+.navbar-search:focus-within .search-kbd,
+.navbar-search.has-value .search-kbd { opacity: 0; }
+
+/* Clear button, shown only once there is something to clear. */
+.search-clear {
+  position: absolute; right: 0.55rem; top: 50%; transform: translateY(-50%);
+  width: 22px; height: 22px; border-radius: 50%;
+  display: none; align-items: center; justify-content: center;
+  background: var(--border); color: var(--text); border: 0;
+  font-size: 0.65rem; transition: var(--transition);
+}
+.navbar-search.has-value .search-clear { display: flex; }
+.search-clear:hover { background: var(--secondary); color: #fff; }
+
+/* ---- Suggestions --------------------------------------------------------- */
+.search-suggest {
+  position: absolute; top: calc(100% + 0.6rem); left: 0; right: 0;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  z-index: 1200;                 /* above the 1000 navbar */
+  max-height: min(70vh, 460px);
+  overflow-y: auto;
+  overscroll-behavior: contain;  /* stop the page scrolling once the list ends */
+}
+.search-suggest[hidden] { display: none !important; }
+
+.search-suggest-head {
+  padding: 0.6rem 0.9rem;
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.search-item {
+  display: flex; align-items: center; gap: 0.85rem;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  transition: background 0.15s ease;
+}
+.search-item:last-child { border-bottom: 0; }
+.search-item:hover,
+.search-item.is-active { background: rgba(255, 107, 53, 0.1); }
+.search-item-img {
+  width: 44px; height: 44px; flex: none;
+  border-radius: 8px; object-fit: cover;
+  background: var(--surface2);
+}
+/* The row's children are <span>s (an <a> may not contain block-level flow
+   content), so they need an explicit display or they run together on one line
+   and collide with the price. */
+.search-item-body { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 0.1rem; }
+.search-item-title {
+  display: block;
+  font-weight: 600; font-size: 0.88rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.search-item-title mark { background: transparent; color: var(--secondary); font-weight: 800; }
+.search-item-meta {
+  display: block;
+  font-size: 0.75rem; color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.search-item-price { flex: none; font-weight: 700; font-size: 0.85rem; white-space: nowrap; }
+
+/* Last row: "see all N results", the escape hatch when the top 6 miss. */
+.search-item-all { justify-content: space-between; font-weight: 600; font-size: 0.85rem; color: var(--secondary); }
+
+.search-empty { padding: 1.5rem 1rem; text-align: center; color: var(--text-muted); font-size: 0.85rem; }
+.search-empty i { display: block; font-size: 1.5rem; margin-bottom: 0.5rem; opacity: 0.5; }
+
+/* Quick chips shown before anything is typed. */
+.search-chips { display: flex; flex-wrap: wrap; gap: 0.45rem; padding: 0.75rem 0.9rem; }
+.search-chip {
+  padding: 0.35rem 0.75rem; border-radius: 50px;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text-muted); font-size: 0.78rem; font-weight: 600;
+  transition: var(--transition);
+}
+.search-chip:hover { color: var(--text); border-color: var(--secondary); background: rgba(255, 107, 53, 0.1); }
+
+/* ---- Trigger button (tablet + phone) ------------------------------------- */
+/* Lives in .navbar-actions next to the cart. Hidden on desktop, where the
+   inline field is already on screen.
+   Qualified with .nav-action-btn on purpose: that class sets `display: flex`
+   in pages/storefront.css, which loads after this file, so a bare
+   `.search-trigger` rule at equal specificity lost and the button showed up on
+   desktop next to the field it exists to replace. */
+.nav-action-btn.search-trigger { display: none; }
+
+/* ---- Full-screen sheet (tablet + phone) ---------------------------------- */
+.search-overlay {
+  position: fixed; inset: 0;
+  z-index: 1600;                 /* above the 1500 mobile nav drawer */
+  background: var(--bg);
+  display: flex; flex-direction: column;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.22s ease;
+}
+.search-overlay.is-open { opacity: 1; pointer-events: auto; }
+.search-overlay[hidden] { display: none !important; }
+
+.search-overlay-bar {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.search-overlay-field { position: relative; flex: 1; }
+.search-overlay-field input {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 2.6rem;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 50px;
+  color: var(--text);
+  /* 16px minimum: anything smaller makes iOS Safari zoom the whole page in on
+     focus, and it does not zoom back out. */
+  font-size: 16px;
+  font-family: inherit;
+}
+.search-overlay-field input:focus { outline: none; border-color: var(--secondary); box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.14); }
+.search-overlay-field .search-icon { position: absolute; left: 0.95rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.9rem; pointer-events: none; }
+.search-overlay-close {
+  flex: none; padding: 0.6rem 0.4rem;
+  background: transparent; border: 0; color: var(--text-muted);
+  font-size: 0.9rem; font-weight: 600;
+}
+.search-overlay-close:hover { color: var(--secondary); }
+
+.search-overlay-results { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+/* Inside the sheet the list is the page, so it drops the card chrome. */
+.search-overlay-results .search-suggest {
+  position: static; max-height: none; border: 0; border-radius: 0; box-shadow: none; background: transparent;
+}
+
+@media (max-width: 1100px) {
+  /* The inline field is hidden by the navbar's own responsive rule; this is
+     what replaces it. */
+  .nav-action-btn.search-trigger { display: flex; }
+}
+
+/* The sheet is only ever opened below 1100px. If the viewport is widened while
+   it is open (desktop resize, tablet rotate), close it visually at once rather
+   than leaving a full-screen panel over a navbar that already has a search
+   field in it. search.js also closes it on resize; this covers the frame
+   before that fires. */
+@media (min-width: 1101px) {
+  .search-overlay { display: none !important; }
+}

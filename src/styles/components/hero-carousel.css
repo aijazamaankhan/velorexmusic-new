@@ -306,3 +306,55 @@
   .hero-slide.is-active .hero-rise { animation: none; }
   .hero-dot.is-active .hero-dot-fill { animation: none; transform: scaleX(1); }
 }
+
+/* ---- Brand slide: floating format cards ---------------------------------- */
+/* Three glass panels drifting around the record. Brand slide only — the
+   product slides already have the cover art doing this job, and stacking
+   cards over an album cover would just obscure the thing being sold. */
+.hero-float-cards { position: absolute; inset: 0; pointer-events: none; }
+.hero-float-card {
+  position: absolute;
+  display: flex; flex-direction: column; gap: 0.2rem;
+  padding: 0.7rem 1.1rem;
+  border-radius: 14px;
+  background: rgba(20, 18, 34, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  white-space: nowrap;
+  animation: heroFloatCard 7s ease-in-out infinite;
+}
+.hero-float-label { font-size: 0.62rem; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); }
+.hero-float-name  { font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; color: #fff; line-height: 1.15; }
+
+/* Staggered durations and delays rather than one shared animation, so the
+   three read as drifting independently instead of pulsing in lockstep. */
+.hero-float-card:nth-child(1) { top: 4%;  left: -8%;  animation-duration: 7.5s;  animation-delay: 0s; }
+.hero-float-card:nth-child(2) { top: 46%; right: -12%; animation-duration: 6.2s;  animation-delay: -2.1s; }
+.hero-float-card:nth-child(3) { bottom: 5%; left: 2%;  animation-duration: 8.4s;  animation-delay: -4.3s; }
+
+@keyframes heroFloatCard {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -16px, 0); }
+}
+
+[data-theme="light"] .hero-float-card { background: rgba(255, 255, 255, 0.82); border-color: rgba(15, 23, 42, 0.08); box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12); }
+[data-theme="light"] .hero-float-name { color: var(--text); }
+
+/* Narrow desktop / tablet: the record shrinks but the cards do not, so they
+   start colliding with the copy column. Pull them in and scale them down. */
+@media (max-width: 1180px) {
+  .hero-float-card { padding: 0.55rem 0.85rem; border-radius: 12px; }
+  .hero-float-name { font-size: 0.92rem; }
+  .hero-float-card:nth-child(1) { left: -2%; }
+  .hero-float-card:nth-child(2) { right: -4%; }
+}
+
+/* Below 968px the brand slide's whole visual column is hidden, cards with it —
+   three drifting panels over a phone-width hero would cover the copy that
+   actually sells the shop. */
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-float-card { animation: none !important; }
+}

@@ -45,6 +45,10 @@ velorexmusic-new/
 │       │   ├── toast.css        # .toast-container + .toast variants + keyframes
 │       │   ├── hero-carousel.css # Homepage hero banner — owns .hero and every .hero-*
 │       │   │                     # rule. NOT in pages/storefront.css; see §21.
+│       │   ├── cursor.css        # Custom cursor. Everything gated behind .vlx-cursor-on,
+│       │   │                     # which only cursor.js adds; see §23.
+│       │   ├── search.css        # Global search — navbar field, suggestions dropdown
+│       │   │                     # and the mobile sheet. Owns .navbar-search; see §24.
 │       │   └── skeleton.css     # Shared skeleton loaders — shimmer keyframe + card/row/
 │       │                        # order/stat/drawer shapes. Used by storefront + admin.
 │       ├── pages/
@@ -84,6 +88,12 @@ velorexmusic-new/
 │       │                        # per product by free_shipping / shipping_charge. NO
 │       │                        # order-value free threshold — see §16. PHP mirror in
 │       │                        # api/_shipping_helpers.php — keep both files in sync.
+│       ├── storefront/search.js # Global search — ranked suggestions off the product
+│       │                        # cache, inline on desktop, full-screen sheet below
+│       │                        # 1100px. See §24.
+│       ├── cursor.js            # Custom cursor — red dot + trailing ring that swells over
+│       │                        # clickables. Self-initialising, self-disabling on touch
+│       │                        # and reduced-motion; see §23.
 │       ├── toast.js             # showToast() — bottom-right pill, auto-dismisses (storefront)
 │       ├── confirm-dialog.js    # openConfirmDialog/closeConfirmDialog — styled window.confirm replacement
 │       ├── cart.js              # CartHelpers — addToCart/updateQty/getCartCount/getCartTotal + stock guards.
@@ -1959,6 +1969,24 @@ worse than showing one fewer. `upcoming` is the exception, since a pre-order
 with no stock is still buyable-soon; those render **Browse All** instead of
 **Add to Cart**.
 
+### Floating vinyl cards
+
+Three glass panels drift around the record on the **brand slide only**
+(`#hero-float-cards`). Each is labelled `Vinyl Record` over a title;
+`fillFloatCards()` swaps the placeholders in `index.html` for real in-stock
+vinyl titles once the cache is warm.
+
+**Only vinyl products are eligible.** The label is fixed, so picking any other
+category would print a format that contradicts the product named directly
+under it. If three in-stock vinyls are not available the function returns and
+the placeholders stand — they are generic collection names that read correctly
+under that label, which is why they must stay finished copy and never become
+"Loading…".
+
+They live inside `.hero-visual`, so the existing `max-width: 968px` rule that
+hides the brand slide's record hides the cards with it. Three drifting panels
+over a phone-width hero would cover the copy that does the selling.
+
 ## 22. Never HTML-escape on the way INTO the database
 
 The admin product form used to send `Utils.escape(...)` values to the API, so
@@ -1981,3 +2009,114 @@ mailer from one place. It is not a temporary shim — decoding a clean string is
 a no-op, so it stays correct once every row has been re-saved. `sitemap.php`
 and `api/payments/create-order.php` call it directly because they read the
 `products` table without going through those two shapers.
+
+## 23. Custom cursor
+
+A red dot pinned to the pointer plus a hollow red ring that trails it and
+swells over anything clickable. [src/js/cursor.js](src/js/cursor.js) +
+[src/styles/components/cursor.css](src/styles/components/cursor.css), loaded by
+`index.html` and the five static info pages. **Not the admin panel** — that has
+its own design system and is a work tool, not a shop window.
+
+**Every rule that hides the system cursor is gated behind `.vlx-cursor-on`, and
+only `cursor.js` adds that class.** So a visitor gets the native cursor if the
+script fails, 404s, or bails. Never move `cursor: none` out from behind it: an
+un-gated version leaves anyone whose JS did not run with no visible pointer at
+all, on every page.
+
+`init()` refuses to run — leaving the native cursor — when:
+
+| Condition | Why |
+|---|---|
+| `(hover: hover) and (pointer: fine)` fails | Touch and coarse pointers have no cursor to replace. |
+| `prefers-reduced-motion: reduce` | A trailing, easing follower is exactly the motion that setting is about. |
+
+The CSS repeats both guards in media queries. That is not redundancy: it means
+a stale `.vlx-cursor-on` (a bfcache restore, say) cannot leave a touch user
+with a hidden pointer.
+
+**Native cursors are restored on `input`, `textarea`, `select` and
+`[contenteditable]`.** The I-beam says a field is editable and shows where the
+caret will land; a dot says neither.
+
+**The press state animates size, not `transform`.** `cursor.js` writes
+`transform` inline every animation frame to position the ring, and an inline
+style beats a stylesheet rule — a `transform: scale()` in the CSS would simply
+never apply. It was written that way once and was silently dead.
+
+Both elements are positioned in a single `requestAnimationFrame` loop rather
+than in the `mousemove` handler. A mouse fires well above 60 events/sec, and a
+transform write per event is layout work the compositor throws away.
+
+The red is the logo's `#ed2c15`, not `--secondary` (the chrome's amber). See
+§15 "Brand assets" — the two palettes are knowingly out of step, and a cursor
+is a brand element.
+
+## 24. Global search
+
+[src/js/storefront/search.js](src/js/storefront/search.js) +
+[src/styles/components/search.css](src/styles/components/search.css), wired from
+`injectNavbar()`. One engine, two presentations:
+
+| Width | Presentation |
+|---|---|
+| > 1100px | Inline pill in the navbar with a suggestions dropdown |
+| <= 1100px | A magnifier button in `.navbar-actions` that opens a full-screen sheet |
+
+**Search now exists at every width.** The navbar collapses to a hamburger at
+1100px and `.navbar-search` was `display: none` below it, so on every tablet
+and every phone the only way into the catalogue was browsing categories —
+while "do you have Sholay?" is most of a record shop's traffic.
+
+Matching runs against the cached product list, not an endpoint: it is the same
+lean payload the products page already filters on, so there is no round trip
+per keystroke and it works offline once the cache is warm. Results are
+**ranked**, not filtered — an exact title beats a title prefix beats an artist
+prefix beats a word-start beats a substring — so typing `sho` puts *Sholay*
+above a record whose music director merely contains those letters. Revisit the
+transport only if the catalogue reaches thousands of products.
+
+**`.navbar-search` and every `.search-*` rule live in the component file**, not
+in `pages/storefront.css` — same reasoning as `.hero` in §21. The one rule that
+stays in the responsive block is `display: none` below 1100px, which is a
+navbar layout decision and is what hands over to `.search-trigger`.
+
+Three things here were bugs worth not reintroducing:
+
+- **The field must be bound in exactly one place.** `index.html`'s bootstrap
+  used to attach its own Enter handler on top of `bindNavbar()`'s. One keypress
+  then ran both: the first opened the highlighted suggestion, the second
+  navigated to `/products?search=<raw query>` on top of it, so picking a
+  suggestion with the keyboard was impossible. `bindNavbar()` also flags the
+  input (`dataset.vlxSearchBound`) so a repeated call on a surviving element
+  cannot stack listeners.
+- **The highlighted row is tracked only as a class on the element.** A mirrored
+  `activeIndex` desynced from the DOM whenever a background sync re-rendered
+  the list between two keystrokes.
+- **`.search-trigger` is qualified as `.nav-action-btn.search-trigger`.**
+  `.nav-action-btn` sets `display: flex` in `storefront.css`, which loads after
+  `search.css`, so a bare-class rule lost and the button appeared on desktop
+  next to the field it exists to replace.
+
+`highlight()` finds the match offset on the **raw** string, slices, then
+escapes each piece separately. Escaping first and searching the escaped string
+shifts every offset as soon as a title contains `&` or `'` — and this feature
+renders product titles, which is exactly where §22's entities were showing up.
+
+## 25. Artist filter splits credit lists
+
+`products.artist` is free text and often holds a credit list rather than one
+act — `Lata Mangeshkar, Mukesh`. Treating the whole string as one facet value
+gave a filter row per *combination*: "Lata Mangeshkar" appeared three times
+attached to three different co-singers, each with a count of 1, and never once
+on her own.
+
+`splitArtists()` in [src/js/storefront/pages.js](src/js/storefront/pages.js)
+splits on **commas and explicit featuring markers only** (`feat.`, `ft.`,
+`featuring`). It deliberately does **not** split on `&` or `/`: those appear
+inside real single acts — Simon & Garfunkel, AC/DC, Hall & Oates — and
+splitting them would invent artists who do not exist. A comma is the one
+separator that is never part of a band name.
+
+The facet counts each credited artist separately, and `applyFilters()` matches
+a product if **any** of its credited artists is selected.

@@ -1,0 +1,118 @@
+/* =============================================================================
+   Velorex Music — custom cursor
+   Used by: index.html + the static info pages (contact / faq / shipping /
+            returns / track-order). NOT the admin panel.
+
+   A solid red dot pinned to the true pointer position, and a hollow red ring
+   that trails it and swells over anything clickable.
+
+   Everything here is gated behind the `.vlx-cursor-on` class, which
+   src/js/cursor.js adds to <html> ONLY on a device with a fine pointer and
+   only when the visitor has not asked for reduced motion. So the native cursor
+   is what you get if the script fails, if you are on a touch screen, or if you
+   have reduced motion on — the styling can never strand someone with no
+   pointer at all.
+
+   The red is the logo's #ed2c15, not --secondary (the site chrome's amber).
+   See CLAUDE.md §15 "Brand assets" — the palettes are knowingly out of step,
+   and a cursor is a brand element, so it follows the logo.
+   ============================================================================= */
+
+:root {
+  --cursor-accent: #ed2c15;
+  --cursor-dot-size: 7px;
+  --cursor-ring-size: 34px;
+  --cursor-ring-hover: 58px;
+}
+
+/* Hide the system cursor only once the script has confirmed it can replace it.
+   The `*` is needed because plenty of elements set their own cursor (buttons,
+   links, .quick-action-btn), and those win over a bare `html` rule. */
+.vlx-cursor-on,
+.vlx-cursor-on * { cursor: none !important; }
+
+/* ...except where the native cursor carries information the replacement does
+   not. The I-beam tells you a field is editable and where the caret will land;
+   a dot cannot say either. Same for the resize handle on a textarea. */
+.vlx-cursor-on input,
+.vlx-cursor-on textarea,
+.vlx-cursor-on select,
+.vlx-cursor-on [contenteditable],
+.vlx-cursor-on [contenteditable] * { cursor: auto !important; }
+.vlx-cursor-on textarea { cursor: auto !important; }
+
+.vlx-cursor {
+  position: fixed;
+  top: 0; left: 0;
+  pointer-events: none;      /* never eat a click meant for the page */
+  z-index: 999999;           /* above the 9999 the toast/modal layer tops out at */
+  opacity: 0;
+  will-change: transform;
+  /* Positioned from its own centre, so the transform in JS is the raw pointer
+     coordinate with no per-frame offset arithmetic. */
+  transform: translate3d(-50%, -50%, 0);
+  transition: opacity 0.25s ease;
+}
+.vlx-cursor-ready { opacity: 1; }
+/* Pointer left the window (or moved onto browser chrome). */
+.vlx-cursor-hidden { opacity: 0 !important; }
+
+.vlx-cursor-dot {
+  width: var(--cursor-dot-size);
+  height: var(--cursor-dot-size);
+  border-radius: 50%;
+  background: var(--cursor-accent);
+  box-shadow: 0 0 10px rgba(237, 44, 21, 0.65);
+}
+
+.vlx-cursor-ring {
+  width: var(--cursor-ring-size);
+  height: var(--cursor-ring-size);
+  border-radius: 50%;
+  border: 1.5px solid var(--cursor-accent);
+  background: transparent;
+  /* Only the ring animates its size/colour. Its POSITION is driven frame by
+     frame in JS, so a transition on `transform` here would fight the rAF loop
+     and turn the trail into a lag spike. */
+  transition: width 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              height 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.25s ease,
+              background-color 0.25s ease,
+              border-width 0.25s ease;
+}
+
+/* Over anything clickable: the ring swells and tints, the dot gets out of the
+   way so the target stays readable underneath. */
+.vlx-cursor-on.is-pointing .vlx-cursor-ring {
+  width: var(--cursor-ring-hover);
+  height: var(--cursor-ring-hover);
+  border-width: 2px;
+  background: rgba(237, 44, 21, 0.12);
+}
+.vlx-cursor-on.is-pointing .vlx-cursor-dot {
+  --cursor-dot-size: 4px;
+  opacity: 0.7;
+}
+
+/* Mouse held down — a small, immediate acknowledgement of the press.
+   Expressed as size, NOT as a transform: cursor.js writes `transform` inline on
+   every animation frame to position the ring, and an inline style beats a
+   stylesheet rule, so a `transform: scale()` here would simply never apply. */
+.vlx-cursor-on.is-pressing .vlx-cursor-ring { width: 26px; height: 26px; }
+.vlx-cursor-on.is-pointing.is-pressing .vlx-cursor-ring { width: 46px; height: 46px; }
+
+/* No custom cursor on touch or coarse pointers. cursor.js already refuses to
+   initialise there; this is the belt to that braces, so a stale
+   `.vlx-cursor-on` class (bfcache restore, say) can never hide the pointer on
+   a device that has no mouse to replace it with. */
+@media (hover: none), (pointer: coarse) {
+  .vlx-cursor { display: none !important; }
+  .vlx-cursor-on,
+  .vlx-cursor-on * { cursor: auto !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vlx-cursor { display: none !important; }
+  .vlx-cursor-on,
+  .vlx-cursor-on * { cursor: auto !important; }
+}

@@ -71,7 +71,11 @@ body { padding-top: 70px; }
    `.brand-lockup-light` (0,1,0) it forced the hidden variant back on — both
    lockups rendered side by side in the dark theme. Visibility is owned solely
    by the theme rules underneath, which all sit at the same low specificity. */
-.navbar-brand .brand-lockup { height: 46px; width: auto; flex-shrink: 0; }
+/* Sized to fill the 70px bar with ~6px of breathing room top and bottom.
+   The bar height is referenced in seven other rules (mobile drawer offsets,
+   sticky chip strip, admin layout), so the logo grows inside it rather than
+   pushing it taller. */
+.navbar-brand .brand-lockup { height: 58px; width: auto; flex-shrink: 0; }
 /* Dark is the default, including before JS has set data-theme. */
 .brand-lockup-dark { display: block; }
 .brand-lockup-light { display: none; }
@@ -91,11 +95,13 @@ body { padding-top: 70px; }
 .dropdown-item:hover { background: rgba(255, 107, 53, 0.1); color: var(--secondary); padding-left: 1.5rem; }
 .dropdown-divider { height: 1px; background: var(--border); margin: 0.25rem 0; }
 
-.navbar-search { flex: 1; max-width: 400px; position: relative; }
-.navbar-search input { width: 100%; padding: 0.55rem 1rem 0.55rem 2.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.875rem; transition: var(--transition); }
-.navbar-search input::placeholder { color: var(--text-muted); }
-.navbar-search input:focus { outline: none; border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15); }
-.navbar-search .search-icon { position: absolute; left: 0.75rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.875rem; }
+/* .navbar-search and everything under it moved to
+   src/styles/components/search.css, which owns the field, its suggestions
+   dropdown and the mobile sheet. Two same-specificity definitions would make
+   the winner depend on <link> order — the same trap noted for .hero. The
+   `display: none` below 1100px stays in the responsive block below: it is a
+   navbar layout decision, and it is what hands over to the .search-trigger
+   button. */
 
 .navbar-actions { display: flex; align-items: center; gap: 0.5rem; }
 .nav-action-btn { position: relative; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; color: var(--text-muted); font-size: 1.1rem; transition: var(--transition); }
@@ -558,7 +564,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 .footer-brand .brand-name { font-family: var(--font-display); font-size: 1.5rem; font-weight: 900; background: var(--gold-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; display: block; }
 /* Footer lockup. Visibility comes from the shared .brand-lockup-dark/-light
    rules above; this only sets size, for the same specificity reason noted there. */
-.footer-lockup { height: 54px; width: auto; margin-bottom: 1rem; }
+.footer-lockup { height: 72px; width: auto; margin-bottom: 1rem; }
 .footer-desc { font-size: 0.875rem; color: var(--text-muted); line-height: 1.8; margin-bottom: 1.5rem; }
 .social-links { display: flex; gap: 0.75rem; }
 .social-link { width: 36px; height: 36px; border-radius: 8px; background: var(--card-bg); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 0.875rem; transition: var(--transition); }
@@ -647,7 +653,7 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   .nav-link { width: 100%; font-size: 1rem; padding: 0.75rem 1rem; }
   .dropdown-menu { position: static; opacity: 1; visibility: visible; transform: none; box-shadow: none; background: var(--surface2); margin-top: 0.25rem; }
   .navbar-brand .brand-name { font-size: 1.15rem; }
-  .navbar-brand .brand-lockup { height: 34px; }
+  .navbar-brand .brand-lockup { height: 44px; }
 }
 
 @media (max-width: 768px) {

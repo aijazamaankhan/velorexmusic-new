@@ -41,7 +41,7 @@ body { padding-top: 80px; }
    The sizing rule sets no `display` on purpose — if it did, its specificity
    would override the theme rules below and both lockups would render at once. */
 .brand-lockup {
-  height: 42px;
+  height: 54px;
   width: auto;
   flex-shrink: 0;
 }

@@ -45,6 +45,28 @@
     // working whatever casing the next admin entry uses.
     function facetVal(v) { return String(v == null ? '' : v).trim().toLowerCase(); }
 
+    // products.artist is free text and frequently holds a CREDIT LIST rather
+    // than one act — "Lata Mangeshkar, Mukesh", "Kishore Kumar, Asha Bhosle".
+    // Treating the whole string as one facet value produced a filter row per
+    // combination, so "Lata Mangeshkar" appeared three times attached to three
+    // different co-singers and never once on its own, each with a count of 1.
+    //
+    // Split on commas and on explicit featuring markers ONLY. Deliberately NOT
+    // on "&" or "/": those are inside real single acts (Simon & Garfunkel,
+    // AC/DC, Hall & Oates) and splitting them would invent artists who do not
+    // exist. A comma is the one separator that is never part of a band name.
+    function splitArtists(raw) {
+      return String(raw == null ? '' : raw)
+        .split(/,|feat\.?|ft\.?|featuring/i)
+        .map(function (x) { return x.trim(); })
+        .filter(Boolean);
+    }
+
+    // The case-folded keys a product should match against in the artist facet.
+    function artistKeys(p) {
+      return splitArtists(p && p.artist).map(facetVal).filter(Boolean);
+    }
+
     function createProductCard(product) {
       const badgeHtml = product.badge ? `<span class="product-badge badge-${product.badge}"><i class="fas fa-${product.badge === 'hot' ? 'fire' : product.badge === 'new' ? 'sparkles' : product.badge === 'upcoming' ? 'clock' : 'tag'}"></i> ${Utils.escape(product.badge === 'hot' ? 'Hot' : product.badge === 'new' ? 'New' : product.badge === 'upcoming' ? 'Soon' : 'Sale')}</span>` : '';
       const stars = '<i class="fas fa-star" style="color:var(--accent);"></i>'.repeat(Math.round(product.rating)) + '<i class="far fa-star" style="color:var(--accent);"></i>'.repeat(5 - Math.round(product.rating));
@@ -368,10 +390,14 @@
       if (!host) return;
       var counts = {}, display = {};
       products.forEach(function (p) {
-        var key = facetVal(p.artist);
-        if (!key) return;
-        counts[key] = (counts[key] || 0) + 1;
-        if (!display[key]) display[key] = String(p.artist).trim();
+        // One row per credited artist, not per credit string. A product with
+        // two singers counts towards both.
+        splitArtists(p.artist).forEach(function (name) {
+          var key = facetVal(name);
+          if (!key) return;
+          counts[key] = (counts[key] || 0) + 1;
+          if (!display[key]) display[key] = name;
+        });
       });
       var keys = Object.keys(counts).sort(function (a, b) {
         return counts[b] - counts[a] || display[a].localeCompare(display[b]);
@@ -513,7 +539,9 @@
       // ---- ARTIST FILTER ----
       var selArtists = Array.from(document.querySelectorAll('#page-products input[name="artist"]:checked')).map(i => facetVal(i.value));
       if (selArtists.length) {
-        filtered = filtered.filter(p => selArtists.indexOf(facetVal(p.artist)) !== -1);
+        filtered = filtered.filter(function (p) {
+          return artistKeys(p).some(function (k) { return selArtists.indexOf(k) !== -1; });
+        });
       }
 
       // ---- PEOPLE FILTER ----
