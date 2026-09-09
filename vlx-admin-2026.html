@@ -31,7 +31,7 @@
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
   <!-- Page-specific styles (sidebar, header, panels, tables, drawer, dashboard).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/admin/pages/admin.css?v=1dca80ac">
+  <link rel="stylesheet" href="src/styles/admin/pages/admin.css?v=26a7be2c">
   <!-- Admin JS modules extracted in PR 4. Plain scripts (not type="module") so
        the existing inline <script> + onclick= handlers resolve them via
        script-scope. Order: leaves first. -->
@@ -44,13 +44,16 @@
        script-scope. Load order: main first (defines shared helpers like
        adminAuthHeaders, switchPanel), then per-panel files, then toast last
        (the admin showToast — different shape from the storefront's). -->
-  <script src="src/js/admin/main.js?v=0fce0afd"></script>
+  <script src="src/js/admin/main.js?v=8824d3c0"></script>
   <script src="src/js/admin/customers.js?v=127735c1"></script>
   <script src="src/js/admin/orders.js?v=fef46ea8"></script>
   <script src="src/js/admin/image-cropper.js?v=0dfdbe4f"></script>
   <script src="src/js/admin/inventory.js?v=a37fd7f7"></script>
   <script src="src/js/admin/blog.js?v=3698c8d7"></script>
   <script src="src/js/admin/combos.js?v=de76275c"></script>
+  <!-- Abandoned carts + newsletter subscribers. Loaded after main.js because
+       both panels call adminAuthHeaders() at runtime. -->
+  <script src="src/js/admin/marketing.js?v=2f733950"></script>
   <script src="src/js/admin/toast.js?v=9a4bf3e8"></script>
 </head>
 
@@ -122,6 +125,16 @@
         <li class="nav-item">
           <a href="#" class="nav-link" onclick="switchPanel('users', this)">
             <i class="fas fa-users"></i> Customers
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#" class="nav-link" onclick="switchPanel('abandoned', this)">
+            <i class="fas fa-cart-arrow-down"></i> Abandoned
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#" class="nav-link" onclick="switchPanel('subscribers', this)">
+            <i class="fas fa-envelope-open-text"></i> Subscribers
           </a>
         </li>
         <li class="nav-item">
@@ -425,6 +438,175 @@
             </table>
           </div>
           <div id="admin-users-meta" style="margin-top:0.75rem;color:var(--text-muted);font-size:0.8rem;"></div>
+        </div>
+      </div>
+
+      <!-- ==================================================================
+           ABANDONED CARTS + CHECKOUTS
+           Two sources in one table (see api/admin/abandoned.php):
+             cart      — added to cart, never reached checkout. Needs the
+                         server-side cart mirror (src/js/cart-sync.js).
+             checkout  — reached the payment step, never paid. This one needed
+                         no new capture at all: create-order.php has always
+                         written a payment_orders row before sending the
+                         customer to Razorpay, so every row still sitting at
+                         status='created' is a walked-away checkout complete
+                         with email, phone, items and address. Nothing read it
+                         until now.
+           Every number here is derived. Nothing on this panel is a placeholder
+           — same rule as the dashboard cards above.
+      =================================================================== -->
+      <div id="panel-abandoned" class="panel">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-label">Open carts</span>
+            <div class="stat-value" id="stat-ab-total">—</div>
+            <div class="stat-delta" id="stat-ab-total-sub"></div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Value at risk</span>
+            <div class="stat-value" id="stat-ab-value">—</div>
+            <div class="stat-delta" id="stat-ab-value-sub"></div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Contactable</span>
+            <div class="stat-value" id="stat-ab-email">—</div>
+            <div class="stat-delta" id="stat-ab-email-sub"></div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Emails sent</span>
+            <div class="stat-value" id="stat-ab-sent">—</div>
+            <div class="stat-delta" id="stat-ab-sent-sub"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;flex-wrap:wrap;gap:0.75rem;">
+            <div>
+              <h3 style="margin:0;font-family:var(--font-display);">Abandoned carts &amp; checkouts</h3>
+              <p style="color:var(--text-muted);font-size:0.875rem;margin:0.35rem 0 0;" id="abandoned-blurb">
+                Baskets that have been sitting untouched. The 2-hour and 24-hour reminder emails go out
+                automatically once the cron is installed &mdash; <strong>Send</strong> below is a manual nudge.
+              </p>
+            </div>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="exportAbandonedCsv()" style="width:auto;"><i class="fas fa-file-csv"></i> Export CSV</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="loadAbandoned()" style="width:auto;"><i class="fas fa-rotate"></i> Refresh</button>
+            </div>
+          </div>
+
+          <div id="abandoned-mailer-warning" style="display:none;margin-bottom:1rem;padding:0.75rem 1rem;border-radius:8px;background:rgba(255,170,0,0.09);border:1px solid rgba(255,170,0,0.3);font-size:0.85rem;line-height:1.55;"></div>
+
+          <div class="cust-chips" id="abandoned-chips">
+            <button type="button" class="cust-chip active" data-filter="all" onclick="setAbandonedFilter('all')">All</button>
+            <button type="button" class="cust-chip" data-filter="checkout" onclick="setAbandonedFilter('checkout')">Left at payment</button>
+            <button type="button" class="cust-chip" data-filter="cart" onclick="setAbandonedFilter('cart')">Left in cart</button>
+            <button type="button" class="cust-chip" data-filter="contactable" onclick="setAbandonedFilter('contactable')">Has email</button>
+            <button type="button" class="cust-chip" data-filter="dismissed" onclick="setAbandonedFilter('dismissed')">Dismissed</button>
+          </div>
+
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Stage</th>
+                  <th>Customer</th>
+                  <th>Items</th>
+                  <th>Value</th>
+                  <th>Last active</th>
+                  <th>Reminders</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="abandoned-table-body">
+                <tr><td colspan="7" style="padding:1.25rem;color:var(--text-muted);text-align:center;">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="abandoned-meta" style="margin-top:0.75rem;color:var(--text-muted);font-size:0.8rem;"></div>
+        </div>
+      </div>
+
+      <!-- ==================================================================
+           NEWSLETTER SUBSCRIBERS
+           "Opted in" vs "Customer" is not a cosmetic badge: it is the
+           consent_at column, and it decides who may legally receive a
+           campaign. See the header of api/admin/subscribers.php.
+      =================================================================== -->
+      <div id="panel-subscribers" class="panel">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-label">Subscribed</span>
+            <div class="stat-value" id="stat-sub-total">—</div>
+            <div class="stat-delta" id="stat-sub-total-sub"></div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Opted in</span>
+            <div class="stat-value" id="stat-sub-optin">—</div>
+            <div class="stat-delta" id="stat-sub-optin-sub"></div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Unsubscribed</span>
+            <div class="stat-value" id="stat-sub-unsub">—</div>
+            <div class="stat-delta" id="stat-sub-unsub-sub"></div>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Synced to Brevo</span>
+            <div class="stat-value" id="stat-sub-brevo">—</div>
+            <div class="stat-delta" id="stat-sub-brevo-sub"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;flex-wrap:wrap;gap:0.75rem;">
+            <div>
+              <h3 style="margin:0;font-family:var(--font-display);">Newsletter list</h3>
+              <p style="color:var(--text-muted);font-size:0.875rem;margin:0.35rem 0 0;">
+                <strong>Opted in</strong> means they ticked a box asking for email. <strong>Customer</strong> means
+                we hold the address because they shopped &mdash; fine for order and cart mail, <em>not</em> for
+                promotional campaigns. Export splits the two.
+              </p>
+            </div>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="exportSubscribersCsv()" style="width:auto;"><i class="fas fa-file-csv"></i> Export CSV</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="brevo-sync-btn" onclick="resyncBrevo()" style="width:auto;"><i class="fas fa-cloud-arrow-up"></i> Sync to Brevo</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="loadSubscribers()" style="width:auto;"><i class="fas fa-rotate"></i> Refresh</button>
+            </div>
+          </div>
+
+          <div class="cust-toolbar">
+            <div class="cust-search">
+              <i class="fas fa-search"></i>
+              <input type="search" id="sub-search-input" placeholder="Search by email or name…" oninput="renderSubscribers()" autocomplete="off">
+            </div>
+          </div>
+
+          <div class="cust-chips" id="sub-chips">
+            <button type="button" class="cust-chip active" data-filter="all" onclick="setSubscribersFilter('all')">All</button>
+            <button type="button" class="cust-chip" data-filter="optedin" onclick="setSubscribersFilter('optedin')">Opted in</button>
+            <button type="button" class="cust-chip" data-filter="customer" onclick="setSubscribersFilter('customer')">Customer only</button>
+            <button type="button" class="cust-chip" data-filter="unsubscribed" onclick="setSubscribersFilter('unsubscribed')">Unsubscribed</button>
+          </div>
+
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Name</th>
+                  <th>Consent</th>
+                  <th>Source</th>
+                  <th>Status</th>
+                  <th>Added</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="subscribers-table-body">
+                <tr><td colspan="7" style="padding:1.25rem;color:var(--text-muted);text-align:center;">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="subscribers-meta" style="margin-top:0.75rem;color:var(--text-muted);font-size:0.8rem;"></div>
         </div>
       </div>
 

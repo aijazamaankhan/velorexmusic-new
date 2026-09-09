@@ -74,7 +74,12 @@ velorexmusic-new/
 │   └── js/                      # Extracted JS modules (PR 4). Plain non-module
 │       │                        # scripts — they share script-scope with the
 │       │                        # inline <script> + onclick= handlers.
-│       ├── utils.js             # Utils.escape (HTML escape, returns non-strings unchanged)
+│       ├── analytics.js         # GA4 ecommerce events. Every call site typeof-guarded; purchase
+       │                        # fires ONLY from the verified success path. See §26.
+       ├── cart-sync.js         # Mirrors the cart to /api/cart-sync.php on a debounce + handles
+       │                        # the ?recover= link from the recovery emails. localStorage stays
+       │                        # the source of truth — this is a one-way copy.
+       ├── utils.js             # Utils.escape (HTML escape, returns non-strings unchanged)
 │       │                        # + top-level escapeHTML() (coerces null → '', for admin use)
 │       ├── api-base.js          # const API_BASE = '/api' — shared by storefront + admin
 │       ├── constants.js         # COUNTRIES, IN_STATES, US_STATES, STATE_REQUIRED,
@@ -88,7 +93,8 @@ velorexmusic-new/
 │       │                        # per product by free_shipping / shipping_charge. NO
 │       │                        # order-value free threshold — see §16. PHP mirror in
 │       │                        # api/_shipping_helpers.php — keep both files in sync.
-│       ├── storefront/search.js # Global search — ranked suggestions off the product
+│       ├── storefront/newsletter.js # The homepage signup block. Was markup with no handler.
+       ├── storefront/search.js # Global search — ranked suggestions off the product
 │       │                        # cache, inline on desktop, full-screen sheet below
 │       │                        # 1100px. See §24.
 │       ├── cursor.js            # Custom cursor — red dot + trailing ring that swells over
@@ -136,7 +142,9 @@ velorexmusic-new/
 │           ├── orders.js        # Orders panel + order detail modal + status taxonomy +
 │           │                    # inline shipment edit + patchOrder + print invoice
 │           ├── combos.js        # Combo Offers panel — list, editor, product picker
-│           ├── inventory.js     # Dashboard + products table + product modal (new + edit) +
+│           ├── marketing.js     # Abandoned panel (carts + checkouts, dismiss, manual send) and
+           │                    # Subscribers panel (consent split, Brevo sync, CSV export)
+           ├── inventory.js     # Dashboard + products table + product modal (new + edit) +
 │           │                    # image gallery + bulk CSV upload
 │           └── toast.js         # Admin showToast (single-element pattern, distinct from
 │                                # storefront's container+items toast)
@@ -178,6 +186,8 @@ velorexmusic-new/
 │   │   └── change-password.php  # POST (Bearer)
 │   ├── admin/
 │   │   ├── users.php            # GET (list) / POST (reset-password / update-profile / force-logout / update-notes / delete-user)
+│   │   ├── abandoned.php        # GET abandoned carts + checkouts / POST dismiss / send-recovery
+│   │   ├── subscribers.php      # GET newsletter list / POST unsubscribe / resubscribe / resync-brevo
 │   │   ├── customer-detail.php  # GET ?userId=N → orders, addresses, sessions (batched for the admin drawer)
 │   │   └── guest-customers.php  # GET → rolled-up guest checkouts grouped by email (admin Guests filter)
 │   ├── combos.php               # GET (public/?all=1 admin/?id=N) / POST (admin upsert) / DELETE (admin)
@@ -187,8 +197,24 @@ velorexmusic-new/
 │   ├── _shipping_helpers.php    # shipping_calculate($subtotal,$address) — server mirror of
 │   │                            # src/js/shipping.js. Authoritative at /api/payments/create-order.php
 │   │                            # time; keep both files in sync.
-│   ├── _mailer.php              # PHPMailer wrapper: send_mail($to,$name,$subject,$html,$text). Never throws.
-│   ├── _email_templates.php     # order_receipt_email($orderData) → { subject, html, text }
+│   ├── _mailer.php              # PHPMailer wrapper: send_mail($to,$name,$subject,$html,$text,$extraHeaders).
+│   │                            # Never throws. $extraHeaders carries List-Unsubscribe for marketing mail.
+│   ├── _email_templates.php     # TRANSACTIONAL: order_receipt_email + admin_new_order_email
+│   ├── _marketing_templates.php # MARKETING: newsletter_welcome_email + abandoned_cart_email.
+│   │                            # Split from the file above on purpose — marketing mail must always
+│   │                            # carry an unsubscribe link, transactional mail must never imply
+│   │                            # receipts can be switched off. See §26.
+│   ├── _marketing_helpers.php   # subscribers + carts table bootstrap, payment_orders recovery
+│   │                            # columns, cart re-pricing, Brevo contact API. READ ITS HEADER
+│   │                            # before widening where recovery email addresses come from.
+│   ├── _recovery.php            # marketing_send_recovery() — the ONE place a recovery email is
+│   │                            # sent. Shared by the admin button and the cron so eligibility
+│   │                            # rules cannot drift apart.
+│   ├── subscribe.php            # POST { email, source? } — newsletter signup (public)
+│   ├── unsubscribe.php          # GET shows a confirm button, POST performs the opt-out (public).
+│   │                            # GET must never unsubscribe: link scanners prefetch every URL.
+│   ├── cart-sync.php            # POST { cartKey, items } — mirrors the browser cart (public)
+│   ├── recover-cart.php         # GET ?token= — the ?recover= link target (public)
 │   └── lib/PHPMailer/           # PHPMailer v6.9.1 — three vendored files, no Composer
 │       ├── PHPMailer.php
 │       ├── SMTP.php
@@ -197,6 +223,10 @@ velorexmusic-new/
 ├── playwright-mcp-server.js     # MCP server (used optionally for admin-panel browser tests)
 ├── test-admin-login.js          # Sanity test for admin login
 ├── scripts/
+│   ├── send-abandoned-cart-emails.php  # CLI-only cron: the 2h + 24h recovery
+│   │                               # nudges, plus a 90-day prune of cold cart
+│   │                               # snapshots. --dry-run reports and sends
+│   │                               # nothing. Install per §9.
 │   ├── bump-cache.js            # Content-hash cache-bust for HTML asset refs.
 │   │                            # `npm run prep-deploy` rewrites every <script>/<link>
 │   │                            # ?v= to a SHA-1 of the referenced file. See §9.
@@ -397,6 +427,69 @@ CREATE TABLE combo_offers (
   KEY idx_combo_status (status, sort_order)
 );
 
+-- Newsletter list. Created on demand by marketing_ensure_tables() — no
+-- phpMyAdmin step, like blog_posts and combo_offers.
+--
+-- consent_at is the column that decides what may lawfully be sent:
+--   NOT NULL — they ticked a box asking for email. Campaign-mailable.
+--   NULL     — we hold the address because they shopped, and the recovery
+--              mailer needed a stable opt-out token for them. Order and cart
+--              mail only, NEVER a promotional campaign.
+-- Do not backfill consent_at to make the list look bigger. See §26.
+CREATE TABLE subscribers (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  email VARCHAR(255) NOT NULL,
+  status ENUM('subscribed','unsubscribed') NOT NULL DEFAULT 'subscribed',
+  source VARCHAR(40),                   -- newsletter | checkout | cart-recovery | …
+  token CHAR(32) NOT NULL,              -- unsubscribe capability, one per address
+  user_id INT NULL,
+  consent_at TIMESTAMP NULL,            -- see the note above — load-bearing
+  unsubscribed_at TIMESTAMP NULL,
+  ip VARCHAR(45),
+  brevo_synced TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_sub_email (email),
+  UNIQUE KEY uq_sub_token (token),
+  KEY idx_sub_status (status)
+);
+
+-- Server-side cart snapshots — one row per visitor. Also auto-created.
+-- This is the ONLY record of a cart abandoned before checkout; the storefront
+-- cart lives in localStorage (§7) and was otherwise invisible. Written by
+-- /api/cart-sync.php on a debounce; the row is DELETED when the cart empties.
+--
+-- cart_key is a client-generated 32-hex visitor id held in localStorage. It is
+-- not a credential: the row it addresses holds product ids and quantities the
+-- same visitor just chose. `email` is written ONLY from an authenticated
+-- session — see §26 for why that restriction is not negotiable.
+CREATE TABLE carts (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  cart_key CHAR(32) NOT NULL,
+  user_id INT NULL,
+  email VARCHAR(255) NULL,
+  items JSON NOT NULL,                  -- re-priced from products on every write
+  item_count INT NOT NULL DEFAULT 0,
+  subtotal INT NOT NULL DEFAULT 0,
+  recovery_token CHAR(32) NOT NULL,     -- the ?recover= link in the email
+  recovery_stage TINYINT NOT NULL DEFAULT 0,   -- 0 none, 1 sent 2h, 2 sent 24h
+  recovery_sent_at TIMESTAMP NULL,
+  converted_at TIMESTAMP NULL,
+  dismissed_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_cart_key (cart_key),
+  UNIQUE KEY uq_cart_recovery (recovery_token),
+  KEY idx_cart_user (user_id), KEY idx_cart_email (email), KEY idx_cart_updated (updated_at)
+);
+
+-- Recovery bookkeeping auto-added to payment_orders by
+-- marketing_payment_orders_ready(), the same way products.item_condition is:
+--   recovery_stage TINYINT NOT NULL DEFAULT 0
+--   recovery_sent_at TIMESTAMP NULL
+--   recovery_token CHAR(32) NULL
+--   dismissed_at TIMESTAMP NULL
+
 INSERT INTO categories (name, sort_order) VALUES
   ('vinyl', 1), ('cd', 2), ('cassette', 3), ('bluray', 4), ('dvd', 5);
 ```
@@ -424,6 +517,10 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 | POST | `/api/auth/login.php` | `{ email, password }` | `{ ok, token, user }` |
 | POST | `/api/contact.php` | `{ fullName, email, subject, message }` | `{ ok, message }` — sends a support request from the contact page. |
 | POST | `/api/payments/webhook.php` | raw Razorpay event body; auth via `X-Razorpay-Signature` header | `{ ok }` — server-to-server backstop. Verifies HMAC against `RAZORPAY_*_WEBHOOK_SECRET`. Never call this directly. |
+| POST | `/api/subscribe.php` | `{ email, source? }` | `{ ok, message, alreadySubscribed }` — newsletter signup. Sends the welcome mail on a genuinely new (or reactivated) address only, so a double-click is not two emails. `source` is validated against an allowlist. |
+| GET/POST | `/api/unsubscribe.php?token=<32hex>` | — | HTML page. **GET only shows a confirm button; POST performs the opt-out** — link scanners fetch every URL in an email, and a GET that unsubscribed would silently opt people out. Also the RFC 8058 one-click endpoint (`List-Unsubscribe-Post`). |
+| POST | `/api/cart-sync.php` | `{ cartKey, items: [{id, qty}] }` | `{ ok, itemCount, subtotal }` — mirrors the browser cart to `carts`. Re-prices every line from the DB; **never accepts prices, and never accepts an email from an anonymous caller** (§26). An empty `items` array deletes the row. |
+| GET | `/api/recover-cart.php?token=<32hex>` | — | `{ ok, source, items, subtotal, partial }` — the `?recover=` link target. Matches `carts.recovery_token` or `payment_orders.recovery_token`; re-prices against today's catalogue. Returns `{ ok: false, reason: 'already_purchased' }` for a completed order. |
 
 ### Customer-authenticated endpoints (require `Authorization: Bearer <token>`)
 
@@ -461,6 +558,10 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 | POST | `/api/admin/users.php` | `{ action: "update-notes", userId, notes }` | `{ ok }` — admin-only free-text notes (max 5000 chars). Requires the `users.notes` migration; 503 otherwise. |
 | POST | `/api/admin/users.php` | `{ action: "delete-user", userId, confirmEmail? }` | `{ ok }` — cascades to `user_sessions`; `orders.user_id` is set NULL. Pass `confirmEmail` to require the admin to echo the email before deletion. |
 | GET | `/api/admin/customer-detail.php?userId=N` | — | `{ orders, addresses, sessions }` — batched read for the admin customer drawer. |
+| GET | `/api/admin/abandoned.php` | — | `{ rows, stats, mailerReady }` — abandoned carts (`kind: 'cart'`) and abandoned checkouts (`kind: 'checkout'`) in one list, newest first. Only rows quiet for `ABANDON_GRACE_MINUTES` are included. |
+| POST | `/api/admin/abandoned.php` | `{ action: 'dismiss'\|'undismiss'\|'send-recovery', kind, id }` | `{ ok }` — `send-recovery` goes through the same `marketing_send_recovery()` the cron uses, so the eligibility rules cannot drift between the two paths. |
+| GET | `/api/admin/subscribers.php` | — | `{ rows, stats, brevoReady }` — the newsletter list. `optedIn` on each row is `consent_at IS NOT NULL`. |
+| POST | `/api/admin/subscribers.php` | `{ action: 'unsubscribe'\|'resubscribe'\|'resync-brevo', email? }` | `{ ok }` — `resync-brevo` pushes up to 200 un-synced contacts per call. |
 | GET | `/api/admin/guest-customers.php` | — | `GuestCustomer[]` — `[{email, fullName, phone, orderCount, totalSpent, firstOrderAt, lastOrderAt, registeredUserId}]`. Rolled up from `orders` where `user_id IS NULL`, grouped by `LOWER(JSON_UNQUOTE(JSON_EXTRACT(order_data, '$.contact.email')))`. `registeredUserId` is set if the same email now matches a registered user (claim-on-signup/login has already converted them). |
 
 ### config.php helper functions (PHP)
@@ -937,6 +1038,35 @@ Without these defines, `/api/payments/create-order.php` returns 502 with a clear
 
 After deploying the new code, append the SMTP block from [api/secrets.example.php](api/secrets.example.php) to `/home/u286479481/private/velorex_secrets.php`. Step-by-step Brevo setup, DNS records and troubleshooting live in §10 → "Transactional email (Brevo SMTP + PHPMailer)". Until `SMTP_HOST` is non-empty, order-receipt emails are silently skipped (the order is still placed); a line is written to PHP's `error_log` so you can spot misconfiguration during the test phase.
 
+**Pending step — abandoned-cart recovery cron** (nothing sends until this is installed; everything else on the Abandoned panel works without it):
+
+hPanel → Advanced → **Cron Jobs** → Add new.
+
+```
+Schedule: */30 * * * *          (every 30 minutes)
+Command:
+  php /home/u286479481/domains/velorexmusic.com/public_html/scripts/send-abandoned-cart-emails.php
+```
+
+Dry-run it over SSH first — it prints exactly what it would send and changes nothing:
+
+```bash
+php ~/domains/velorexmusic.com/public_html/scripts/send-abandoned-cart-emails.php --dry-run
+```
+
+The script is CLI-only (`PHP_SAPI` guard) and `scripts/` is `[F,L]`-denied in the root `.htaccess`, so there is no HTTP way to trigger a mail run. Every-30-minutes puts the 2-hour email somewhere between 2:00 and 2:30 after abandonment, which is well inside the useful window. The `--limit` flag (default 100) caps the blast radius of any single run.
+
+**Pending update — secrets file** (OPTIONAL, newsletter → Brevo contact sync):
+
+`BREVO_API_KEY` is a **different credential from `SMTP_PASS`** — the SMTP key does not authenticate against `api.brevo.com`. Get it from Brevo → SMTP & API → **API Keys**.
+
+```php
+define('BREVO_API_KEY', 'xkeysib-…');
+define('BREVO_LIST_ID', 2);   // optional; from Contacts → Lists (it is in the URL)
+```
+
+Without it, signups are still stored in the `subscribers` table and the admin panel works normally — only the push to Brevo's contact list is skipped. The Subscribers panel's **Sync to Brevo** button backfills anything unsynced once the key is set.
+
 **Pending update — secrets file** (store-owner order alerts):
 
 Add `ADMIN_NOTIFY_EMAIL` to `/home/u286479481/private/velorex_secrets.php` (or `api/secrets.local.php` for dev):
@@ -1271,6 +1401,11 @@ See `PLAYWRIGHT_MCP_README.md` for the optional MCP server setup if you want bro
 | Razorpay integration | ✅ Shipped | Server-side order creation + HMAC signature verification + webhook backstop. Both test and live keys live in the secrets file, switched via `RAZORPAY_MODE`. See [§10 Razorpay payment flow](#razorpay-payment-flow). |
 | Storefront perf rewrite | Phase 1 ✅ shipped; Phases 2–3 pending | Phase 1 (May 2026) moved product images out of DB-base64 into `public_html/uploads/products/` + split list/detail endpoints. Cut `/api/products.php` from 27 MB / 15 s to 17 KB / 0.7 s. Phases 2 (thumbnails), 3 (CDN), and HTTP cache headers are documented in [§14 Storefront performance roadmap](#14-storefront-performance-roadmap) — none urgent, all independent. |
 | SEO / crawlability | ✅ Shipped | Was the single biggest gap: hash routing made the whole catalogue one URL, so no product or category could rank. Now real paths (`/vinyl-records`, `/product/12-sholay-r-d-burman`) server-rendered by `seo-render.php` with per-page metadata + JSON-LD, plus `robots.txt`, a DB-generated sitemap, and real `<a href>` internal links. See [§15 SEO architecture](#15-seo-architecture). Outstanding manual steps (OG image, Search Console, Business Profile) are listed there. |
+| GA4 ecommerce events | ✅ Shipped | `view_item` → `add_to_cart` → `begin_checkout` → `purchase` and the rest of the recommended vocabulary. The tag was always installed but sent page views only, so every funnel and revenue report in GA was empty. See §26. |
+| Newsletter signup | ✅ Shipped | The homepage form was markup with no handler, no endpoint and no table — every address typed into it was discarded. Now `/api/subscribe.php` + a `subscribers` table + optional Brevo contact sync. See §26. |
+| Abandoned cart / checkout recovery | ✅ Shipped | Admin panel over both sources, plus automatic 2-hour and 24-hour emails once the cron is installed (§9). See §26. |
+| Server-side cart persistence | ✅ Shipped | `carts` table mirrored from the browser on a debounce. localStorage is still the source of truth — this is a one-way copy for reporting and recovery. See §26. |
+| Campaign sending | Manual | There is a consent-correct list and a Brevo sync, but no campaign composer here — write and send those from Brevo's dashboard. Filter on `Campaign safe: YES` in the CSV export, or on the opted-in list in Brevo. |
 | Frontend test coverage | Minimal | Only `test-admin-login.js` exists. Worth expanding when there's time. |
 
 ## 13. Conventions for AI assistants editing this repo
@@ -1290,6 +1425,8 @@ See `PLAYWRIGHT_MCP_README.md` for the optional MCP server setup if you want bro
 - **Don't remove `.gitattributes`.** LF line endings are required for `bump-cache.js` hashes to match between a Windows clone and the Linux host. See [§15](#15-seo-architecture).
 - **Never HTML-escape on the way into the database.** Write payloads store raw text; escape at every point of output instead. Escaping on write put `&#39;` in real product titles and corrupted their canonical URLs — see [§22](#22-never-html-escape-on-the-way-into-the-database).
 - **The homepage hero's brand slide stays in `index.html`.** `/` is served as static HTML with no server render, so the `<h1>`, description and category links have to be in the file. Only the product slides are built by JS — see [§21](#21-homepage-hero-carousel).
+- **Never let an anonymous request attach an email address to a cart.** `/api/cart-sync.php` takes ids and quantities only; an address comes from a Bearer token or from checkout, never from the request body. Widening this turns the recovery mailer into a way to make our server email a stranger on request. See [§26](#26-marketing-analytics-and-abandonment-recovery).
+- **Analytics must never be able to break a purchase.** Every `Analytics.*` call site is `typeof`-guarded and `_send()` swallows everything. `purchase` fires only after `verify.php` has confirmed the signature — never on Razorpay's client-side callback.
 - **Update this doc.** If you change the schema, add an endpoint, or change a major convention, update the relevant section in `CLAUDE.md` in the same commit.
 
 ## 14. Storefront performance roadmap
@@ -2120,3 +2257,122 @@ separator that is never part of a band name.
 
 The facet counts each credited artist separately, and `applyFilters()` matches
 a product if **any** of its credited artists is selected.
+
+## 26. Marketing, analytics and abandonment recovery
+
+Five pieces shipped together because they are one loop: measure what happens,
+capture who it happened to, and follow up when it nearly worked.
+
+| Piece | Where |
+|---|---|
+| GA4 ecommerce events | [src/js/analytics.js](src/js/analytics.js) |
+| Newsletter signup | [api/subscribe.php](api/subscribe.php), [api/unsubscribe.php](api/unsubscribe.php), [src/js/storefront/newsletter.js](src/js/storefront/newsletter.js) |
+| Server-side cart mirror | [api/cart-sync.php](api/cart-sync.php), [src/js/cart-sync.js](src/js/cart-sync.js) |
+| Recovery emails | [api/_recovery.php](api/_recovery.php), [api/_marketing_templates.php](api/_marketing_templates.php), [scripts/send-abandoned-cart-emails.php](scripts/send-abandoned-cart-emails.php) |
+| Admin panels | [api/admin/abandoned.php](api/admin/abandoned.php), [api/admin/subscribers.php](api/admin/subscribers.php), [src/js/admin/marketing.js](src/js/admin/marketing.js) |
+| Shared schema + Brevo API | [api/_marketing_helpers.php](api/_marketing_helpers.php) |
+
+### The rule that constrains all of it
+
+**A recovery email address must come from a source that proves the address
+belongs to the person holding the browser.** There are exactly two:
+
+- a valid Bearer token — we read the address from `users` by id, and ignore
+  whatever the client sent;
+- guest checkout — it is already on `payment_orders`, typed on the way to
+  paying for something.
+
+`/api/cart-sync.php` therefore does **not** accept an `email` field from an
+anonymous caller. If it did, any browser could attach any address to any cart
+and make our server mail a stranger on request — a spam cannon with this
+domain's sending reputation behind it. A newsletter signup is deliberately not
+on the list either: someone can type a victim's address into a signup box (true
+of every signup form on the internet), and that must earn one welcome mail with
+an unsubscribe link, not enrolment in a drip campaign.
+
+Carts with no known email are still stored and still counted. Knowing that
+eleven people abandoned a large basket this week is worth having even when none
+of them can be emailed.
+
+### `consent_at` decides what may be sent
+
+`subscribers.consent_at` has two meanings and the admin UI shows both:
+
+| Value | Badge | May receive |
+|---|---|---|
+| `NOT NULL` | **Opted in** | Campaigns, plus everything below |
+| `NULL` | **Customer** | Order mail and cart reminders only — **never a promotional campaign** |
+
+A `NULL` row exists because `marketing_contact_token()` needs a stable opt-out
+token for any address a marketing-adjacent email is sent to, including shoppers
+who never used the signup form. The CSV export writes a literal
+`Campaign safe: YES/NO` column so the distinction survives the trip into
+whatever mail tool the list is pasted into. **Do not backfill `consent_at`** to
+make the subscriber count look better — the number it would improve is the one
+that keeps the sending domain out of trouble.
+
+### Two nudges, then stop
+
+Stage 1 at 2 hours, stage 2 at 24 hours, and no stage 3. `RECOVERY_STAGE1_HOURS`
+/ `RECOVERY_STAGE2_HOURS` / `RECOVERY_MAX_AGE_HOURS` live at the top of
+[api/_recovery.php](api/_recovery.php). A third email to someone who ignored two
+is how a shop ends up in the spam folder for every future *receipt* it sends —
+the cost lands on transactional mail, not on the marketing.
+
+`recovery_stage` is stamped **only after SMTP accepts the message**, so a failed
+send is retried on the next run rather than silently skipping that customer
+forever because of one bad minute.
+
+**The sequence resets when the cart changes.** `ON DUPLICATE KEY UPDATE` in
+[api/cart-sync.php](api/cart-sync.php) sets `recovery_stage = 0` on every write,
+so a visitor who comes back and adds another record re-enters at stage 1 instead
+of receiving a stale stage-2 email about a basket they have since changed.
+
+**No discount code in the recovery email**, and the reason is mechanical as much
+as commercial: `create-order.php` recomputes every total from DB prices (§17), so
+a code promised in an email could not be honoured at the till without a change to
+the payment path. An email must never quote a price the checkout will refuse.
+
+### The checkout half needed no new capture
+
+`payment_orders` rows have always been written *before* the customer is sent to
+Razorpay, so every row still at `status='created'` is a checkout someone walked
+away from — with their email, phone, items and address attached. That data was
+already in the database and nothing read it. The Abandoned panel's
+"Left at payment" rows are just a `SELECT`.
+
+The `carts` table is the genuinely new capture, and it is the bigger half: it
+covers people who never reached checkout at all.
+
+### GA4
+
+The tag (`G-N6H3GG17TM`) and SPA page views were already there; what was missing
+was every ecommerce event, so the whole Monetisation section and all funnel
+reports were empty. `Analytics.*` now sends the GA4 **recommended** event names
+(`view_item`, `add_to_cart`, `begin_checkout`, `purchase`, …) — a custom name
+would still record but would not populate those built-in reports.
+
+Three things not to change:
+
+- **`purchase` fires only from the verify-success handler**, after the server
+  has checked the HMAC signature. Firing it on Razorpay's client-side callback
+  would put revenue in the dashboard on the browser's unverified say-so, which
+  is exactly the claim [api/payments/verify.php](api/payments/verify.php) exists
+  to refuse. It is also de-duplicated on `transaction_id` in `sessionStorage`,
+  because inflated revenue is worse than missing revenue — it gets believed.
+- **Money is in rupees here, paise in the payment path.** Convert at the
+  boundary; never mix units in one object.
+- **Every call site is `typeof`-guarded** and `Analytics._send()` swallows
+  everything. These calls sit inside add-to-cart and the payment success path;
+  an analytics error must never break a purchase.
+
+`cart_recovered` is the one non-standard event — mark it as a conversion in
+GA4 Admin → Events if you want it in reports.
+
+### Data retention
+
+The cron prunes `carts` rows untouched for 90 days. A cold cart snapshot is
+personal data with no remaining purpose: past `RECOVERY_MAX_AGE_HOURS` nothing
+will ever be sent about it, and the admin panel's window is shorter still.
+Keeping them forever would mean holding a growing record of what strangers
+browsed, for no reason worth defending.

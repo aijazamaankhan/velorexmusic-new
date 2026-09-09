@@ -35,11 +35,26 @@
         if (existing) existing.qty += addQty; else cart.push({ id: productId, qty: addQty });
         Storage.saveCart(cart);
         CartHelpers.updateBadge();
+        // Report the quantity actually added, not the quantity requested — a
+        // stock-capped add of 1-out-of-5 is one item of revenue intent, and
+        // sending 5 would overstate the funnel at its widest point.
+        if (typeof Analytics !== 'undefined') Analytics.addToCart(product, addQty);
         if (addQty < qty) say('⚠️ Only ' + product.stock + ' available. Cart quantity capped to stock.', 'error');
         else say('"' + product.title + '" added to cart! 🎵', 'success');
         return true;
       },
-      removeFromCart(productId) { let cart = Storage.getCart().filter(item => item.id !== productId); Storage.saveCart(cart); this.updateBadge(); },
+      removeFromCart(productId) {
+        // Capture the line before it goes, so the analytics event can report
+        // what was removed and at what quantity.
+        const removed = Storage.getCart().find(item => item.id === productId);
+        let cart = Storage.getCart().filter(item => item.id !== productId);
+        Storage.saveCart(cart);
+        this.updateBadge();
+        if (removed && typeof Analytics !== 'undefined') {
+          const product = Storage.getProducts().find(p => p.id === productId);
+          if (product) Analytics.removeFromCart(product, removed.qty);
+        }
+      },
       updateQty(productId, qty) {
         let cart = Storage.getCart();
         const item = cart.find(i => i.id === productId);

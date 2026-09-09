@@ -130,12 +130,17 @@
        inline onclick= handlers can resolve them via script-scope. -->
   <script src="src/js/utils.js?v=15bf1815"></script>
   <script src="src/js/api-base.js?v=0ce972cf"></script>
+  <!-- GA4 ecommerce events. Must load before cart.js, pages.js, search.js and
+       checkout.js, all of which call Analytics.* — every call site is guarded
+       with a typeof check, so a blocked or failed load degrades to "no
+       analytics" rather than a broken storefront. -->
+  <script src="src/js/analytics.js?v=85ee1923"></script>
   <!-- URL vocabulary + live metadata. Must load before router.js and pages.js,
        both of which call Seo.buildPath()/Seo.productPath() to render hrefs. -->
   <script src="src/js/seo.js?v=76572bc9"></script>
   <script src="src/js/constants.js?v=b0f974a1"></script>
-  <script src="src/js/storage.js?v=3f882b69"></script>
-  <script src="src/js/auth.js?v=79e7221e"></script>
+  <script src="src/js/storage.js?v=7d4b11c3"></script>
+  <script src="src/js/auth.js?v=b09358ad"></script>
   <script src="src/js/addresses.js?v=9f6b79b8"></script>
   <script src="src/js/shipping.js?v=187ee937"></script>
   <script src="src/js/skeleton.js?v=6ca28cb2"></script>
@@ -147,7 +152,11 @@
        reduced-motion; see src/js/cursor.js. -->
   <script src="src/js/cursor.js?v=242bd112"></script>
   <script src="src/js/confirm-dialog.js?v=40a04cdd"></script>
-  <script src="src/js/cart.js?v=f605a63a"></script>
+  <script src="src/js/cart.js?v=fb3a8ffc"></script>
+  <!-- Server-side cart mirror + ?recover= link handling. Must load before
+       storage.js is first USED (not parsed) — Storage.saveCart calls
+       CartSync.schedule() at runtime, guarded by typeof. -->
+  <script src="src/js/cart-sync.js?v=7863bfb0"></script>
   <script src="src/js/address-form.js?v=5d822cd1"></script>
   <!-- Storefront app layer extracted in PR 6. Load order: carriers (data
        only, no deps) → pages (renderers + initPage*) → router (uses
@@ -155,7 +164,7 @@
        end up in script-scope; the inline <script> at the bottom of <body>
        just bootstraps DOMContentLoaded. -->
   <script src="src/js/storefront/carriers.js?v=488bf189"></script>
-  <script src="src/js/storefront/pages.js?v=77c92223"></script>
+  <script src="src/js/storefront/pages.js?v=90bb0f08"></script>
   <!-- Blog views. Must load before router.js, whose initPage dispatcher calls
        initPageBlog / initPageBlogPost. -->
   <!-- Homepage hero carousel. Must load before router.js: its initPage
@@ -163,11 +172,14 @@
   <script src="src/js/storefront/hero.js?v=25800217"></script>
   <!-- Global search. Must load before router.js, whose injectNavbar calls
        VelorexSearch.bindNavbar(). -->
-  <script src="src/js/storefront/search.js?v=5aef8bee"></script>
+  <script src="src/js/storefront/search.js?v=b7fbf620"></script>
   <script src="src/js/storefront/combos.js?v=52ddd306"></script>
   <script src="src/js/storefront/blog.js?v=38e36528"></script>
+  <!-- Newsletter signup. Bound from router.js's boot and from the inline
+       onclick on the homepage form. -->
+  <script src="src/js/storefront/newsletter.js?v=db0df9b9"></script>
   <script src="src/js/storefront/router.js?v=7d882242"></script>
-  <script src="src/js/storefront/checkout.js?v=123984d6"></script>
+  <script src="src/js/storefront/checkout.js?v=761de60a"></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
        they can be shared between the storefront pages without duplication.
        See src/styles/tokens.css and src/styles/base.css. -->
@@ -417,10 +429,15 @@
                  derive does not get invented. -->
             <h2 style="font-family:var(--font-display);font-size:2rem;margin-bottom:1rem;">🎧 Join the Velorex Record Club</h2>
             <p style="color:var(--text-muted);margin-bottom:2rem;max-width:500px;margin-left:auto;margin-right:auto;">Subscribe to our newsletter and get exclusive early access to new arrivals.</p>
-            <div class="newsletter-form" style="display:flex;max-width:400px;margin:0 auto;gap:0.75rem;">
-              <input type="email" placeholder="Enter your email..." style="flex:1;min-width:0;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;padding:0.75rem 1rem;font-size:0.9rem;">
-              <button class="btn btn-primary">Subscribe</button>
+            <!-- This was markup only until now — an input and a button with no
+                 handler, no endpoint and no table. Every address typed into it
+                 was discarded. Wired to /api/subscribe.php via
+                 src/js/storefront/newsletter.js. -->
+            <div class="newsletter-form" id="newsletter-form" style="display:flex;max-width:400px;margin:0 auto;gap:0.75rem;">
+              <input id="newsletter-email" type="email" name="email" autocomplete="email" placeholder="Enter your email..." aria-label="Email address for the Velorex Record Club newsletter" style="flex:1;min-width:0;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;padding:0.75rem 1rem;font-size:0.9rem;">
+              <button id="newsletter-submit" type="button" class="btn btn-primary" onclick="Newsletter.submit('newsletter')">Subscribe</button>
             </div>
+            <p id="newsletter-note" role="status" aria-live="polite" style="display:none;max-width:400px;margin:0.7rem auto 0;font-size:0.8rem;line-height:1.5;color:var(--text-muted);"></p>
           </div>
         </div>
       </section>
@@ -1020,6 +1037,18 @@
             </div>
           </div>
 
+          <!-- Marketing consent. Unticked by default and it stays that way:
+               a pre-ticked box is not consent under the DPDP Act, and it is
+               also the fastest way to build a list that ignores you. This is
+               the only place a checkout captures newsletter opt-in — see
+               maybeSubscribeFromCheckout() in src/js/storefront/checkout.js. -->
+          <div style="margin-bottom:1.25rem;">
+            <label style="display:flex;align-items:flex-start;gap:0.65rem;cursor:pointer;font-size:0.85rem;line-height:1.45;color:var(--text-muted);">
+              <input id="checkout-marketing-optin" type="checkbox" style="margin-top:0.15rem;width:17px;height:17px;cursor:pointer;flex-shrink:0;">
+              <span>Email me about new arrivals and restocks. Unsubscribe any time — order updates are unaffected.</span>
+            </label>
+          </div>
+
           <div id="payment-method-section">
             <p style="font-size:0.85rem;color:var(--text-muted);line-height:1.6;margin-bottom:0.25rem;">
               Clicking <strong>Pay Now</strong> opens our secure payment partner Razorpay, where
@@ -1231,6 +1260,21 @@
       Storage.syncFromServer().then(function () {
         try { initPage(currentPage, currentParams); } catch (e) { console.warn('post-sync rerender failed:', e); }
       });
+
+      // Newsletter field: Enter should submit. The block is styled like a form
+      // but is not a <form>, so there is no implicit submit to inherit.
+      try { Newsletter.bind(); } catch (e) { /* block not on this page */ }
+
+      // Abandoned-cart recovery. The emails link to /?recover=<token>; this
+      // refills the basket and lands the customer on the cart page.
+      //
+      // Runs LAST and after the first navigate on purpose: it may navigate to
+      // the cart itself, and doing that before the initial route has painted
+      // would leave the history entry pointing at a page that never rendered.
+      // It strips the token from the URL before its first await — the token
+      // reveals a cart's contents and does not belong in history, screenshots
+      // or a Referer header.
+      try { CartSync.handleRecoveryLink(); } catch (e) { console.warn('cart recovery failed:', e); }
     });
   </script>
 

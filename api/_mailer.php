@@ -53,7 +53,14 @@ function mailer_is_configured(): bool {
     return true;
 }
 
-function send_mail(string $to, string $toName, string $subject, string $htmlBody, string $textBody = ''): bool {
+// $extraHeaders lets marketing-adjacent mail attach List-Unsubscribe (and the
+// RFC 8058 List-Unsubscribe-Post) without every caller re-implementing the
+// PHPMailer plumbing. Gmail and Apple Mail render their own one-click
+// unsubscribe control from those headers, and bulk senders that omit them get
+// treated as less trustworthy — so they matter for the deliverability of the
+// ORDER RECEIPTS too, not just for the marketing message carrying them.
+// Transactional mail passes nothing and is unaffected.
+function send_mail(string $to, string $toName, string $subject, string $htmlBody, string $textBody = '', array $extraHeaders = []): bool {
     if (!mailer_is_configured()) {
         error_log('[mailer] SMTP not configured — skipping send to ' . $to . ' subject="' . $subject . '"');
         return false;
@@ -115,6 +122,17 @@ function send_mail(string $to, string $toName, string $subject, string $htmlBody
         // Brevo's "Transactional → Email logs" by source.
         $mail->XMailer = 'velorex-music';
         $mail->addCustomHeader('X-Velorex-App', 'velorex-music');
+
+        foreach ($extraHeaders as $hName => $hValue) {
+            if (!is_string($hName) || $hName === '') continue;
+            // Strip CR/LF from both halves. A newline in a header value is a
+            // header-injection primitive (it would let a caller append Bcc:
+            // and turn any send into a blind copy to an attacker).
+            $cleanName  = preg_replace('/[\r\n:]+/', '', $hName);
+            $cleanValue = preg_replace('/[\r\n]+/', ' ', (string)$hValue);
+            if ($cleanName === '' || $cleanValue === '') continue;
+            $mail->addCustomHeader($cleanName, $cleanValue);
+        }
 
         $mail->isHTML(true);
         $mail->Subject = $subject;

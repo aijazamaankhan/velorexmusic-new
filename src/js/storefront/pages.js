@@ -578,6 +578,17 @@
       var countEl = document.getElementById('products-count');
       if (countEl) countEl.textContent = 'Showing ' + filtered.length + ' of ' + allProds.length + ' products';
       renderActiveFiltersProducts();
+
+      // view_item_list — what the visitor was actually shown after filtering,
+      // which is the list GA4's "items viewed" report should reflect. Naming
+      // the list by the routed category (rather than a constant "Products")
+      // is what makes the report say which sections earn their place.
+      if (typeof Analytics !== 'undefined') {
+        Analytics.viewItemList(
+          filtered,
+          (currentParams && currentParams.cat) ? String(currentParams.cat) : 'All products'
+        );
+      }
     }
 
     function clearAllFilters() {
@@ -846,6 +857,10 @@
         var product = await res.json();
         var dtFinal = document.getElementById('detail-title'); if (dtFinal) dtFinal.textContent = product.title;
         renderProductDetail(product);
+        // view_item — fired on the full record, not on the lean paint above,
+        // so the event always carries a real category and price. The lean
+        // paint can happen twice on one visit (cold cache, then sync).
+        if (typeof Analytics !== 'undefined') Analytics.viewItem(product);
         renderRelatedProducts(product, products);
         // Now that the full record is in hand: upgrade a bare /product/12 to
         // the canonical /product/12-title-artist (replaceState, so no extra
@@ -1041,6 +1056,7 @@
 
     function initPageCart() {
       var cartItems = CartHelpers.getCartWithDetails(), container = document.getElementById('cart-main'); if (!container) return;
+      if (typeof Analytics !== 'undefined') Analytics.viewCart(cartItems);
       if (!cartItems.length) { container.innerHTML = '<div class="empty-cart" style="padding:6rem 2rem;"><div class="empty-cart-icon"><i class="fas fa-shopping-cart"></i></div><h3>Your cart is empty</h3><p>Let\'s fix that!</p><a href="#" onclick="navigate(\'products\')" class="btn btn-primary btn-lg"><i class="fas fa-music"></i> Start Shopping</a></div>'; return; }
       // On the cart page we don't yet know the customer's address, so the
       // exact shipping zone is unresolved. Show "Calculated at checkout"

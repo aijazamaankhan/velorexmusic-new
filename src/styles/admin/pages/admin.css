@@ -1498,6 +1498,20 @@
       color: #f59e0b;
     }
 
+    /* Neutral pill used by the Abandoned + Subscribers panels. Shape only —
+       each usage supplies its own background/colour inline, because the
+       meaning (and therefore the colour) is per-row, not per-class. */
+    .badge-pill {
+      display: inline-block;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
     /* Right-side customer drawer */
     .drawer-overlay {
       position: fixed;

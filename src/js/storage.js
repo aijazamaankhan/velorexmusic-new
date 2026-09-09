@@ -123,5 +123,10 @@
       saveCart(cart) {
         localStorage.setItem(this._cartKey(), JSON.stringify(cart));
         CartHelpers.updateBadge();
+        // Mirror the cart to the server on a debounce so an abandoned basket
+        // is visible to the shop (src/js/cart-sync.js). localStorage stays the
+        // source of truth — this is a one-way copy for reporting and recovery,
+        // and the guard keeps the storefront working if that file is absent.
+        if (typeof CartSync !== 'undefined') CartSync.schedule();
       },
     };

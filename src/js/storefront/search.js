@@ -174,6 +174,10 @@ var VelorexSearch = (function () {
     var q = String(raw || '').trim();
     if (!q) return;
     closeOverlay();
+    // Reported on submit, not per keystroke: GA4's search_term report is meant
+    // to answer "what did people ask us for", and every prefix of every query
+    // would drown that in noise.
+    if (typeof Analytics !== 'undefined') Analytics.search(q);
     navigate('products', { search: q });
   }
 

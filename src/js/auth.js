@@ -71,6 +71,11 @@
         this._claimAnonCart(json.user.id);
         this._setSession(json.token, json.user);
         this._refreshCartBadge();
+        if (typeof Analytics !== 'undefined') Analytics.signUp('email');
+        // Re-push the (just-claimed) cart so the server row is attributed to
+        // this account rather than staying anonymous — that attribution is
+        // what gives an abandoned cart a recoverable email address.
+        if (typeof CartSync !== 'undefined') CartSync.push(true);
         return json.user;
       },
 
@@ -85,6 +90,10 @@
         this._claimAnonCart(json.user.id);
         this._setSession(json.token, json.user);
         this._refreshCartBadge();
+        if (typeof Analytics !== 'undefined') Analytics.login('email');
+        // See the note in signup() — this is the moment an anonymous cart
+        // becomes a cart we could email someone about.
+        if (typeof CartSync !== 'undefined') CartSync.push(true);
         return json.user;
       },
 

@@ -119,6 +119,29 @@ define('SMTP_DEBUG', 0);
 // http://localhost:5500 during development so test emails link locally.
 // define('SITE_BASE_URL', 'http://localhost:5500');
 
+// =============================================
+// Brevo contact API (OPTIONAL — newsletter list sync)
+// =============================================
+// SEPARATE CREDENTIAL FROM SMTP_PASS. The SMTP key above authenticates the
+// mail relay; it will NOT authenticate against api.brevo.com and pasting it
+// here just produces 401s in error_log.
+//
+// Get this from: Brevo -> SMTP & API -> API Keys -> "Generate a new API key".
+//
+// What it does: every newsletter signup is pushed to Brevo's contact list, so
+// campaigns can be composed and sent from Brevo's dashboard. Subscribers are
+// always stored in OUR `subscribers` table first — this sync is a convenience,
+// and the list survives a Brevo outage, a revoked key, or never setting this
+// up at all. The admin Subscribers panel has a "Sync to Brevo" button that
+// backfills anything that has not been pushed yet.
+//
+// BREVO_LIST_ID is the numeric id of the list to add contacts to. Find it in
+// Brevo -> Contacts -> Lists (it is in the URL). Leave undefined to add
+// contacts without putting them on a list.
+//
+// define('BREVO_API_KEY', 'xkeysib-…');
+// define('BREVO_LIST_ID', 2);
+
 // Store-owner / store-manager order alerts.
 // When set, finalize_payment() sends a "🔔 New order #VD-… · ₹… · N items"
 // email to this address on every successful payment, alongside the

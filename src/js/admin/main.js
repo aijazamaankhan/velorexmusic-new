@@ -398,6 +398,8 @@
         blog: { t: 'Blog', s: 'Write and publish posts for the storefront' },
         combos: { t: 'Combo Offers', s: 'Bundle products that go well together' },
         users: { t: 'Customer Management', s: 'Search, edit, support and remove customer accounts' },
+        abandoned: { t: 'Abandoned Carts', s: 'Baskets and checkouts that were walked away from' },
+        subscribers: { t: 'Newsletter Subscribers', s: 'The mailing list, split by consent' },
         settings: { t: 'Store Configuration', s: 'Configure store-wide preferences' }
       };
 
@@ -432,6 +434,11 @@
       if (panelId === 'blog') loadBlogPosts();
       // Combos need the product cache for the picker, so make sure it is warm.
       if (panelId === 'combos') { Storage.syncFromServer().catch(function(){}); loadCombos(); }
+      // Both marketing panels are re-fetched on every visit rather than cached:
+      // an abandoned cart's age is the whole point of the row, and a stale
+      // "2 hours ago" that is really eleven hours old is worse than a spinner.
+      if (panelId === 'abandoned')   loadAbandoned();
+      if (panelId === 'subscribers') loadSubscribers();
     }
 
     // Paint skeleton placeholders into the loading-aware containers of the
@@ -451,6 +458,12 @@
       } else if (panelId === 'users') {
         const tbody = document.getElementById('admin-users-table');
         if (tbody) tbody.innerHTML = Skeleton.tableRows(5, 8);
+      } else if (panelId === 'abandoned') {
+        const tbody = document.getElementById('abandoned-table-body');
+        if (tbody) tbody.innerHTML = Skeleton.tableRows(5, 7);
+      } else if (panelId === 'subscribers') {
+        const tbody = document.getElementById('subscribers-table-body');
+        if (tbody) tbody.innerHTML = Skeleton.tableRows(5, 7);
       }
       // categories + settings panels have no async fetch — no skeleton needed.
     }

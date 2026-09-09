@@ -128,10 +128,16 @@
       // Guest checkout is allowed — no login redirect here. The modal swaps
       // between the address-picker (registered) and the inline contact+address
       // form (guest) based on Auth state.
-      if (!CartHelpers.getCartWithDetails().length) {
+      const checkoutLines = CartHelpers.getCartWithDetails();
+      if (!checkoutLines.length) {
         showToast('Your cart is empty', 'error');
         return;
       }
+
+      // begin_checkout — the narrowest point of the funnel before payment.
+      // Fired on the modal opening rather than on Pay Now, because "opened
+      // checkout and left" is the drop-off the owner needs to be able to see.
+      if (typeof Analytics !== 'undefined') Analytics.beginCheckout(checkoutLines);
 
       // Amount + breakdown shown here are a preview — the server recomputes
       // the canonical total from DB prices in /api/payments/create-order.php
@@ -170,6 +176,37 @@
       } else {
         await renderCheckoutAddressPicker();
       }
+    }
+
+    // Opt the buyer into the newsletter, but ONLY if they ticked the box in the
+    // payment modal. This is the consent record that makes a later campaign
+    // send defensible — see api/admin/subscribers.php on why consent_at being
+    // NULL vs set is not cosmetic.
+    //
+    // Fire-and-forget by design: called after the order is finalized, never
+    // awaited, and every failure path is swallowed. A newsletter signup must
+    // not be able to delay or break a completed purchase.
+    function maybeSubscribeFromCheckout(createBody) {
+      try {
+        var box = document.getElementById('checkout-marketing-optin');
+        if (!box || !box.checked) return;
+
+        // The address comes from the checkout payload or the signed-in
+        // account — never from a free-text field the customer could point at
+        // someone else while we stamp it as consent.
+        var email = (createBody && createBody.contact && createBody.contact.email)
+          || ((Auth.getUser() || {}).email || '');
+        if (!email) return;
+
+        fetch(API_BASE + '/subscribe.php', {
+          method: 'POST',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, Auth.headers()),
+          body: JSON.stringify({ email: email, source: 'checkout' }),
+          keepalive: true,
+        }).catch(function () { /* best effort — the order is what matters */ });
+
+        if (typeof Analytics !== 'undefined') Analytics.newsletterSignup('checkout');
+      } catch (_) { /* never let this reach the purchase path */ }
     }
 
     // Reveal/hide the password field as the "Save my info" checkbox is toggled.
@@ -521,6 +558,21 @@
       if (picker) picker.style.display = 'none';
       if (summary) summary.style.display = '';
       renderCheckoutAddressPicker();
+      // add_shipping_info — the step between "opened checkout" and "paid".
+      // The tier is the zone label the quote resolved to, which is what lets
+      // the report answer "does the ₹199 remote rate lose us orders?".
+      if (typeof Analytics !== 'undefined') {
+        var tier = 'Standard';
+        try {
+          var q = Shipping.calculate(
+            CartHelpers.getCartTotal(),
+            readCurrentCheckoutAddress(),
+            Shipping.cartShippingItems()
+          );
+          if (q) tier = q.freeShipping ? 'Free' : (q.zoneLabel || 'Standard');
+        } catch (_) { /* quote is decorative here — never block the checkout */ }
+        Analytics.addShippingInfo(CartHelpers.getCartWithDetails(), tier);
+      }
     }
     // ============================================================
     // Payment flow — secure, server-orchestrated.
@@ -679,7 +731,34 @@
               // the user can refresh their profile shortly to see it appear.
               throw new Error(verified.error || ('Verification failed (HTTP ' + verifyRes.status + ')'));
             }
+            // purchase — fired ONLY here, after the server has verified the
+            // HMAC signature and created the order. Never on Razorpay's
+            // client-side success callback alone: that is precisely the claim
+            // verify.php exists to refuse to take on trust, and reporting it
+            // would put unverifiable revenue in the owner's dashboard.
+            // `created` carries the server's canonical total and shipping, so
+            // the reported value matches what was actually charged rather than
+            // the cart's own subtotal.
+            if (typeof Analytics !== 'undefined') {
+              Analytics.purchase(verified.orderId, cartItems, {
+                total:    typeof created.total === 'number'    ? created.total    : undefined,
+                shipping: typeof created.shipping === 'number' ? created.shipping : undefined,
+              });
+            }
+
+            // Marketing consent, if the guest ticked the box on the way in.
+            // Deliberately after the order is safely finalized and never
+            // awaited — a newsletter signup must not be able to delay, or
+            // fail, a completed purchase.
+            maybeSubscribeFromCheckout(createBody);
+
             Storage.saveCart([]);
+            // Clear the server-side snapshot NOW rather than waiting out
+            // CartSync's debounce. The guest path can leave this page with a
+            // full document navigation moments later, which would cancel the
+            // pending timer — and a snapshot that survives the purchase is a
+            // recovery email about records the customer has just bought.
+            if (typeof CartSync !== 'undefined') CartSync.push(true);
             Storage.syncFromServer().catch(() => {});
             showToast('🎉 Payment Successful! Order ID: ' + verified.orderId, 'success');
             closePaymentModal();
