@@ -2344,6 +2344,26 @@ already in the database and nothing read it. The Abandoned panel's
 The `carts` table is the genuinely new capture, and it is the bigger half: it
 covers people who never reached checkout at all.
 
+### "Abandoned" starts after 60 minutes, and the panel must say so
+
+`ABANDON_GRACE_MINUTES` (60) is how long a basket must sit untouched before it
+counts. Rows inside that window are still returned by
+[api/admin/abandoned.php](api/admin/abandoned.php), flagged `active: true`, and
+are excluded from every default view and from all four stat cards — but they
+are reachable from the **Active now** chip, and the empty state counts them.
+
+The first version dropped them from the query entirely, and the failure mode was
+immediate: put two records in a cart, open the panel, and it said *"No abandoned
+carts — that is a good problem to have."* An owner reasonably reads that as
+"the feature is broken", when the truth is "the cart is 30 seconds old". **A
+panel that cannot distinguish "nobody has a cart" from "the carts are too fresh
+to chase" is not telling the truth about the shop.** Keep the two states
+distinguishable if you change this.
+
+The manual **Send** button is disabled on an active row, and the cron filters on
+the same window — emailing "you left this behind" to someone still browsing the
+site is the fastest way to look clumsy.
+
 ### GA4
 
 The tag (`G-N6H3GG17TM`) and SPA page views were already there; what was missing

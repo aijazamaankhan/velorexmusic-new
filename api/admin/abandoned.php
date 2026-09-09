@@ -17,9 +17,18 @@
 // away from, complete with their email, phone, items and address. That data
 // was already in the database and nothing read it.
 //
-// A row is only listed once it has been quiet for GRACE_MINUTES. Without that
-// the panel fills with carts belonging to people who are still shopping, and
-// "abandoned" stops meaning anything.
+// A row only counts as ABANDONED once it has been quiet for GRACE_MINUTES.
+// Without that the panel fills with carts belonging to people who are still
+// shopping, and "abandoned" stops meaning anything.
+//
+// Rows inside the grace window are still returned, flagged `active: true`.
+// They are excluded from every default view and from every statistic — but
+// they are reachable from the "Active now" chip, and the empty state counts
+// them. The first version omitted them entirely, and the result was that an
+// owner who put two records in a cart and opened this panel saw "No abandoned
+// carts — that is a good problem to have" and reasonably concluded the feature
+// was broken. A panel that cannot distinguish "nobody has a cart" from "the
+// carts are too fresh to chase" is not telling the truth about the shop.
 // =============================================================================
 
 require_once __DIR__ . '/../config.php';
@@ -35,6 +44,19 @@ const ABANDON_GRACE_MINUTES = 60;
 // How far back the panel looks. Older rows are still in the table (the cron
 // prunes them) but a three-month-old cart is not a lead worth showing.
 const ABANDON_WINDOW_DAYS = 60;
+
+// Is this row still inside the grace window — i.e. someone may well be looking
+// at that basket right now? Computed in PHP rather than in SQL so both queries
+// return the same window and the caller decides what to do with the flag.
+function marketing_is_active(string $lastActive): bool {
+    if ($lastActive === '') return false;
+    $ts = strtotime($lastActive);
+    // MySQL hands back server-local time and PHP's default TZ matches the
+    // connection here; a parse failure is treated as "not active" so an
+    // unreadable timestamp can never hide a genuinely abandoned cart.
+    if ($ts === false) return false;
+    return $ts > (time() - (ABANDON_GRACE_MINUTES * 60));
+}
 
 try {
     $pdo = db();
@@ -54,7 +76,6 @@ try {
                FROM carts c
                LEFT JOIN users u ON u.id = c.user_id
               WHERE c.converted_at IS NULL
-                AND c.updated_at < DATE_SUB(NOW(), INTERVAL ' . ABANDON_GRACE_MINUTES . ' MINUTE)
                 AND c.updated_at > DATE_SUB(NOW(), INTERVAL ' . ABANDON_WINDOW_DAYS . ' DAY)
               ORDER BY c.updated_at DESC
               LIMIT 500'
@@ -65,6 +86,7 @@ try {
             $items = json_decode((string)$r['items'], true);
             $rows[] = [
                 'kind'           => 'cart',
+                'active'         => marketing_is_active((string)$r['updated_at']),
                 'id'             => (int)$r['id'],
                 'ref'            => substr((string)$r['cart_key'], 0, 8),
                 'userId'         => $r['user_id'] !== null ? (int)$r['user_id'] : null,
@@ -93,7 +115,6 @@ try {
                    FROM payment_orders po
                    LEFT JOIN users u ON u.id = po.user_id
                   WHERE po.status = 'created'
-                    AND po.created_at < DATE_SUB(NOW(), INTERVAL " . ABANDON_GRACE_MINUTES . " MINUTE)
                     AND po.created_at > DATE_SUB(NOW(), INTERVAL " . ABANDON_WINDOW_DAYS . " DAY)
                   ORDER BY po.created_at DESC
                   LIMIT 500"
@@ -118,6 +139,7 @@ try {
 
                 $rows[] = [
                     'kind'           => 'checkout',
+                    'active'         => marketing_is_active((string)$r['created_at']),
                     'id'             => (string)$r['razorpay_order_id'],
                     'ref'            => substr((string)$r['razorpay_order_id'], -8),
                     'userId'         => $r['user_id'] !== null ? (int)$r['user_id'] : null,
@@ -149,16 +171,29 @@ try {
             return strcmp((string)$b['lastActiveAt'], (string)$a['lastActiveAt']);
         });
 
-        // Stats over the listed window. Value is only counted for rows that are
-        // still live (not dismissed) — a dismissed row is one the owner has
-        // already decided is not worth chasing.
-        $live = array_values(array_filter($rows, function ($r) { return empty($r['dismissedAt']); }));
+        // Stats describe ABANDONED carts only. Rows still inside the grace
+        // window are counted separately as `active` — folding them in would
+        // inflate "value at risk" with baskets belonging to people who are
+        // mid-purchase, which is the number an owner would act on.
+        // A dismissed row is likewise excluded: the owner has already decided
+        // it is not worth chasing.
+        $live = array_values(array_filter($rows, function ($r) {
+            return empty($r['dismissedAt']) && empty($r['active']);
+        }));
+        $active = array_values(array_filter($rows, function ($r) {
+            return empty($r['dismissedAt']) && !empty($r['active']);
+        }));
         $stats = [
             'total'          => count($live),
             'carts'          => count(array_filter($live, function ($r) { return $r['kind'] === 'cart'; })),
             'checkouts'      => count(array_filter($live, function ($r) { return $r['kind'] === 'checkout'; })),
             'value'          => (int)array_sum(array_map(function ($r) { return (int)$r['subtotal']; }, $live)),
             'withEmail'      => count(array_filter($live, function ($r) { return !empty($r['email']); })),
+            // Baskets someone may be looking at right now. Reported so the
+            // empty state can say "3 carts are active but not yet quiet for
+            // 60 minutes" instead of "nobody has a cart".
+            'active'         => count($active),
+            'activeValue'    => (int)array_sum(array_map(function ($r) { return (int)$r['subtotal']; }, $active)),
             'graceMinutes'   => ABANDON_GRACE_MINUTES,
             'windowDays'     => ABANDON_WINDOW_DAYS,
             'paymentOrdersReady' => $poReady,

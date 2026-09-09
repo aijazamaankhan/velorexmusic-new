@@ -53,7 +53,7 @@
   <script src="src/js/admin/combos.js?v=de76275c"></script>
   <!-- Abandoned carts + newsletter subscribers. Loaded after main.js because
        both panels call adminAuthHeaders() at runtime. -->
-  <script src="src/js/admin/marketing.js?v=2f733950"></script>
+  <script src="src/js/admin/marketing.js?v=7b4f96c1"></script>
   <script src="src/js/admin/toast.js?v=9a4bf3e8"></script>
 </head>
 
@@ -503,6 +503,13 @@
             <button type="button" class="cust-chip" data-filter="cart" onclick="setAbandonedFilter('cart')">Left in cart</button>
             <button type="button" class="cust-chip" data-filter="contactable" onclick="setAbandonedFilter('contactable')">Has email</button>
             <button type="button" class="cust-chip" data-filter="dismissed" onclick="setAbandonedFilter('dismissed')">Dismissed</button>
+            <span style="width:1px;background:var(--border);align-self:stretch;margin:0 0.25rem;"></span>
+            <!-- Baskets inside the grace window. NOT abandoned — deliberately
+                 excluded from every other view and from all four stat cards,
+                 so "abandoned" keeps meaning abandoned. Here because an owner
+                 needs to be able to tell "nobody has a cart" apart from "the
+                 carts are too fresh to chase". -->
+            <button type="button" class="cust-chip" data-filter="active" onclick="setAbandonedFilter('active')"><i class="fas fa-circle" style="font-size:0.5em;color:#5ed99a;margin-right:0.4rem;vertical-align:middle;"></i>Active now</button>
           </div>
 
           <div style="overflow-x:auto;">

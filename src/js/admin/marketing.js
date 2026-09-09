@@ -85,8 +85,18 @@
       };
       if (!s) return;
 
+      // When nothing has aged into "abandoned" yet but baskets are open right
+      // now, say so. Otherwise the panel reads as "nobody has a cart", which
+      // is a different and wrong conclusion.
+      const activeNote = (s.active || 0) > 0
+        ? s.active + ' active now (not yet ' + s.graceMinutes + ' min quiet)'
+        : null;
+
       set('stat-ab-total', String(s.total), 'stat-ab-total-sub',
-          s.checkouts + ' at payment · ' + s.carts + ' in cart');
+          s.total === 0 && activeNote
+            ? activeNote
+            : s.checkouts + ' at payment · ' + s.carts + ' in cart'
+              + (activeNote ? ' · ' + activeNote : ''));
 
       set('stat-ab-value', '₹' + Number(s.value || 0).toLocaleString('en-IN'), 'stat-ab-value-sub',
           'Quiet for ' + s.graceMinutes + '+ min, last ' + s.windowDays + ' days');
@@ -133,6 +143,14 @@
         // the default view would slowly make the panel useless.
         if (f === 'dismissed') return !!r.dismissedAt;
         if (r.dismissedAt) return false;
+
+        // Rows inside the grace window are NOT abandoned — someone may be
+        // looking at that basket right now. They live behind their own chip
+        // and are excluded from every other view, so "abandoned" keeps
+        // meaning abandoned.
+        if (f === 'active') return !!r.active;
+        if (r.active) return false;
+
         if (f === 'checkout')    return r.kind === 'checkout';
         if (f === 'cart')        return r.kind === 'cart';
         if (f === 'contactable') return !!r.email;
@@ -163,10 +181,27 @@
       const rows = filteredAbandoned();
 
       if (!rows.length) {
-        const empty = AbandonState.filter === 'dismissed'
-          ? 'Nothing dismissed.'
-          : 'No abandoned carts in this view. That is a good problem to have.';
-        tbody.innerHTML = '<tr><td colspan="7" style="padding:2rem;text-align:center;color:var(--text-muted);">'
+        const s = AbandonState.stats || {};
+        const grace = s.graceMinutes || 60;
+        let empty;
+        if (AbandonState.filter === 'dismissed') {
+          empty = 'Nothing dismissed.';
+        } else if (AbandonState.filter === 'active') {
+          empty = 'No baskets open right now.';
+        } else if ((s.active || 0) > 0) {
+          // The case that made this panel look broken: carts exist, they are
+          // just too fresh to count. Say which, and how to see them.
+          empty = '<strong style="color:var(--text);">' + s.active + ' basket'
+                + (s.active === 1 ? ' is' : 's are') + ' open right now</strong>, but nothing has been '
+                + 'sitting untouched for ' + grace + ' minutes yet — so nothing counts as abandoned.'
+                + '<div style="margin-top:0.6rem;font-size:0.85rem;">Someone may still be shopping. '
+                + 'Check back later, or open <button type="button" class="btn btn-secondary btn-sm" '
+                + 'style="width:auto;margin:0 0.25rem;" onclick="setAbandonedFilter(\'active\')">Active now</button> '
+                + 'to see them.</div>';
+        } else {
+          empty = 'No abandoned carts, and no baskets open right now.';
+        }
+        tbody.innerHTML = '<tr><td colspan="7" style="padding:2rem;text-align:center;color:var(--text-muted);line-height:1.6;">'
           + empty + '</td></tr>';
         if (meta) meta.textContent = '';
         return;
@@ -175,9 +210,13 @@
       tbody.innerHTML = rows.map(function (r) {
         const key     = abandonRowKey(r);
         const busy    = AbandonState.busyKey === key;
-        const stage   = r.kind === 'checkout'
+        const stage   = (r.kind === 'checkout'
           ? '<span class="badge-pill" style="background:rgba(255,107,53,0.16);color:#ff8a5c;">At payment</span>'
-          : '<span class="badge-pill" style="background:rgba(120,140,255,0.16);color:#93a5ff;">In cart</span>';
+          : '<span class="badge-pill" style="background:rgba(120,140,255,0.16);color:#93a5ff;">In cart</span>')
+          + (r.active
+              ? '<div style="margin-top:0.35rem;font-size:0.7rem;color:#5ed99a;">'
+                + '<i class="fas fa-circle" style="font-size:0.5em;vertical-align:middle;margin-right:0.3rem;"></i>Still active</div>'
+              : '');
 
         const who = r.email
           ? '<div style="font-weight:600;">' + escapeHTML(r.name || r.email) + '</div>'
@@ -208,7 +247,13 @@
         // Why a Send button is unavailable is more useful than the button
         // simply not being there.
         let sendBtn;
-        if (!r.email) {
+        if (r.active) {
+          // Emailing "you left this behind" to someone who is still on the
+          // site is the fastest way to look automated and clumsy. The cron
+          // will not touch this row either — it filters on the same window.
+          sendBtn = '<button type="button" class="btn btn-secondary btn-sm" style="width:auto;" disabled '
+            + 'title="This basket is still active — they may be shopping right now">Send</button>';
+        } else if (!r.email) {
           sendBtn = '<button type="button" class="btn btn-secondary btn-sm" style="width:auto;" disabled title="No email address on file for this visitor">Send</button>';
         } else if ((r.recoveryStage || 0) >= 2) {
           sendBtn = '<button type="button" class="btn btn-secondary btn-sm" style="width:auto;" disabled title="Both reminders have already gone out — a third is how a shop lands in the spam folder">Send</button>';
