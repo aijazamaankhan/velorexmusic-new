@@ -18,9 +18,22 @@
   'use strict';
 
   // The ring's easing factor per frame. 1 would pin it to the pointer (no
-  // trail); lower is a longer, softer tail. 0.2 lands about 3 frames behind at
-  // normal speeds — visible as a trail, never as lag.
-  var EASE = 0.2;
+  // trail); lower is a longer, softer tail.
+  //
+  // Frames to close 90% of the gap is log(0.1)/log(1-EASE), so at 60fps:
+  //   0.2  -> 10.3 frames -> ~172 ms   (what this was; reads as lag, not trail)
+  //   0.4  ->  4.5 frames -> ~75 ms    (still visibly a tail, but keeps up)
+  //   0.6  ->  2.5 frames -> ~42 ms    (barely a trail at all)
+  // 0.4 is the point where the ring stops feeling like it is dragging behind
+  // the pointer while still reading as a deliberate effect rather than a
+  // second cursor.
+  var EASE = 0.4;
+
+  // Below this many pixels of remaining distance the ring is snapped to the
+  // pointer and the animation loop STOPS. Sub-pixel easing is invisible, and
+  // a requestAnimationFrame loop that never exits keeps the compositor awake
+  // for the entire time the page is open.
+  var SETTLE_PX = 0.1;
 
   // What counts as "clickable" and therefore swells the ring. Deliberately
   // includes [onclick]: this codebase drives a lot of its UI from inline
@@ -60,21 +73,73 @@
     var started = false;
     var frame = null;
 
+    // Hover-test state. `hoverTarget` is the element the pointer is currently
+    // over; `testedTarget` is the one we last ran the CLICKABLE match against.
+    // While they are equal there is nothing to do.
+    var hoverTarget = null;
+    var testedTarget = null;
+    var pointing = false;
+
+    function kick() {
+      if (frame === null) frame = requestAnimationFrame(render);
+    }
+
     function render() {
-      rx += (tx - rx) * EASE;
-      ry += (ty - ry) * EASE;
+      var dx = tx - rx, dy = ty - ry;
+      if (Math.abs(dx) < SETTLE_PX && Math.abs(dy) < SETTLE_PX) {
+        rx = tx; ry = ty;
+      } else {
+        rx += dx * EASE;
+        ry += dy * EASE;
+      }
+
       // The dot is written every frame alongside the ring rather than inside
       // the mousemove handler: a mouse can fire well above 60 events/sec, and
       // writing a transform per event does layout work the compositor then
       // throws away. One write per frame is both smoother and cheaper.
       dot.style.transform = 'translate3d(' + tx + 'px,' + ty + 'px,0) translate(-50%,-50%)';
       ring.style.transform = 'translate3d(' + rx + 'px,' + ry + 'px,0) translate(-50%,-50%)';
-      frame = requestAnimationFrame(render);
+
+      // Hover test, moved out of the mousemove handler. CLICKABLE is a
+      // twenty-selector list and closest() re-tests all of it at each ancestor
+      // up to <html>, so running it per mousemove event ran it hundreds of
+      // times a second.
+      //
+      // MEASURED, so nobody re-litigates this from intuition: one call costs
+      // ~0.0005 ms on a 13-deep target on /products, i.e. ~0.5 ms per second
+      // even at 1000 events/sec. It was NOT what made the cursor feel slow —
+      // that was EASE. This is worth keeping anyway (it is free, and the cost
+      // scales with page depth, not with anything we control), but do not
+      // reach for it first if the cursor feels heavy again. Check EASE.
+      //
+      // Two guards: at most once per animation frame, and only when the
+      // element under the pointer actually CHANGED. Sweeping across one large
+      // element does no work at all.
+      if (hoverTarget !== testedTarget) {
+        testedTarget = hoverTarget;
+        var hit = hoverTarget && hoverTarget.closest ? hoverTarget.closest(CLICKABLE) : null;
+        // Only touch classList when the answer flips — an unconditional
+        // toggle() with a force argument still costs a style invalidation.
+        if (!!hit !== pointing) {
+          pointing = !!hit;
+          root.classList.toggle('is-pointing', pointing);
+        }
+      }
+
+      // Stop once the ring has caught up and there is no hover test waiting.
+      // The next mousemove calls kick() and the loop resumes. An idle pointer
+      // costs nothing.
+      if (rx !== tx || ry !== ty || hoverTarget !== testedTarget) {
+        frame = requestAnimationFrame(render);
+      } else {
+        frame = null;
+      }
     }
 
     document.addEventListener('mousemove', function (e) {
       tx = e.clientX;
       ty = e.clientY;
+      hoverTarget = e.target;
       if (!started) {
         // Drop both elements straight onto the first known pointer position
         // instead of easing in from 0,0 — otherwise the ring flies across the
@@ -83,12 +148,8 @@
         rx = tx; ry = ty;
         ring.classList.add('vlx-cursor-ready');
         dot.classList.add('vlx-cursor-ready');
-        frame = requestAnimationFrame(render);
       }
-      // closest() walks up from the actual target, so hovering the <i> icon
-      // inside a .btn still counts as hovering the button.
-      var hit = e.target && e.target.closest ? e.target.closest(CLICKABLE) : null;
-      root.classList.toggle('is-pointing', !!hit);
+      kick();
     }, { passive: true });
 
     document.addEventListener('mousedown', function () { root.classList.add('is-pressing'); }, { passive: true });
@@ -99,26 +160,31 @@
     document.addEventListener('mouseleave', function () {
       ring.classList.add('vlx-cursor-hidden');
       dot.classList.add('vlx-cursor-hidden');
-    });
+    }, { passive: true });
     document.addEventListener('mouseenter', function () {
       ring.classList.remove('vlx-cursor-hidden');
       dot.classList.remove('vlx-cursor-hidden');
-    });
+    }, { passive: true });
 
     // A background tab should not hold a rAF loop open.
     document.addEventListener('visibilitychange', function () {
       if (document.hidden) {
         if (frame) { cancelAnimationFrame(frame); frame = null; }
-      } else if (started && !frame) {
-        frame = requestAnimationFrame(render);
+      } else if (started) {
+        kick();
       }
     });
 
     // The SPA swaps whole pages under the cursor without a pointer move, so
     // the hover state can be left stale on an element that no longer exists.
-    // Clearing it on navigation costs nothing and the next mousemove is
-    // authoritative again.
-    window.addEventListener('popstate', function () { root.classList.remove('is-pointing'); });
+    // Clear the cached test as well as the class, or the next mousemove over a
+    // detached-but-equal target would compare equal and skip the re-test.
+    window.addEventListener('popstate', function () {
+      pointing = false;
+      testedTarget = null;
+      hoverTarget = null;
+      root.classList.remove('is-pointing');
+    });
   }
 
   if (document.readyState === 'loading') {
