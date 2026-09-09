@@ -188,6 +188,14 @@
       // runs regardless of which branch below returns. It hides its own
       // section when there is nothing to show.
       if (typeof initHomeCombos === 'function') initHomeCombos();
+      // Hero banner. Above the cold-cache early return below, because the brand
+      // slide is static markup that is worth wiring up (arrows, swipe, dots)
+      // even when there are no products to feature yet. init() is idempotent
+      // and skips the rebuild unless the featured set actually changed, so the
+      // post-sync re-invocation does not yank a slide out from under a reader.
+      if (typeof HeroCarousel !== 'undefined') {
+        try { HeroCarousel.init(); } catch (e) { console.warn('hero carousel failed:', e); }
+      }
       var products = Storage.getProducts();
       var bsg = document.getElementById('best-selling-grid'), nrg = document.getElementById('new-releases-grid'), ug = document.getElementById('upcoming-grid');
       // Cold cache: skeleton the category counts, but keep the three curated
@@ -844,7 +852,7 @@
         : '<div class="product-actions-group"><button class="btn btn-outline-primary btn-lg" id="addCartBtn" onclick="handleAddToCartDetail(' + product.id + ')">🛒 Add to Cart</button><button class="btn btn-gold btn-lg" onclick="handleBuyNowDetail(' + product.id + ')">⚡ Buy Now</button></div>';
       var origPriceHtml = product.originalPrice ? `<span class="product-detail-price-original">₹${product.originalPrice.toLocaleString()}</span>` : '';
       var discountHtml = discount ? `<span class="product-detail-discount">${discount}% OFF</span>` : '';
-      var musicDirectorHtml = product.musicDirector ? `<p class="product-detail-music-director">Music Director: <strong>${product.musicDirector}</strong></p>` : '';
+      var musicDirectorHtml = product.musicDirector ? `<p class="product-detail-music-director">Music Director: <strong>${Utils.escape(product.musicDirector)}</strong></p>` : '';
 
       // People tags on product detail
       var peopleHtml = '';
@@ -923,7 +931,7 @@
       container.innerHTML = `
       <div class="product-detail">
         <div class="product-detail-gallery">
-          <div class="product-detail-main-image"><img src="${primary}" alt="${product.title}" id="mainImage" fetchpriority="high" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=800&h=800&fit=crop'"></div>
+          <div class="product-detail-main-image"><img src="${primary}" alt="${Utils.escape(product.title)}" id="mainImage" fetchpriority="high" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=800&h=800&fit=crop'"></div>
           <div class="product-detail-thumbs">${thumbsHtml}</div>
         </div>
         <div class="product-detail-info">
@@ -935,8 +943,8 @@
             </div>
             ${stockWarn}
           </div>
-          <h1 class="product-detail-title">${product.title}</h1>
-          <p class="product-detail-subtitle">by <strong>${product.artist}</strong></p>
+          <h1 class="product-detail-title">${Utils.escape(product.title)}</h1>
+          <p class="product-detail-subtitle">by <strong>${Utils.escape(product.artist)}</strong></p>
           ${musicDirectorHtml}
           ${peopleHtml}
           <div class="product-detail-meta"><div style="display:flex;align-items:center;gap:0.5rem;"><span style="color:var(--accent);">${stars}</span><strong>${product.rating}</strong><span style="color:var(--text-muted);font-size:0.875rem;">(${product.reviews} reviews)</span></div></div>
@@ -947,7 +955,7 @@
             ${discountHtml}
             <div class="product-detail-availability">${product.stock > 0 ? 'In stock: ' + product.stock + ' units' : 'Pre-order available'}</div>
           </div>
-          <p class="product-detail-desc">${product.description}</p>
+          <p class="product-detail-desc">${Utils.escape(product.description)}</p>
           ${trackListingHtml}
           ${specsHtml ? `<div class="product-specs"><h2 class="specs-title">Product details</h2>${specsHtml}</div>` : ''}
           <div class="product-detail-actions">

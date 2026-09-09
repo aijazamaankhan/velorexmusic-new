@@ -193,6 +193,34 @@ function upsert_product(PDO $pdo, array $p): void {
     $pdo->prepare($sql)->execute($params);
 }
 
+/**
+ * Decode HTML entities in a stored text field.
+ *
+ * The admin product form used to run titles, artists, descriptions and music
+ * directors through Utils.escape() BEFORE sending them to the API, so the
+ * database holds entity-encoded text for every product saved by that code:
+ * "Gulzar's Fursat Ke Raat Din" is stored as "Gulzar&#39;s Fursat Ke Raat Din".
+ * That is invisible anywhere the value lands in innerHTML and glaring
+ * everywhere it does not — breadcrumbs, the detail page-hero, the <title> tag,
+ * order emails — and velorex_slugify() turned it into the canonical URL
+ * /product/12-gulzar-39-s-fursat-ke-raat-din.
+ *
+ * The write path is fixed (src/js/admin/inventory.js no longer escapes), so
+ * this is the heal for rows already written. It runs on read, in the two
+ * functions every reader goes through, which is why the fix reaches the SPA,
+ * seo-render.php, the sitemap and the mailer at once.
+ *
+ * Decoding a clean string is a no-op, so this stays correct after every row
+ * has been re-saved — it is not a temporary shim that has to be removed. The
+ * one thing it cannot represent is a title whose author genuinely wanted the
+ * literal text "&amp;"; that trade is worth it against the corruption above.
+ */
+function products_decode_text($v) {
+    if (!is_string($v) || $v === '' || strpos($v, '&') === false) return $v;
+    // ENT_QUOTES so &#39; and &quot; are both covered — Utils.escape emits both.
+    return html_entity_decode($v, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+}
+
 function row_to_product(array $r): array {
     $images = [];
     if (!empty($r['images'])) {
@@ -204,21 +232,21 @@ function row_to_product(array $r): array {
     }
     return [
         'id' => (int)$r['id'],
-        'title' => $r['title'],
-        'artist' => $r['artist'],
+        'title' => products_decode_text($r['title']),
+        'artist' => products_decode_text($r['artist']),
         'category' => $r['category'],
         'language' => $r['language'],
         'price' => (int)$r['price'],
         'originalPrice' => $r['original_price'] !== null ? (int)$r['original_price'] : null,
-        'description' => $r['description'],
+        'description' => products_decode_text($r['description']),
         'image' => $r['image'],
         'images' => $images,
         'rating' => $r['rating'] !== null ? (float)$r['rating'] : 0,
         'reviews' => (int)$r['reviews'],
         'badge' => $r['badge'],
         'stock' => (int)$r['stock'],
-        'musicDirector' => $r['music_director'],
-        'trackListing' => $r['track_listing'],
+        'musicDirector' => products_decode_text($r['music_director']),
+        'trackListing' => products_decode_text($r['track_listing']),
         'condition' => $r['item_condition'] ?? 'new',
         'subcategory' => $r['subcategory'] ?? null,
         'freeShipping' => !empty($r['free_shipping']),
@@ -238,8 +266,8 @@ function row_to_product(array $r): array {
 function row_to_product_lean(array $r): array {
     return [
         'id' => (int)$r['id'],
-        'title' => $r['title'],
-        'artist' => $r['artist'],
+        'title' => products_decode_text($r['title']),
+        'artist' => products_decode_text($r['artist']),
         'category' => $r['category'],
         'language' => $r['language'],
         'price' => (int)$r['price'],
@@ -249,7 +277,7 @@ function row_to_product_lean(array $r): array {
         'reviews' => (int)$r['reviews'],
         'badge' => $r['badge'],
         'stock' => (int)$r['stock'],
-        'musicDirector' => $r['music_director'],
+        'musicDirector' => products_decode_text($r['music_director']),
         'condition' => $r['item_condition'] ?? 'new',
         'subcategory' => $r['subcategory'] ?? null,
         'freeShipping' => !empty($r['free_shipping']),

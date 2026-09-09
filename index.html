@@ -152,9 +152,12 @@
        end up in script-scope; the inline <script> at the bottom of <body>
        just bootstraps DOMContentLoaded. -->
   <script src="src/js/storefront/carriers.js?v=488bf189"></script>
-  <script src="src/js/storefront/pages.js?v=e7b2d9da"></script>
+  <script src="src/js/storefront/pages.js?v=62e966c6"></script>
   <!-- Blog views. Must load before router.js, whose initPage dispatcher calls
        initPageBlog / initPageBlogPost. -->
+  <!-- Homepage hero carousel. Must load before router.js: its initPage
+       dispatcher runs initPageIndex, which calls HeroCarousel.init(). -->
+  <script src="src/js/storefront/hero.js?v=ee717112"></script>
   <script src="src/js/storefront/combos.js?v=52ddd306"></script>
   <script src="src/js/storefront/blog.js?v=38e36528"></script>
   <script src="src/js/storefront/router.js?v=456d12a3"></script>
@@ -170,9 +173,10 @@
   <link rel="stylesheet" href="src/styles/components/payment-modal.css?v=02096d61">
   <link rel="stylesheet" href="src/styles/components/toast.css?v=1b13f717">
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
+  <link rel="stylesheet" href="src/styles/components/hero-carousel.css?v=01a06e2d">
   <!-- Page-specific styles (hero, products, cart, profile, footer, etc.).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=3954df3c">
+  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=0d518bc2">
 </head>
 
 <body>
@@ -212,41 +216,80 @@
   </div>
   <div id="app">
     <div id="page-index" class="page-section">
-      <section class="hero">
-        <div class="hero-bg"></div>
-        <div class="hero-vinyl-decor">
-          <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="100" cy="100" r="95" fill="none" stroke="rgba(255,107,53,0.6)" stroke-width="2" />
-            <circle cx="100" cy="100" r="75" fill="none" stroke="rgba(255,107,53,0.4)" stroke-width="1" />
-            <circle cx="100" cy="100" r="55" fill="none" stroke="rgba(255,107,53,0.3)" stroke-width="1" />
-            <circle cx="100" cy="100" r="35" fill="none" stroke="rgba(255,107,53,0.2)" stroke-width="1" />
-            <circle cx="100" cy="100" r="15" fill="rgba(255,107,53,0.4)" />
-          </svg>
+      <!-- Hero carousel. The BRAND SLIDE BELOW IS THE ONLY SLIDE IN THE HTML —
+           src/js/storefront/hero.js appends the featured-product slides from
+           the product cache and wires the switching. Keep it that way: the
+           homepage's <h1>, its description and its category links have to be in
+           the served markup for a crawler that never runs JavaScript, and this
+           is also what makes the banner degrade to a plain static hero if the
+           script fails to load. -->
+      <section class="hero hero-carousel" id="hero-carousel" aria-roledescription="carousel" aria-label="Featured at Velorex Music">
+        <div class="hero-aurora" aria-hidden="true">
+          <span class="aurora-1"></span><span class="aurora-2"></span><span class="aurora-3"></span>
         </div>
-        <div class="hero-container">
-          <div class="hero-content">
-            <span class="hero-badge">🎵 India's Premier Music Store</span>
-            <h1 class="hero-title">Feel the Music,<br>Own the <span class="highlight">Legacy</span></h1>
-            <p class="hero-desc">Discover a curated collection of premium vinyl records, audio CDs, and vintage cassettes. From Bollywood classics to international rock — your perfect sound awaits.</p>
-            <div class="hero-cta">
-              <a href="#" onclick="navigate('products'); return false;" class="btn btn-primary btn-lg">🛍 Shop Now</a>
-              <a href="#" onclick="navigate('products', {cat: 'vinyl'}); return false;" class="btn btn-secondary btn-lg">💿 Browse Vinyl</a>
-            </div>
-          </div>
-          <div class="hero-visual">
-            <div class="vinyl-showcase">
-              <div class="vinyl-record">
-                <div class="vinyl-label">
-                  <div class="label-title">Velorex Music</div>
-                  <div class="label-sub">♫ PREMIUM ♫</div>
+        <div class="hero-grid-lines" aria-hidden="true"></div>
+
+        <div class="hero-track" data-hero-track>
+          <article class="hero-slide hero-slide-brand is-active" role="group" aria-label="Velorex Music">
+            <div class="hero-container">
+              <div class="hero-content">
+                <span class="hero-badge hero-rise"><span class="hero-badge-dot" aria-hidden="true"></span> India's Premier Music Store</span>
+                <h1 class="hero-title hero-rise">Feel the Music,<br>Own the <span class="highlight">Legacy</span></h1>
+                <p class="hero-desc hero-rise">Velorex Music is a curated record store for collectors — premium vinyl, audio CDs, cassettes, Blu-rays and DVDs, from Bollywood classics to international rock. Every pressing is genuine, hand-checked and shipped tracked across India.</p>
+                <div class="hero-cta hero-rise">
+                  <a href="/products" onclick="navigate('products'); return false;" class="btn btn-primary btn-lg"><i class="fas fa-grip"></i> All Products</a>
+                  <a href="#shop-categories" onclick="scrollToCategories(); return false;" class="btn btn-secondary btn-lg"><i class="fas fa-layer-group"></i> Shop Categories</a>
+                </div>
+                <!-- Real hrefs to the same paths the navbar uses. These are
+                     crawlable internal links into every format, not decoration. -->
+                <div class="hero-chips hero-rise">
+                  <a href="/vinyl-records" onclick="navigate('products', {cat:'vinyl'}); return false;" class="hero-chip"><i class="fas fa-compact-disc"></i> Vinyl</a>
+                  <a href="/audio-cds" onclick="navigate('products', {cat:'cd'}); return false;" class="hero-chip"><i class="fas fa-compact-disc"></i> CDs</a>
+                  <a href="/cassettes" onclick="navigate('products', {cat:'cassette'}); return false;" class="hero-chip"><i class="fas fa-tape"></i> Cassettes</a>
+                  <a href="/blu-ray-movies" onclick="navigate('products', {cat:'bluray'}); return false;" class="hero-chip"><i class="fas fa-film"></i> Blu-ray</a>
+                  <a href="/dvd-movies" onclick="navigate('products', {cat:'dvd'}); return false;" class="hero-chip"><i class="fas fa-film"></i> DVDs</a>
+                  <a href="/pre-owned" onclick="navigate('preowned'); return false;" class="hero-chip"><i class="fas fa-recycle"></i> Pre-owned</a>
+                </div>
+                <!-- Structural facts only. Don't put an invented customer count
+                     or star rating here — same rule as the admin dashboard
+                     cards (CLAUDE.md §20). -->
+                <div class="hero-stats hero-rise">
+                  <div>
+                    <div class="hero-stat-value"><span>5</span> Formats</div>
+                    <div class="hero-stat-label">Vinyl to Blu-ray</div>
+                  </div>
+                  <div>
+                    <div class="hero-stat-value"><span>100%</span> Genuine</div>
+                    <div class="hero-stat-label">Hand-checked stock</div>
+                  </div>
+                  <div>
+                    <div class="hero-stat-value">Pan-India</div>
+                    <div class="hero-stat-label">Tracked delivery</div>
+                  </div>
+                </div>
+              </div>
+              <div class="hero-visual">
+                <div class="vinyl-showcase">
+                  <div class="vinyl-record">
+                    <div class="vinyl-label">
+                      <div class="label-title">Velorex Music</div>
+                      <div class="label-sub">&#9834; PREMIUM &#9834;</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </article>
+        </div>
+
+        <div class="hero-controls">
+          <button type="button" class="hero-arrow" data-hero-prev aria-label="Previous slide"><i class="fas fa-chevron-left"></i></button>
+          <div class="hero-dots" role="tablist" aria-label="Choose slide" data-hero-dots></div>
+          <button type="button" class="hero-arrow" data-hero-next aria-label="Next slide"><i class="fas fa-chevron-right"></i></button>
         </div>
       </section>
 
-      <section class="section">
+      <section class="section" id="shop-categories">
         <div class="container">
           <div class="section-header">
             <div>

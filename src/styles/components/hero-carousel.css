@@ -1,0 +1,308 @@
+/* =============================================================================
+   Velorex Music — hero carousel
+   Used by: index.html (homepage only)
+
+   One full-bleed banner that auto-switches between a brand slide (who Velorex
+   is + the Categories / All Products calls to action) and a handful of
+   featured-product slides carrying short details.
+
+   Layout note — slides are GRID-STACKED, not absolutely positioned. Every
+   slide occupies `grid-area: slide`, so the banner's height is the tallest
+   slide's height and stays fixed as slides change. Absolute positioning would
+   have needed a hard-coded height, which is how a carousel ends up either
+   clipping a long product title or leaving a band of dead space on phones.
+   This costs nothing: inactive slides are `visibility: hidden`, which also
+   takes them out of the tab order, so no `inert`/tabindex bookkeeping is
+   needed to stop a keyboard user tabbing into an invisible slide.
+
+   Only the brand slide is in index.html. Product slides are injected by
+   src/js/storefront/hero.js from the product cache. That split is deliberate:
+   a crawler that never runs JavaScript still gets the full brand slide, the
+   <h1> and the category links, exactly as it did before this file existed.
+   ============================================================================= */
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  background: var(--primary);
+  display: block;               /* was flex — the track owns the centring now */
+  min-height: min(88vh, 780px);
+  isolation: isolate;
+}
+
+/* ---- Ambient background -------------------------------------------------- */
+/* Three slow-drifting colour blobs plus a faint grid. Cheap (three transformed
+   divs, GPU-composited) and it gives the banner depth without an image the
+   customer has to download. */
+.hero-aurora { position: absolute; inset: -20%; z-index: 0; pointer-events: none; filter: blur(80px); opacity: 0.55; }
+.hero-aurora span { position: absolute; display: block; border-radius: 50%; will-change: transform; }
+.hero-aurora .aurora-1 { width: 46vw; height: 46vw; left: 4%;  top: 6%;   background: radial-gradient(circle, rgba(255, 107, 53, 0.55), transparent 68%); animation: heroDrift1 22s ease-in-out infinite; }
+.hero-aurora .aurora-2 { width: 40vw; height: 40vw; right: 2%; top: 12%;  background: radial-gradient(circle, rgba(83, 52, 131, 0.75), transparent 68%);  animation: heroDrift2 27s ease-in-out infinite; }
+.hero-aurora .aurora-3 { width: 34vw; height: 34vw; left: 34%; bottom: 0; background: radial-gradient(circle, rgba(255, 215, 0, 0.28), transparent 68%);  animation: heroDrift3 31s ease-in-out infinite; }
+
+@keyframes heroDrift1 { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); }    50% { transform: translate3d(6%, 8%, 0) scale(1.12); } }
+@keyframes heroDrift2 { 0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); } 50% { transform: translate3d(-7%, 6%, 0) scale(0.92); } }
+@keyframes heroDrift3 { 0%, 100% { transform: translate3d(0, 0, 0) scale(0.95); } 50% { transform: translate3d(5%, -9%, 0) scale(1.1); } }
+
+.hero-grid-lines {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.35;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(ellipse at 50% 40%, #000 10%, transparent 72%);
+  mask-image: radial-gradient(ellipse at 50% 40%, #000 10%, transparent 72%);
+}
+
+[data-theme="light"] .hero { background: #fdfbff; }
+[data-theme="light"] .hero-aurora { opacity: 0.4; }
+[data-theme="light"] .hero-aurora .aurora-2 { background: radial-gradient(circle, rgba(83, 52, 131, 0.3), transparent 68%); }
+[data-theme="light"] .hero-grid-lines { background-image: linear-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(15, 23, 42, 0.05) 1px, transparent 1px); }
+
+/* ---- Slide stack --------------------------------------------------------- */
+.hero-track { position: relative; z-index: 1; display: grid; grid-template-areas: "slide"; align-items: center; }
+.hero-slide {
+  grid-area: slide;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate3d(0, 18px, 0) scale(0.985);
+  transition: opacity 0.6s ease, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s linear 0.6s;
+}
+.hero-slide.is-active {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity 0.6s ease, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s;
+}
+
+.hero-container {
+  max-width: 1280px; margin: 0 auto;
+  padding: clamp(3rem, 7vh, 5.5rem) 2rem clamp(4.5rem, 9vh, 6.5rem);
+  display: grid; grid-template-columns: 1.05fr 0.95fr; align-items: center; gap: clamp(2rem, 5vw, 4rem);
+}
+
+/* Stagger the copy in behind the slide itself, so a switch reads as an
+   entrance rather than a hard swap. Only the active slide animates. */
+.hero-slide.is-active .hero-rise { animation: heroRise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.hero-slide.is-active .hero-rise:nth-child(1) { animation-delay: 0.05s; }
+.hero-slide.is-active .hero-rise:nth-child(2) { animation-delay: 0.12s; }
+.hero-slide.is-active .hero-rise:nth-child(3) { animation-delay: 0.19s; }
+.hero-slide.is-active .hero-rise:nth-child(4) { animation-delay: 0.26s; }
+.hero-slide.is-active .hero-rise:nth-child(5) { animation-delay: 0.33s; }
+.hero-slide.is-active .hero-rise:nth-child(6) { animation-delay: 0.40s; }
+@keyframes heroRise { from { opacity: 0; transform: translate3d(0, 22px, 0); } to { opacity: 1; transform: none; } }
+
+/* ---- Shared copy elements ------------------------------------------------ */
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  background: rgba(255, 215, 0, 0.1); border: 1px solid rgba(255, 215, 0, 0.3); color: var(--accent);
+  padding: 0.4rem 1rem; border-radius: 50px;
+  font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  margin-bottom: 1.35rem;
+  backdrop-filter: blur(6px);
+}
+.hero-badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--secondary); animation: heroPulse 2.4s ease-out infinite; }
+@keyframes heroPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.55); }
+  70%  { box-shadow: 0 0 0 12px rgba(255, 107, 53, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 107, 53, 0); }
+}
+
+.hero-title { font-family: var(--font-display); font-size: clamp(2.35rem, 4.8vw, 4.25rem); font-weight: 900; line-height: 1.08; margin-bottom: 1.25rem; letter-spacing: -0.01em; }
+.hero-title .highlight { background: var(--orange-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.hero-desc { color: var(--text-muted); font-size: 1.05rem; max-width: 500px; margin-bottom: 2rem; line-height: 1.75; }
+.hero-cta { display: flex; gap: 0.85rem; flex-wrap: wrap; align-items: center; }
+
+/* ---- Brand slide: category chips ---------------------------------------- */
+/* Real <a href> to the same paths the nav uses — these are crawlable internal
+   links into every format, not decoration. */
+.hero-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 2rem; }
+.hero-chip {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  padding: 0.45rem 0.9rem; border-radius: 50px;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border);
+  color: var(--text-muted); font-size: 0.8rem; font-weight: 600;
+  transition: var(--transition); backdrop-filter: blur(6px);
+}
+.hero-chip:hover { color: var(--text); border-color: var(--secondary); background: rgba(255, 107, 53, 0.1); transform: translateY(-2px); }
+.hero-chip i { color: var(--secondary); }
+
+/* ---- Brand slide: trust stats ------------------------------------------- */
+.hero-stats { display: flex; gap: clamp(1.25rem, 3vw, 2.5rem); margin-top: 2.25rem; flex-wrap: wrap; }
+.hero-stat-value { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; color: var(--text); line-height: 1.1; }
+.hero-stat-value span { background: var(--orange-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.hero-stat-label { font-size: 0.74rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 0.3rem; }
+
+/* ---- Visual column ------------------------------------------------------- */
+.hero-visual { position: relative; display: flex; align-items: center; justify-content: center; }
+
+/* Brand slide's bare spinning record. */
+.vinyl-showcase { position: relative; width: min(380px, 78vw); aspect-ratio: 1; }
+.vinyl-record {
+  width: 100%; height: 100%; border-radius: 50%;
+  background:
+    repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,0.045) 0 1px, transparent 1px 5px),
+    conic-gradient(from 0deg, #141414, #2b2b2b 8%, #141414 16%, #303030 25%, #141414 34%, #2b2b2b 45%, #141414 55%, #303030 66%, #141414 76%, #2b2b2b 88%, #141414 100%);
+  animation: spin 9s linear infinite;
+  box-shadow: 0 0 60px rgba(255, 107, 53, 0.3), 0 0 120px rgba(83, 52, 131, 0.25), inset 0 0 40px rgba(0, 0, 0, 0.7);
+  display: flex; align-items: center; justify-content: center;
+}
+.vinyl-label { width: 35%; height: 35%; border-radius: 50%; background: var(--orange-gradient); display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: var(--font-display); color: #fff; text-align: center; font-weight: 700; }
+.vinyl-label .label-title { font-size: 0.75rem; }
+.vinyl-label .label-sub { font-size: 0.55rem; opacity: 0.8; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* Product slide's sleeve + record. The disc sits BEHIND the sleeve and slides
+   further out on hover, the way a record does when you pull it from its
+   jacket. */
+.hero-sleeve { position: relative; width: min(340px, 70vw); aspect-ratio: 1; }
+.hero-sleeve-art {
+  position: relative; z-index: 2; width: 100%; height: 100%;
+  border-radius: 6px; overflow: hidden;
+  background: var(--surface2);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.07);
+  transform: rotate(-3deg);
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hero-sleeve-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* The spine highlight — one gradient, and it is what stops the cover reading
+   as a flat rectangle pasted onto the page. */
+.hero-sleeve-art::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, rgba(255,255,255,0.22) 0 2%, rgba(255,255,255,0.06) 4%, transparent 12%),
+              linear-gradient(to top, rgba(0,0,0,0.32), transparent 45%);
+}
+.hero-sleeve-disc {
+  position: absolute; z-index: 1; top: 6%; left: 30%; width: 88%; aspect-ratio: 1; border-radius: 50%;
+  background:
+    repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05) 0 1px, transparent 1px 5px),
+    conic-gradient(from 0deg, #141414, #2b2b2b 8%, #141414 16%, #303030 25%, #141414 34%, #2b2b2b 45%, #141414 55%, #303030 66%, #141414 76%, #2b2b2b 88%, #141414 100%);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55);
+  animation: spin 14s linear infinite;
+  transition: left 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hero-sleeve-disc::after { content: ''; position: absolute; inset: 40%; border-radius: 50%; background: var(--orange-gradient); box-shadow: inset 0 0 0 2px rgba(0,0,0,0.35); }
+.hero-sleeve:hover .hero-sleeve-art { transform: rotate(-5deg) translateX(-3%); }
+.hero-sleeve:hover .hero-sleeve-disc { left: 42%; }
+
+/* Price tag pinned to the artwork. */
+.hero-sleeve-tag {
+  position: absolute; z-index: 3; right: -0.75rem; bottom: -0.75rem;
+  background: var(--gold-gradient); color: #1a0a2e;
+  font-family: var(--font-display); font-weight: 800; font-size: 1.05rem;
+  padding: 0.55rem 1.05rem; border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(255, 215, 0, 0.3);
+  display: flex; align-items: baseline; gap: 0.45rem;
+}
+.hero-sleeve-tag s { font-size: 0.78rem; font-weight: 600; opacity: 0.65; }
+
+/* ---- Product slide copy -------------------------------------------------- */
+.hero-eyebrow { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.hero-pill { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.8rem; border-radius: 50px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.hero-pill-hot      { background: rgba(255, 107, 53, 0.15); color: var(--secondary); border: 1px solid rgba(255, 107, 53, 0.35); }
+.hero-pill-new      { background: rgba(0, 212, 170, 0.13);  color: var(--success);   border: 1px solid rgba(0, 212, 170, 0.32); }
+.hero-pill-upcoming { background: rgba(255, 215, 0, 0.12);  color: var(--accent);    border: 1px solid rgba(255, 215, 0, 0.32); }
+.hero-pill-preowned { background: rgba(59, 130, 246, 0.13); color: var(--info);      border: 1px solid rgba(59, 130, 246, 0.32); }
+.hero-pill-muted    { background: rgba(255, 255, 255, 0.06); color: var(--text-muted); border: 1px solid var(--border); }
+
+.hero-product-title { font-family: var(--font-display); font-size: clamp(1.9rem, 3.6vw, 3.1rem); font-weight: 800; line-height: 1.12; margin-bottom: 0.5rem; }
+.hero-product-title a { color: inherit; }
+.hero-product-title a:hover { background: var(--orange-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.hero-product-artist { color: var(--text-muted); font-size: 1.02rem; margin-bottom: 1.1rem; }
+.hero-product-artist strong { color: var(--text); font-weight: 600; }
+
+.hero-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.35rem; }
+.hero-meta-item { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.38rem 0.8rem; border-radius: 10px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border); font-size: 0.8rem; color: var(--text-muted); }
+.hero-meta-item i { color: var(--secondary); }
+.hero-meta-item.is-out i { color: var(--danger); }
+.hero-meta-item.is-low i { color: var(--warning); }
+
+.hero-price { display: flex; align-items: baseline; gap: 0.7rem; margin-bottom: 1.75rem; flex-wrap: wrap; }
+.hero-price-now { font-family: var(--font-display); font-size: 2rem; font-weight: 800; color: var(--text); }
+.hero-price-was { color: var(--text-muted); text-decoration: line-through; font-size: 1rem; }
+.hero-price-off { background: rgba(0, 212, 170, 0.13); color: var(--success); border: 1px solid rgba(0, 212, 170, 0.3); padding: 0.2rem 0.6rem; border-radius: 50px; font-size: 0.75rem; font-weight: 700; }
+
+/* ---- Controls ------------------------------------------------------------ */
+.hero-controls {
+  position: absolute; z-index: 3; left: 0; right: 0; bottom: clamp(1.1rem, 3vh, 2rem);
+  display: flex; align-items: center; justify-content: center; gap: 1rem;
+  padding: 0 2rem; pointer-events: none;
+}
+.hero-controls > * { pointer-events: auto; }
+.hero-arrow {
+  width: 42px; height: 42px; border-radius: 50%; flex: none;
+  display: grid; place-items: center;
+  background: rgba(255, 255, 255, 0.06); border: 1px solid var(--border); color: var(--text);
+  backdrop-filter: blur(10px); transition: var(--transition);
+}
+.hero-arrow:hover { background: var(--secondary); border-color: var(--secondary); color: #fff; transform: scale(1.08); }
+.hero-arrow:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+.hero-dots { display: flex; align-items: center; gap: 0.5rem; }
+/* A dot is a pill that fills left-to-right over the dwell time, so the banner
+   tells you when it is about to move instead of moving without warning. */
+.hero-dot {
+  position: relative; height: 6px; width: 22px; border-radius: 50px;
+  background: rgba(255, 255, 255, 0.18); border: 0; overflow: hidden;
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1), background 0.3s;
+}
+.hero-dot:hover { background: rgba(255, 255, 255, 0.35); }
+.hero-dot:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.hero-dot.is-active { width: 58px; background: rgba(255, 255, 255, 0.2); }
+.hero-dot-fill { position: absolute; inset: 0; transform-origin: left center; transform: scaleX(0); background: var(--orange-gradient); border-radius: inherit; }
+.hero-dot.is-active .hero-dot-fill { animation: heroDotFill var(--hero-dwell, 6s) linear forwards; }
+.hero-carousel.is-paused .hero-dot.is-active .hero-dot-fill { animation-play-state: paused; }
+@keyframes heroDotFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+[data-theme="light"] .hero-dot { background: rgba(15, 23, 42, 0.15); }
+[data-theme="light"] .hero-dot.is-active { background: rgba(15, 23, 42, 0.12); }
+[data-theme="light"] .hero-chip,
+[data-theme="light"] .hero-meta-item,
+[data-theme="light"] .hero-arrow { background: rgba(15, 23, 42, 0.035); }
+
+/* Single slide (cold cache, or a catalogue with nothing worth featuring) — the
+   controls would be a row of one dead dot, so hide the whole bar. */
+.hero-carousel.is-single .hero-controls { display: none; }
+
+/* ---- Responsive ---------------------------------------------------------- */
+@media (max-width: 968px) {
+  .hero { min-height: 0; }
+  .hero-container { grid-template-columns: 1fr; text-align: center; padding: 3rem 1.5rem 5rem; gap: 2.25rem; }
+  .hero-desc { margin-left: auto; margin-right: auto; }
+  .hero-cta, .hero-chips, .hero-stats, .hero-eyebrow, .hero-meta, .hero-price { justify-content: center; }
+  /* The brand slide's bare record adds nothing on a phone and costs a repaint
+     every frame; the product slides' artwork IS the content, so that one stays
+     and moves above the copy. */
+  .hero-slide-brand .hero-visual { display: none; }
+  .hero-slide-product .hero-visual { order: -1; }
+  .hero-sleeve { width: min(260px, 62vw); }
+  .hero-sleeve-tag { font-size: 0.95rem; padding: 0.45rem 0.85rem; }
+}
+
+@media (max-width: 640px) {
+  .hero-container { padding: 2.25rem 1.25rem 4.5rem; }
+  .hero-title { font-size: 2.05rem; }
+  .hero-product-title { font-size: 1.7rem; }
+  .hero-desc { font-size: 0.95rem; margin-bottom: 1.5rem; }
+  .hero-price-now { font-size: 1.6rem; }
+  .hero-cta .btn { flex: 1 1 auto; justify-content: center; }
+  /* Arrows are redundant next to a swipe on a touch screen and they crowd the
+     dots at this width. */
+  .hero-arrow { display: none; }
+  .hero-stats { gap: 1.25rem; }
+  .hero-stat-value { font-size: 1.2rem; }
+  .hero-grid-lines { display: none; }
+}
+
+/* ---- Reduced motion ------------------------------------------------------ */
+/* hero.js also refuses to auto-advance under this query — this block only
+   covers the decorative motion, so both halves have to exist. */
+@media (prefers-reduced-motion: reduce) {
+  .hero-aurora span,
+  .vinyl-record,
+  .hero-sleeve-disc,
+  .hero-badge-dot { animation: none !important; }
+  .hero-slide { transition: opacity 0.2s ease, visibility 0s linear 0.2s; transform: none; }
+  .hero-slide.is-active { transition: opacity 0.2s ease, visibility 0s; }
+  .hero-slide.is-active .hero-rise { animation: none; }
+  .hero-dot.is-active .hero-dot-fill { animation: none; transform: scaleX(1); }
+}

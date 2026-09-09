@@ -104,6 +104,12 @@ foreach (velorex_categories() as $slug => $meta) {
 try {
     $stmt = db()->query('SELECT id, title, artist, updated_at FROM products ORDER BY id DESC');
     foreach ($stmt->fetchAll() as $row) {
+        // Rows written by the old admin hold entity-encoded text, which would
+        // slugify to /product/12-gulzar-39-s-… — a different URL from the one
+        // seo-render.php declares canonical. Decode for the same reason
+        // row_to_product() does; see products_decode_text().
+        $row['title']  = products_decode_text($row['title']);
+        $row['artist'] = products_decode_text($row['artist']);
         $xml .= velorex_sitemap_url(
             velorex_product_url($row),
             $row['updated_at'] ?? null,
