@@ -165,7 +165,16 @@
       try {
         await Auth.login(email, password);
         showToast('Welcome back!', 'success');
+        // Signing in is what makes an identity-shaped trigger checkable at all
+        // (subscribe / first_order / repeat_order), so this is the first moment
+        // we can honestly tell them what they qualify for.
+        if (typeof CouponRewards !== 'undefined') {
+          CouponRewards.check('Welcome back');
+        }
         const params = parsePageFromUrl().params;
+        // A coupon parked by the email link is applied now that we know who
+        // they are — see CouponLink in coupon.js.
+        if (typeof CouponLink !== 'undefined') CouponLink.resumePending();
         navigate(params.redirect || 'profile');
       } catch (e) {
         showAuthError('login-error', e.message);
@@ -190,7 +199,16 @@
       try {
         await Auth.signup({ firstName, lastName, email, password });
         showToast('Account created — welcome to Velorex Music!', 'success');
+        // The account now EXISTS, so a signup- or first-order-triggered code
+        // has just become usable. Asked, not assumed: the server re-runs the
+        // same evaluator checkout will.
+        if (typeof CouponRewards !== 'undefined') {
+          CouponRewards.check('Thanks for joining');
+        }
         const params = parsePageFromUrl().params;
+        // A coupon parked by the email link is applied now that we know who
+        // they are — see CouponLink in coupon.js.
+        if (typeof CouponLink !== 'undefined') CouponLink.resumePending();
         navigate(params.redirect || 'profile');
       } catch (e) {
         showAuthError('signup-error', e.message);
@@ -1117,6 +1135,15 @@
         if (couponDiscount > subtotal) couponDiscount = subtotal;
         var cartTotal = Math.max(0, total - couponDiscount);
         if (typeof Coupon !== 'undefined') Coupon.refresh();
+        // A code parked by the email link (arrived with an empty cart, or
+        // before signing in) applies itself as soon as there is a cart to
+        // quote it against.
+        if (typeof CouponLink !== 'undefined' && !couponCode) CouponLink.resumePending();
+        // A min_items coupon becomes usable as the basket grows. Announced once
+        // per code per session, so this cannot nag on every quantity change.
+        if (typeof CouponRewards !== 'undefined' && !couponCode) {
+          CouponRewards.check('For adding ' + cartItems.length + ' item' + (cartItems.length === 1 ? '' : 's'));
+        }
 
         var shippingHtml = quote.freeShipping
           ? '🚚 ✅ <strong style="color:var(--success);">Free delivery on this order</strong>'

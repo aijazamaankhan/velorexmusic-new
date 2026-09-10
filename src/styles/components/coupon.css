@@ -78,7 +78,10 @@
 .coupon-promo {
   position: fixed;
   z-index: 900;
-  right: 1.25rem;
+  /* BOTTOM-LEFT. The right-hand corner is where a support widget, a
+     back-to-top button and the browser's own download bar all land, and the
+     cart badge already pulls the eye to the top right. */
+  left: 1.25rem;
   bottom: 1.25rem;
   width: min(20rem, calc(100vw - 2.5rem));
   padding: 1.15rem 1.25rem 1.25rem;
@@ -86,11 +89,28 @@
   background: var(--card-bg);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-lg);
-  transform: translateY(1.25rem);
+  /* The entry is OPACITY ONLY, deliberately. The float below animates
+     `transform` forever, and a transform-based entry transition would fight it
+     — the card would snap as the animation took the property over. Keeping the
+     two on different properties means they simply compose. */
   opacity: 0;
-  transition: transform 0.26s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.26s ease;
+  transition: opacity 0.3s ease;
+  animation: couponFloat 6s ease-in-out infinite;
 }
-.coupon-promo.is-in { transform: translateY(0); opacity: 1; }
+.coupon-promo.is-in { opacity: 1; }
+
+/* A slow drift, not a bounce. It exists to catch peripheral vision on a page
+   the customer is reading — the same trick the hero's float cards use, at half
+   their travel because this one sits over content rather than over artwork. */
+@keyframes couponFloat {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -8px, 0); }
+}
+
+/* Hovering means they are reading it or reaching for the code — a moving copy
+   target is the one thing worse than a static one. */
+.coupon-promo:hover,
+.coupon-promo:focus-within { animation-play-state: paused; }
 
 .promo-close {
   position: absolute;
@@ -150,8 +170,20 @@
   .coupon-promo { right: 0.75rem; left: 0.75rem; bottom: 0.75rem; width: auto; }
 }
 
+/* The reward card is the same object with a different reason for existing, so
+   it inherits everything and only re-tints the accent. */
+.coupon-reward { border-color: var(--success); }
+.coupon-reward .promo-eyebrow { color: var(--success); }
+
 /* The slide-in is the only motion here; the card itself still appears, because
    it is information rather than decoration. */
 @media (prefers-reduced-motion: reduce) {
-  .coupon-promo { transition: none; transform: none; opacity: 1; }
+  /* Both the fade and the drift go. The card still appears — it is
+     information, not decoration — it just stops moving. */
+  .coupon-promo {
+    transition: none;
+    transform: none;
+    opacity: 1;
+    animation: none;
+  }
 }

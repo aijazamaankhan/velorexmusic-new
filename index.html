@@ -164,7 +164,7 @@
        end up in script-scope; the inline <script> at the bottom of <body>
        just bootstraps DOMContentLoaded. -->
   <script src="src/js/storefront/carriers.js?v=488bf189"></script>
-  <script src="src/js/storefront/pages.js?v=ee11a3e7"></script>
+  <script src="src/js/storefront/pages.js?v=26d3c6db"></script>
   <!-- Blog views. Must load before router.js, whose initPage dispatcher calls
        initPageBlog / initPageBlogPost. -->
   <!-- Homepage hero carousel. Must load before router.js: its initPage
@@ -177,10 +177,10 @@
   <script src="src/js/storefront/blog.js?v=38e36528"></script>
   <script src="src/js/storefront/recent-sales.js?v=956fc5e9"></script>
   <script src="src/js/storefront/site-settings.js?v=a2f1f072"></script>
-  <script src="src/js/storefront/coupon.js?v=48943d93"></script>
+  <script src="src/js/storefront/coupon.js?v=bcf00ad5"></script>
   <!-- Newsletter signup. Bound from router.js's boot and from the inline
        onclick on the homepage form. -->
-  <script src="src/js/storefront/newsletter.js?v=db0df9b9"></script>
+  <script src="src/js/storefront/newsletter.js?v=ee512e2d"></script>
   <script src="src/js/storefront/router.js?v=936e8a4c"></script>
   <script src="src/js/storefront/checkout.js?v=f539fe43"></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
@@ -199,7 +199,7 @@
   <link rel="stylesheet" href="src/styles/components/search.css?v=046a8aed">
   <link rel="stylesheet" href="src/styles/components/trust-band.css?v=8edcca10">
   <link rel="stylesheet" href="src/styles/components/announcement.css?v=7b03a99d">
-  <link rel="stylesheet" href="src/styles/components/coupon.css?v=6797446f">
+  <link rel="stylesheet" href="src/styles/components/coupon.css?v=bce683e9">
   <link rel="stylesheet" href="src/styles/components/recent-sales.css?v=066910e1">
   <link rel="stylesheet" href="src/styles/components/label-band.css?v=58b6bd4e">
   <!-- Page-specific styles (hero, products, cart, profile, footer, etc.).
@@ -1394,6 +1394,11 @@
       // /api/settings.php leaves the shop exactly as it is rather than holding
       // up first paint. SiteSettings.apply() runs when it resolves.
       if (typeof SiteSettings !== 'undefined') SiteSettings.load();
+
+      // Arriving from a coupon email (/?coupon=CODE). Runs BEFORE the router so
+      // a signed-out visitor is sent to sign in instead of landing on a page
+      // where the code silently would not work. See CouponLink in coupon.js.
+      if (typeof CouponLink !== 'undefined') CouponLink.init();
       // Featured-coupon promo. Fires on a delay and shows a corner card, never
       // a full-screen interstitial — see the note in coupon.js.
       if (typeof CouponPromo !== 'undefined') CouponPromo.init();

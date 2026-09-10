@@ -48,6 +48,8 @@ function coupon_admin_shape(array $c): array {
         'featured'     => (int)$c['featured'] === 1,
         'headline'     => (string)($c['headline'] ?? ''),
         'customerEmail'=> (string)($c['customer_email'] ?? ''),
+        'triggerEvent' => (string)($c['trigger_event'] ?? 'none'),
+        'triggerValue' => ($c['trigger_value'] ?? null) !== null ? (int)$c['trigger_value'] : null,
     ];
 }
 
@@ -110,6 +112,34 @@ function coupon_admin_validate(array $in): array {
         $errors['customerEmail'] = 'Not a valid email address';
     }
     $out['customer_email'] = $custEmail !== '' ? $custEmail : null;
+
+    // What the customer must have done to unlock this code. Validated against
+    // the allowlist rather than stored as typed: an unrecognised trigger is
+    // treated as unsatisfiable by coupon_trigger_check(), so a typo saved here
+    // would produce a code nobody can use and no obvious reason why.
+    $trigger = (string)($in['triggerEvent'] ?? 'none');
+    if (!coupon_valid_trigger($trigger)) {
+        $errors['triggerEvent'] = 'Unknown trigger';
+        $trigger = 'none';
+    }
+    $out['trigger_event'] = $trigger;
+
+    // trigger_value means different things per trigger, so it is only stored
+    // where it means something — a stray number against "subscribe" would be a
+    // setting that silently does nothing.
+    $tv = ($in['triggerValue'] ?? '') === '' ? null : (int)$in['triggerValue'];
+    if ($trigger === 'min_items') {
+        if ($tv === null || $tv < 2) $errors['triggerValue'] = 'Enter 2 or more items';
+        if ($tv !== null && $tv > 99) $errors['triggerValue'] = 'That is implausibly many';
+    } elseif ($trigger === 'repeat_order') {
+        if ($tv === null || $tv < 1) $errors['triggerValue'] = 'Enter 1 or more orders';
+    } elseif ($trigger === 'signup') {
+        // Optional here: blank means "any account, forever".
+        if ($tv !== null && ($tv < 1 || $tv > 365)) $errors['triggerValue'] = 'Between 1 and 365 days';
+    } else {
+        $tv = null;
+    }
+    $out['trigger_value'] = $tv;
 
     $out['status']   = (($in['status'] ?? 'active') === 'disabled') ? 'disabled' : 'active';
     // A code reserved for one person cannot also be the public promo. Enforced
@@ -238,7 +268,8 @@ try {
                             max_discount=:max_discount, usage_limit=:usage_limit,
                             per_user_limit=:per_user_limit, starts_at=:starts_at, expires_at=:expires_at,
                             status=:status, featured=:featured, headline=:headline,
-                            customer_email=:customer_email
+                            customer_email=:customer_email,
+                            trigger_event=:trigger_event, trigger_value=:trigger_value
                         WHERE id=:id';
                 $st = $pdo->prepare($sql);
                 // Unprefixed key, matching the rest of $c. PDO accepts either
@@ -247,10 +278,11 @@ try {
             } else {
                 $sql = 'INSERT INTO coupons
                             (code, type, value, min_order, max_discount, usage_limit, per_user_limit,
-                             starts_at, expires_at, status, featured, headline, customer_email)
+                             starts_at, expires_at, status, featured, headline, customer_email,
+                             trigger_event, trigger_value)
                         VALUES (:code, :type, :value, :min_order, :max_discount, :usage_limit,
                                 :per_user_limit, :starts_at, :expires_at, :status, :featured, :headline,
-                                :customer_email)';
+                                :customer_email, :trigger_event, :trigger_value)';
                 $pdo->prepare($sql)->execute($c);
                 $id = (int)$pdo->lastInsertId();
             }

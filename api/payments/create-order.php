@@ -239,7 +239,15 @@ try {
         // already validated. Either way it is never a free field the browser
         // chose.
         $couponEmail = $userId !== null ? null : ($guestContact['email'] ?? null);
-        $evald = coupon_evaluate($pdo, $couponCode, (int)$subtotal, $userId, $couponEmail);
+        // Units in the cart, for a min_items trigger. Summed from the frozen
+        // snapshot this endpoint just built out of DB rows — the same source
+        // the subtotal came from.
+        $couponItemCount = array_sum(array_map(
+            static fn($l) => (int)($l['qty'] ?? 0),
+            array_filter($itemsSnapshot, 'is_array')
+        ));
+        $evald = coupon_evaluate($pdo, $couponCode, (int)$subtotal, $userId, $couponEmail,
+                                 ['itemCount' => $couponItemCount]);
         if ($evald['ok']) {
             $couponDiscount = (int)$evald['discount'];
             $couponRow      = $evald['coupon'];

@@ -88,14 +88,18 @@
             // vanished by the time they retype.
             if (err) { err.textContent = data.error || 'That coupon code is not valid'; err.hidden = false; }
             this._store(null);
-            return;
+            return false;
           }
 
           this._store({ code: data.code, discount: Number(data.discount) || 0, label: data.label || '' });
           showToast(data.label ? (data.label + ' applied') : 'Coupon applied', 'success');
           this._repaintCart();
+          // Returned so callers that ANNOUNCE the result — the reward card —
+          // can say what actually happened rather than what was attempted.
+          return true;
         } catch (e) {
           if (err) { err.textContent = 'Could not check that coupon right now'; err.hidden = false; }
+          return false;
         } finally {
           if (btn) { btn.disabled = false; btn.textContent = 'Apply'; }
         }
@@ -307,6 +311,221 @@
         } catch (e) {}
         el.classList.remove('is-in');
         if (this._onKey) { document.removeEventListener('keydown', this._onKey); this._onKey = null; }
+        setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 260);
+      },
+    };
+
+    /* ---------------------------------------------------------------------------
+       Arriving from a coupon email: /?coupon=CODE
+
+       A personal code only works for the customer it was issued to — the server
+       matches it against the signed-in account, or the address typed at guest
+       checkout (CLAUDE.md §34). So someone landing here signed OUT has to sign
+       in before the code can do anything, and the honest thing is to say that
+       up front rather than let them shop, reach the cart, and be told the code
+       is "reserved for another customer".
+
+       The pending code is held in sessionStorage across the login round trip
+       and applied by Coupon.resumePending(), which the login and signup
+       handlers call on success.
+       --------------------------------------------------------------------------- */
+    const CouponLink = {
+      PENDING_KEY: 'vv_coupon_pending',
+
+      // Called once on boot, before the router paints.
+      init() {
+        let code = '';
+        try {
+          code = new URLSearchParams(window.location.search).get('coupon') || '';
+        } catch (e) { return; }
+        code = String(code).trim().toUpperCase();
+        if (!code || !/^[A-Z0-9][A-Z0-9_-]{2,39}$/.test(code)) return;
+
+        // Take the code out of the URL either way. Leaving it there means a
+        // reload re-triggers this, and it would end up in shared links and in
+        // analytics referrers.
+        try {
+          const u = new URL(window.location.href);
+          u.searchParams.delete('coupon');
+          window.history.replaceState(window.history.state, '', u.pathname + u.search + u.hash);
+        } catch (e) {}
+
+        if (typeof Auth !== 'undefined' && Auth.isLoggedIn()) {
+          this._applyNow(code);
+          return;
+        }
+
+        // Signed out: park the code and send them to sign in, with the reason.
+        try { sessionStorage.setItem(this.PENDING_KEY, code); } catch (e) {}
+        if (typeof showToast === 'function') {
+          showToast('Sign in to use your ' + code + ' discount', 'info');
+        }
+        if (typeof navigate === 'function') {
+          // redirect:'cart' so that after signing in they land somewhere the
+          // discount is actually visible, rather than back on a product page.
+          navigate('login', { redirect: 'cart', coupon: code }, { replace: true });
+        }
+      },
+
+      // After a successful sign-in or sign-up.
+      resumePending() {
+        let code = '';
+        try {
+          code = sessionStorage.getItem(this.PENDING_KEY) || '';
+          sessionStorage.removeItem(this.PENDING_KEY);
+        } catch (e) { return; }
+        if (code) this._applyNow(code);
+      },
+
+      _applyNow(code) {
+        if (typeof Coupon === 'undefined') return;
+        // An empty cart cannot be quoted, so remember the code and let the cart
+        // apply it as soon as there is something in it. Telling someone their
+        // code "does not apply" because they have not chosen anything yet would
+        // be technically true and completely unhelpful.
+        const cart = (typeof Storage !== 'undefined' && Storage.getCart()) || [];
+        if (!cart.length) {
+          try { sessionStorage.setItem(this.PENDING_KEY, code); } catch (e) {}
+          if (typeof showToast === 'function') {
+            showToast('Your ' + code + ' discount is ready — add something to your cart', 'success');
+          }
+          return;
+        }
+        Coupon.apply(code);
+      },
+    };
+
+    /* ---------------------------------------------------------------------------
+       Event-unlocked coupons — "you just unlocked X"
+
+       Called right after something happens that might qualify the visitor for a
+       code: a signup, a newsletter subscription, or the cart crossing an item
+       threshold. It asks /api/unlocked-coupons.php what they NOW qualify for and
+       announces the best one.
+
+       IT DOES NOT DECIDE ANYTHING. The server re-runs the same coupon_evaluate()
+       the cart quote and the payment path use, so a code offered here is a code
+       checkout will honour — that is the point of asking rather than reading a
+       trigger flag locally and guessing.
+
+       Announced ONCE per code per session. A reward that re-announces itself on
+       every cart change stops reading as a reward and starts reading as a
+       pop-up.
+       --------------------------------------------------------------------------- */
+    const CouponRewards = {
+      SEEN_KEY: 'vv_rewards_seen',
+
+      _seen() {
+        try { return JSON.parse(sessionStorage.getItem(this.SEEN_KEY) || '[]'); }
+        catch (e) { return []; }
+      },
+
+      _markSeen(code) {
+        try {
+          const seen = this._seen();
+          if (seen.indexOf(code) === -1) seen.push(code);
+          sessionStorage.setItem(this.SEEN_KEY, JSON.stringify(seen));
+        } catch (e) { /* private mode — it will simply announce again */ }
+      },
+
+      // `why` is only used to phrase the message; the server decides eligibility.
+      async check(why) {
+        // A code already applied is the answer to this question — offering a
+        // second one over the top of it would just be noise.
+        if (typeof Coupon !== 'undefined' && Coupon.code()) return;
+
+        let list = [];
+        try {
+          const items = (typeof Storage !== 'undefined' ? (Storage.getCart() || []) : [])
+            .map(function (i) { return { id: i.id, qty: i.qty }; });
+          const res = await fetch(API_BASE + '/unlocked-coupons.php', {
+            method: 'POST',
+            headers: Object.assign({ 'Content-Type': 'application/json' },
+                                   (typeof Auth !== 'undefined' ? Auth.headers() : {})),
+            body: JSON.stringify({ items: items }),
+          });
+          const data = await res.json().catch(function () { return {}; });
+          list = (data && Array.isArray(data.coupons)) ? data.coupons : [];
+        } catch (e) {
+          return; // a reward that fails to load is not an error worth showing
+        }
+
+        const seen = this._seen();
+        const pick = list.find(function (c) { return seen.indexOf(c.code) === -1; });
+        if (!pick) return;
+
+        this._markSeen(pick.code);
+        this.show(pick, why);
+      },
+
+      show(c, why) {
+        const headline = c.headline
+          || (c.type === 'percent' ? (c.value + '% off your order')
+                                   : ('₹' + Number(c.value).toLocaleString('en-IN') + ' off your order'));
+
+        // Applied straight away when there is a cart to apply it to — the code
+        // is already known to be valid for this exact cart, so making someone
+        // copy and paste it back in would be busywork. With an empty cart it is
+        // parked, and CouponLink.resumePending() applies it once there is one.
+        const hasCart = typeof Storage !== 'undefined' && (Storage.getCart() || []).length > 0;
+        if (!hasCart && typeof CouponLink !== 'undefined') {
+          try { sessionStorage.setItem(CouponLink.PENDING_KEY, c.code); } catch (e) {}
+        }
+
+        const el = document.createElement('div');
+        el.id = 'coupon-reward';
+        el.className = 'coupon-promo coupon-reward';
+        el.setAttribute('role', 'status');
+        el.innerHTML = ''
+          + '<button type="button" class="promo-close" aria-label="Dismiss"'
+          +   ' onclick="CouponRewards.dismiss()">&#10005;</button>'
+          + '<div class="promo-eyebrow"><i class="fas fa-gift"></i> Unlocked</div>'
+          + '<div class="promo-headline">' + Utils.escape(headline) + '</div>'
+          + (why ? '<div class="promo-min">' + Utils.escape(why) + '</div>' : '')
+          + '<button type="button" class="promo-code" onclick="CouponPromo.copy(this)" title="Copy this code">'
+          +   '<span>' + Utils.escape(c.code) + '</span>'
+          +   '<i class="fas fa-copy" aria-hidden="true"></i>'
+          + '</button>'
+          + '<div class="promo-hint" id="coupon-reward-hint">'
+          +   (hasCart ? 'Applying…' : 'It will apply as soon as you add something')
+          + '</div>';
+
+        // Replace rather than stack: two offer cards in a corner is clutter.
+        const old = document.getElementById('coupon-reward');
+        if (old && old.parentNode) old.parentNode.removeChild(old);
+        const promo = document.getElementById('coupon-promo');
+        if (promo && typeof CouponPromo !== 'undefined') CouponPromo.dismiss();
+
+        document.body.appendChild(el);
+        requestAnimationFrame(function () { el.classList.add('is-in'); });
+
+        this._onKey = (e) => { if (e.key === 'Escape') this.dismiss(); };
+        document.addEventListener('keydown', this._onKey);
+        // Rewards self-dismiss. Unlike the promo card there is nothing to chase
+        // here — it has already been applied or parked.
+        this._timer = setTimeout(() => this.dismiss(), 12000);
+
+        // Apply AFTER the card is on screen, and report what actually happened.
+        // Claiming "applied to your cart" up front and finding out later that
+        // the server refused would make the card a liar in exactly the case
+        // where the customer most needs the truth.
+        if (hasCart && typeof Coupon !== 'undefined') {
+          Promise.resolve(Coupon.apply(c.code)).then(function (ok) {
+            const hint = document.getElementById('coupon-reward-hint');
+            if (!hint) return;
+            hint.textContent = ok
+              ? 'Applied to your cart'
+              : 'Copy the code — it did not apply automatically';
+          });
+        }
+      },
+
+      dismiss() {
+        const el = document.getElementById('coupon-reward');
+        if (this._timer) { clearTimeout(this._timer); this._timer = null; }
+        if (this._onKey) { document.removeEventListener('keydown', this._onKey); this._onKey = null; }
+        if (!el) return;
+        el.classList.remove('is-in');
         setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 260);
       },
     };

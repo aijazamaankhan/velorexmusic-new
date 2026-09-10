@@ -57,6 +57,12 @@ function coupons_ensure_tables(PDO $pdo): void {
                 -- account, or the address typed at guest checkout — never
                 -- against anything the browser merely asserts.
                 customer_email VARCHAR(255) NULL,
+                -- What the customer must have DONE to unlock this code. Every
+                -- value here is verifiable from data this server owns — see
+                -- coupon_trigger_check(). A trigger the browser could merely
+                -- assert would be no trigger at all.
+                trigger_event VARCHAR(24) NOT NULL DEFAULT "none",
+                trigger_value INT NULL,
                 created_at    TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at    TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 UNIQUE KEY uq_coupon_code (code),
@@ -91,6 +97,18 @@ function coupons_ensure_tables(PDO $pdo): void {
             }
         } catch (Throwable $e) {
             error_log('[coupons] customer_email column unavailable: ' . $e->getMessage());
+        }
+        try {
+            $has = $pdo->query("SHOW COLUMNS FROM coupons LIKE 'trigger_event'")->fetchAll();
+            if (!$has) {
+                $pdo->exec('ALTER TABLE coupons
+                              ADD COLUMN trigger_event VARCHAR(24) NOT NULL DEFAULT "none",
+                              ADD COLUMN trigger_value INT NULL');
+            }
+        } catch (Throwable $e) {
+            // Degrades to "no coupon has a trigger", which is exactly how the
+            // feature behaved before it existed.
+            error_log('[coupons] trigger columns unavailable: ' . $e->getMessage());
         }
         $done = true;
     } catch (Throwable $e) {
@@ -154,7 +172,164 @@ function coupon_find(PDO $pdo, string $code): ?array {
  * per parcel (CLAUDE.md §16); a percentage coupon eating into it turns a
  * generous-looking offer into a loss on small baskets.
  */
-function coupon_evaluate(PDO $pdo, string $code, int $subtotal, ?int $userId, ?string $email): array {
+// -----------------------------------------------------------------------------
+// Trigger events — "do X to unlock this code"
+//
+// EVERY trigger here is checked against data this server owns. That is not a
+// nicety: a trigger the browser could assert ("trust me, I subscribed") is not
+// a trigger, it is a free discount with extra steps. The same reasoning that
+// keeps prices out of the request body (CLAUDE.md §17) applies to the condition
+// that unlocks a price.
+//
+//   none          Always available.
+//   signup        Has a registered account. trigger_value = optional "within N
+//                 days of joining", so a welcome offer stays a welcome offer
+//                 rather than becoming a permanent discount for everyone who
+//                 ever signed up.
+//   subscribe     Is on the newsletter list AND actually opted in
+//                 (consent_at IS NOT NULL — see §26; a row created only so the
+//                 recovery mailer had an opt-out token is not a subscription).
+//   first_order   Has never completed an order. The classic welcome code.
+//   repeat_order  Has completed at least trigger_value orders. Loyalty.
+//   min_items     The cart holds at least trigger_value units. This is the one
+//                 the CART satisfies rather than the customer, so it is
+//                 re-checked on every quote and again at create-order time.
+//
+// A guest with no email cannot satisfy an identity trigger, and is told to sign
+// in rather than "invalid" — the code is real, they just are not yet someone we
+// can check.
+// -----------------------------------------------------------------------------
+function coupon_trigger_labels(): array {
+    return [
+        'none'         => 'Anyone can use it',
+        'signup'       => 'Has an account',
+        'subscribe'    => 'Subscribed to the newsletter',
+        'first_order'  => 'Has not ordered before',
+        'repeat_order' => 'Has ordered before',
+        'min_items'    => 'Cart holds enough items',
+    ];
+}
+
+function coupon_valid_trigger(string $t): bool {
+    return array_key_exists($t, coupon_trigger_labels());
+}
+
+/**
+ * Returns '' when the trigger is satisfied, or the reason it is not.
+ *
+ * $context carries what only the caller knows — currently itemCount, the number
+ * of UNITS in the cart that the caller has already re-priced from the DB.
+ */
+function coupon_trigger_check(PDO $pdo, array $c, ?int $userId, ?string $email, array $context): string {
+    $trigger = (string)($c['trigger_event'] ?? 'none');
+    if ($trigger === '' || $trigger === 'none') return '';
+
+    $n = isset($c['trigger_value']) && $c['trigger_value'] !== null ? (int)$c['trigger_value'] : 0;
+
+    // ---- Cart-shaped trigger: no identity needed ----------------------------
+    if ($trigger === 'min_items') {
+        $need = max(1, $n);
+        $have = (int)($context['itemCount'] ?? 0);
+        if ($have < $need) {
+            $short = $need - $have;
+            return 'Add ' . $short . ' more item' . ($short === 1 ? '' : 's') . ' to use this coupon';
+        }
+        return '';
+    }
+
+    // ---- Identity-shaped triggers -------------------------------------------
+    $who = coupon_identity_email($pdo, $userId, $email);
+
+    if ($trigger === 'signup') {
+        if ($userId === null) return 'Create an account to use this coupon';
+        if ($n > 0) {
+            try {
+                $st = $pdo->prepare('SELECT created_at FROM users WHERE id = :id');
+                $st->execute([':id' => $userId]);
+                $created = $st->fetchColumn();
+                if ($created && strtotime((string)$created) < strtotime('-' . $n . ' days')) {
+                    return 'This welcome offer is only valid for ' . $n . ' days after joining';
+                }
+            } catch (Throwable $e) {
+                // A failed lookup must never grant the code.
+                return 'Could not verify this coupon right now';
+            }
+        }
+        return '';
+    }
+
+    if ($trigger === 'subscribe') {
+        if ($who === null) return 'Sign in, or use the email you subscribed with';
+        try {
+            $st = $pdo->prepare(
+                "SELECT 1 FROM subscribers
+                  WHERE email = :e AND status = 'subscribed' AND consent_at IS NOT NULL
+                  LIMIT 1"
+            );
+            $st->execute([':e' => $who]);
+            if (!$st->fetchColumn()) return 'Subscribe to our newsletter to use this coupon';
+        } catch (Throwable $e) {
+            // No subscribers table yet means nobody has subscribed.
+            return 'Subscribe to our newsletter to use this coupon';
+        }
+        return '';
+    }
+
+    if ($trigger === 'first_order' || $trigger === 'repeat_order') {
+        if ($userId === null && ($who === null || $who === '')) {
+            return 'Sign in to use this coupon';
+        }
+        $orders = coupon_completed_order_count($pdo, $userId, $who);
+        if ($orders === null) return 'Could not verify this coupon right now';
+
+        if ($trigger === 'first_order') {
+            return $orders === 0 ? '' : 'This coupon is for first orders only';
+        }
+        $need = max(1, $n);
+        if ($orders < $need) {
+            return 'Available after ' . $need . ' order' . ($need === 1 ? '' : 's') . ' with us';
+        }
+        return '';
+    }
+
+    // An unknown trigger is unsatisfiable rather than ignored: a typo in the
+    // column must not silently open a code to everybody.
+    return 'This coupon is not available';
+}
+
+// How many orders this identity has completed. null = we could not tell, which
+// every caller treats as "do not grant".
+function coupon_completed_order_count(PDO $pdo, ?int $userId, ?string $email): ?int {
+    try {
+        if ($userId !== null) {
+            $st = $pdo->prepare(
+                "SELECT COUNT(*) FROM orders
+                  WHERE user_id = :u
+                    AND LOWER(status) NOT IN ('cancelled','canceled','refunded','failed')"
+            );
+            $st->execute([':u' => $userId]);
+            return (int)$st->fetchColumn();
+        }
+        if ($email !== null && $email !== '') {
+            // Guest orders carry the address inside order_data.contact.email —
+            // the same place the admin Guests roll-up reads it from.
+            $st = $pdo->prepare(
+                "SELECT COUNT(*) FROM orders
+                  WHERE user_id IS NULL
+                    AND LOWER(JSON_UNQUOTE(JSON_EXTRACT(order_data, '$.contact.email'))) = :e
+                    AND LOWER(status) NOT IN ('cancelled','canceled','refunded','failed')"
+            );
+            $st->execute([':e' => strtolower(trim($email))]);
+            return (int)$st->fetchColumn();
+        }
+    } catch (Throwable $e) {
+        error_log('[coupons] order-count check failed: ' . $e->getMessage());
+        return null;
+    }
+    return null;
+}
+
+function coupon_evaluate(PDO $pdo, string $code, int $subtotal, ?int $userId, ?string $email, array $context = []): array {
     $fail = function (string $msg) {
         return ['ok' => false, 'discount' => 0, 'error' => $msg];
     };
@@ -202,6 +377,14 @@ function coupon_evaluate(PDO $pdo, string $code, int $subtotal, ?int $userId, ?s
             return $fail('This coupon is reserved for another customer');
         }
     }
+
+    // ---- Trigger ------------------------------------------------------------
+    // "Do X to unlock this code". Verified server-side against data we own —
+    // see coupon_trigger_check(). Checked BEFORE the usage counters so a
+    // customer who has not met the condition is told what to do rather than
+    // told the code is exhausted.
+    $triggerFail = coupon_trigger_check($pdo, $c, $userId, $email, $context);
+    if ($triggerFail !== '') return $fail($triggerFail);
 
     // Per-customer limit. Matched on user id when signed in, otherwise on the
     // email typed at guest checkout — the same two identities the recovery

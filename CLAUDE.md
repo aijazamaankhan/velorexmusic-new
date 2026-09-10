@@ -2860,3 +2860,77 @@ semicolon; each becomes its own line on the printed invoice.
 Google suppresses local rankings when the name, address and phone disagree
 across a site (§15), and those two are still hand-written. This is called out in
 the field's own help text as well, because the failure is silent.
+
+## 38. Event-unlocked coupons
+
+A coupon can require the customer to have **done something** before it works.
+Admin → Coupons → **Unlocked by**.
+
+| Trigger | Satisfied when | Verified against |
+|---|---|---|
+| `none` | Always | — |
+| `signup` | They have a registered account. Optional "within N days of joining". | `users` row via the Bearer session |
+| `subscribe` | They are on the newsletter list **and actually opted in** | `subscribers.consent_at IS NOT NULL` |
+| `first_order` | They have never completed an order | `orders` count for that identity |
+| `repeat_order` | They have completed N orders | same |
+| `min_items` | The cart holds N units | The item count the **server** re-priced |
+
+### Every trigger is checked server-side, and that is the whole point
+
+A trigger the browser could assert — "trust me, I subscribed" — is not a
+trigger, it is a free discount with extra steps. `coupon_trigger_check()` in
+[api/_coupon_helpers.php](api/_coupon_helpers.php) is the only place a trigger is
+evaluated, it runs inside `coupon_evaluate()`, and `coupon_evaluate()` is what
+`create-order.php` calls to decide the real charge (§34).
+
+`min_items` counts the units the **server** derived while re-pricing the cart —
+never a count sent alongside the request. Both call sites pass it:
+`coupon-validate.php` from the map it built the subtotal from, and
+`create-order.php` from the frozen item snapshot.
+
+**Every failure path refuses.** A lookup that throws, a missing `subscribers`
+table, an unrecognised trigger value: all return a refusal, never `''`. That
+asymmetry is deliberate — the cost of wrongly refusing is a support email, the
+cost of wrongly granting is money. Guarded by 20 cases in the trigger test,
+including each throw path.
+
+Identity triggers need an identity, so a signed-out visitor is told **"Sign in
+to use this coupon"** rather than "invalid" — the code is real, they are just
+not yet someone we can check. Same reasoning as the reserved-customer message.
+
+The trigger is checked **before** the usage counters, so someone who has not met
+the condition is told what to do rather than told the code is exhausted.
+
+### Rewards are offered, not announced blindly
+
+`/api/unlocked-coupons.php` answers "what does this visitor qualify for right
+now?" and the storefront calls it after each unlocking event — signup, sign-in,
+newsletter subscribe, and the cart being rendered.
+
+It re-runs `coupon_evaluate()` for each candidate rather than reading the
+trigger column and guessing, so **a code it offers is a code checkout will
+honour**. It skips coupons with no trigger: those were always available, and
+announcing one as a reward for signing up would be a small lie.
+
+`CouponRewards` in [src/js/storefront/coupon.js](src/js/storefront/coupon.js)
+announces each code **once per session**. A reward that re-announces itself on
+every cart change stops reading as a reward and starts reading as a pop-up.
+
+**The card applies the code and then reports what actually happened.** It says
+"Applying…", and becomes either "Applied to your cart" or "Copy the code — it
+did not apply automatically". Claiming success up front and being wrong is the
+one case where the customer most needs the truth.
+
+### The promo card moved and drifts
+
+Bottom-**left**, not bottom-right: the right corner is where a support widget, a
+back-to-top button and the browser's own download bar all land, and the cart
+badge already pulls the eye to the top right.
+
+**The entry transition is opacity-only, deliberately.** `couponFloat` animates
+`transform` forever; a transform-based entry transition would fight it and the
+card would snap as the animation took the property over. Keeping the two on
+different properties means they compose. The drift pauses on hover and
+focus-within — a moving copy target is worse than a static one — and stops
+entirely under `prefers-reduced-motion`, where the card still appears because it
+is information, not decoration.

@@ -69,7 +69,12 @@ try {
     // against the real identity at create-order time regardless.
     $userId = current_user_id_or_null();
 
-    $res = coupon_evaluate($pdo, $code, (int)$subtotal, $userId, null);
+    // Units in the cart, for a min_items trigger. Counted from the SAME map the
+    // subtotal was derived from, so the number that unlocks a coupon is the
+    // number the server re-priced — never a count the browser sent alongside.
+    $itemCount = array_sum(array_map('intval', $ids));
+
+    $res = coupon_evaluate($pdo, $code, (int)$subtotal, $userId, null, ['itemCount' => $itemCount]);
     if (!$res['ok']) {
         echo json_encode(['ok' => false, 'error' => $res['error'], 'subtotal' => $subtotal]);
         exit;

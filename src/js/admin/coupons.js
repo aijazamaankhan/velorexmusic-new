@@ -21,6 +21,29 @@
 
     function couponMoney(n) { return '₹' + (Number(n) || 0).toLocaleString('en-IN'); }
 
+    // Mirrors coupon_trigger_labels() in api/_coupon_helpers.php. The SERVER
+    // validates the value against its own allowlist on write, so a drift here
+    // shows up as a rejected save rather than as a coupon nobody can use.
+    const COUPON_TRIGGERS = {
+      none:         { label: 'No condition — anyone can use it',        needs: null },
+      signup:       { label: 'Has created an account',                  needs: 'days',   hint: 'Optional: only valid for this many days after they join. Blank = no time limit.' },
+      subscribe:    { label: 'Subscribed to the newsletter',            needs: null,     hint: 'Checked against the opted-in list, not just any address we hold.' },
+      first_order:  { label: 'Has never ordered before',                needs: null,     hint: 'The classic welcome code.' },
+      repeat_order: { label: 'Has ordered before',                      needs: 'orders', hint: 'How many completed orders they need.' },
+      min_items:    { label: 'Cart holds at least N items',             needs: 'items',  hint: 'Counted in units, not distinct products.' },
+    };
+
+    function couponTriggerSummary(c) {
+      const t = c.triggerEvent || 'none';
+      if (t === 'none') return '';
+      if (t === 'min_items')    return 'Needs ' + (c.triggerValue || 2) + '+ items';
+      if (t === 'repeat_order') return 'After ' + (c.triggerValue || 1) + ' order' + ((c.triggerValue || 1) === 1 ? '' : 's');
+      if (t === 'signup')       return c.triggerValue ? ('New accounts, ' + c.triggerValue + 'd') : 'Account holders';
+      if (t === 'subscribe')    return 'Subscribers';
+      if (t === 'first_order')  return 'First order only';
+      return '';
+    }
+
     async function loadCoupons() {
       if (CouponState.loading) return;
       CouponState.loading = true;
@@ -79,6 +102,8 @@
           + rows.map(function (c) {
               const st = couponStatusLabel(c);
               const conds = [];
+              const trig = couponTriggerSummary(c);
+              if (trig) conds.push(trig);
               if (c.minOrder)     conds.push('Min ' + couponMoney(c.minOrder));
               if (c.perUserLimit) conds.push(c.perUserLimit + ' per customer');
               if (c.customerEmail) conds.push('Only ' + escapeHTML(c.customerEmail));
@@ -127,7 +152,8 @@
         ? CouponState.rows.find(function (r) { return r.id === id; })
         : { id: 0, code: '', type: 'percent', value: 10, minOrder: 0, maxDiscount: null,
             usageLimit: null, perUserLimit: null, startsAt: '', expiresAt: '',
-            status: 'active', featured: false, headline: '', customerEmail: '' };
+            status: 'active', featured: false, headline: '', customerEmail: '',
+            triggerEvent: 'none', triggerValue: null };
       if (!c) return;
       CouponState.editing = c;
 
@@ -191,6 +217,24 @@
         +     '<div class="set-help">Runs to the end of that day.</div>'
         +     '<div class="set-error" id="cpn-expiresAt-err" hidden></div>'
         +   '</div>'
+        +   '<div class="form-group">'
+        +     '<label class="form-label">Unlocked by</label>'
+        +     '<select class="form-control" id="cpn-triggerEvent" onchange="couponTriggerChanged()">'
+        +       Object.keys(COUPON_TRIGGERS).map(function (k) {
+                  return '<option value="' + k + '"'
+                    + ((c.triggerEvent || 'none') === k ? ' selected' : '') + '>'
+                    + escapeHTML(COUPON_TRIGGERS[k].label) + '</option>';
+                }).join('')
+        +     '</select>'
+        +     '<div class="set-help" id="cpn-trigger-hint"></div>'
+        +     '<div class="set-error" id="cpn-triggerEvent-err" hidden></div>'
+        +   '</div>'
+        +   '<div class="form-group" id="cpn-triggerValue-wrap">'
+        +     '<label class="form-label" id="cpn-triggerValue-label">Amount</label>'
+        +     '<input class="form-control" type="number" id="cpn-triggerValue" min="1"'
+        +       ' value="' + escapeHTML(f('triggerValue', c.triggerValue)) + '">'
+        +     '<div class="set-error" id="cpn-triggerValue-err" hidden></div>'
+        +   '</div>'
         +   '<div class="form-group full-width">'
         +     '<label class="form-label">Reserve for one customer (optional)</label>'
         +     '<input class="form-control" type="email" id="cpn-customerEmail"'
@@ -226,6 +270,7 @@
         + '</div>';
 
       couponTypeChanged();
+      couponTriggerChanged();
       couponCustomerChanged();
       const modal = document.getElementById('coupon-editor-modal');
       if (modal) modal.style.display = 'flex';
@@ -240,6 +285,29 @@
       const box   = document.getElementById('cpn-notify');
       if (wrap) wrap.style.display = email.trim() ? '' : 'none';
       if (!email.trim() && box) box.checked = false;
+    }
+
+    // The value box means a different thing per trigger, and nothing at all for
+    // some of them — so it is relabelled or removed rather than left sitting
+    // there as a number with no meaning.
+    function couponTriggerChanged() {
+      const sel  = document.getElementById('cpn-triggerEvent');
+      const t    = sel ? sel.value : 'none';
+      const spec = COUPON_TRIGGERS[t] || COUPON_TRIGGERS.none;
+      const wrap  = document.getElementById('cpn-triggerValue-wrap');
+      const label = document.getElementById('cpn-triggerValue-label');
+      const hint  = document.getElementById('cpn-trigger-hint');
+      const input = document.getElementById('cpn-triggerValue');
+
+      if (hint) hint.textContent = spec.hint || '';
+      if (wrap) wrap.style.display = spec.needs ? '' : 'none';
+      if (!spec.needs && input) input.value = '';
+      if (label && spec.needs) {
+        label.textContent = spec.needs === 'days'   ? 'Valid for (days)'
+                          : spec.needs === 'orders' ? 'Orders required *'
+                          : 'Items required *';
+      }
+      if (input) input.min = (spec.needs === 'items') ? 2 : 1;
     }
 
     function couponTypeChanged() {
@@ -277,6 +345,8 @@
         expiresAt:    val('cpn-expiresAt'),
         headline:     val('cpn-headline'),
         customerEmail: val('cpn-customerEmail'),
+        triggerEvent: val('cpn-triggerEvent'),
+        triggerValue: val('cpn-triggerValue'),
         featured:     (document.getElementById('cpn-featured') || {}).checked === true,
         status:       'active',
       };

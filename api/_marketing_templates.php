@@ -337,7 +337,13 @@ function personal_coupon_email(array $c, string $email, string $unsubToken, stri
         .           '</td></tr>'
         .         '</table>'
         .         '<p style="margin:0 0 20px;text-align:center;">'
-        .           '<a href="' . _vv_esc($base) . '/products" target="_blank" style="display:inline-block;background:#ff6b35;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:12px 24px;border-radius:8px;">Start shopping &rarr;</a>'
+        // ?coupon= carries the code back to the storefront, which applies it
+        // for a signed-in customer and otherwise routes them to sign in first
+        // (CouponLink in src/js/storefront/coupon.js). A reserved code only
+        // works for the account it was issued to, so sending someone shopping
+        // without that step means being told "reserved for another customer"
+        // at the cart — after they have chosen everything.
+        .           '<a href="' . _vv_esc($base) . '/?coupon=' . urlencode($code) . '" target="_blank" style="display:inline-block;background:#ff6b35;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:12px 24px;border-radius:8px;">Shop with this code &rarr;</a>'
         .         '</p>'
         .         '<p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#111;">Good to know</p>'
         .         $termsHtml
@@ -353,24 +359,12 @@ function personal_coupon_email(array $c, string $email, string $unsubToken, stri
         .   '</td></tr>'
         . '</table></body></html>';
 
-    $text = $hello . "
-
-"
-        . "Here is a discount code we have set aside for you.
-
-"
-        . $offer . " - code " . $code . "
-
-"
-        . implode("
-", $terms) . "
-
-"
-        . "Shop: " . $base . "/products
-
-"
-        . "Unsubscribe from offers: " . $unsub . "
-";
+    $text = $hello . "\n\n"
+        . "Here is a discount code we have set aside for you." . "\n\n"
+        . $offer . " - code " . $code . "\n\n"
+        . implode("\n", $terms) . "\n\n"
+        . "Shop with this code: " . $base . "/?coupon=" . urlencode($code) . "\n\n"
+        . "Unsubscribe from offers: " . $unsub . "\n";
 
     return ['subject' => $subject, 'html' => $html, 'text' => $text];
 }

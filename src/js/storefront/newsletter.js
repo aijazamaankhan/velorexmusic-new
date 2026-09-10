@@ -68,6 +68,12 @@
           }
 
           this._showSuccess(data.alreadySubscribed);
+          // A subscribe-triggered code is now unlockable. Checked even when
+          // they were already on the list — the coupon may be newer than their
+          // subscription, and the server is the one deciding either way.
+          if (typeof CouponRewards !== 'undefined') {
+            CouponRewards.check('Thanks for subscribing');
+          }
         } catch (e) {
           this._note(note, e.message || 'Something went wrong. Please try again.', 'error');
           if (button) { button.disabled = false; button.textContent = 'Subscribe'; }
