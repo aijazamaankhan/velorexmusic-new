@@ -1,0 +1,156 @@
+/* =============================================================================
+   Velorex Music — "Recently Sold" strip
+   Used by: index.html (homepage), rendered by src/js/storefront/recent-sales.js
+
+   A horizontally scrollable row of small cards: cover, title, price, and the
+   city it shipped to. Deliberately a SCROLLER and not a second marquee — the
+   trust band directly above it already moves, and two things sliding in
+   opposite directions on one screen is noise. Here the customer sets the pace,
+   with scroll-snap so a flick lands on a card rather than between two.
+
+   The row scrolls inside its own container; the page body never scrolls
+   sideways. Both are needed — `overflow-x: auto` on a full-bleed row is what
+   stops the horizontal scrollbar appearing on <body> at narrow widths.
+   ============================================================================= */
+
+.recent-sales-strip {
+  position: relative;
+}
+
+.recent-sales-row {
+  display: flex;
+  gap: 0.9rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scroll-padding-left: 0.25rem;
+  padding: 0.35rem 0.25rem 1rem;
+  /* Firefox + the WebKit block below: hide the native bar without killing the
+     scroll. The fade on the right edge is what signals "there is more". */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.recent-sales-row::-webkit-scrollbar { display: none; }
+
+.recent-sale-card {
+  scroll-snap-align: start;
+  flex: 0 0 auto;
+  width: 15.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem 0.7rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  color: inherit;
+  text-decoration: none;
+  transition: var(--transition);
+}
+.recent-sale-card:hover {
+  border-color: var(--secondary);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
+}
+
+.recent-sale-thumb {
+  width: 3.1rem;
+  height: 3.1rem;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface2);
+}
+.recent-sale-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.recent-sale-body { min-width: 0; flex: 1; }
+
+/* Two lines maximum. Record titles run long and a card that grows to fit one
+   of them makes every card in the row the same height as the worst case. */
+.recent-sale-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.recent-sale-price {
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--secondary);
+}
+
+.recent-sale-meta {
+  margin-top: 0.15rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  min-width: 0;
+}
+/* text-overflow has no effect on a flex CONTAINER — the text inside becomes an
+   anonymous flex item and just gets guillotined at the card edge ("Mumbai, MH ·
+   5 hours ag"). The truncation has to live on a real element of its own. */
+.recent-sale-where {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recent-sale-dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.recent-sale-go {
+  align-self: flex-start;
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  transition: var(--transition);
+}
+.recent-sale-card:hover .recent-sale-go { color: var(--secondary); }
+
+/* Right-edge feather: says "keep scrolling" without spending a row on arrows.
+   pointer-events:none so it never eats a click on the card underneath. */
+.recent-sales-strip::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 1rem;
+  width: 3rem;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--bg));
+}
+/* The section alternates onto --surface, so the fade has to match whichever
+   ground it is sitting on or it prints a visible pale block. */
+.section-alt .recent-sales-strip::after {
+  background: linear-gradient(90deg, transparent, var(--surface));
+}
+/* Light theme paints .section-alt with a literal (storefront.css line 36), not
+   with --surface, so the fade has to be told the same literal. */
+[data-theme="light"] .section-alt .recent-sales-strip::after {
+  background: linear-gradient(90deg, transparent, #f8fafc);
+}
+
+@media (max-width: 640px) {
+  .recent-sale-card { width: 13.5rem; }
+  .recent-sales-strip::after { width: 1.75rem; }
+}

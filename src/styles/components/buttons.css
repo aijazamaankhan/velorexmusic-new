@@ -37,7 +37,11 @@
 
 .btn-success { background: linear-gradient(135deg, var(--success), #00a884); color: white; }
 
-.btn-gold { background: var(--gold-gradient); color: var(--primary); font-weight: 700; }
+/* Ink is a LITERAL, not var(--primary). --gold-gradient is the same bright
+   amber in both themes, but --primary flips to #ffffff in light — so the
+   "Buy Now" label on the product page was white on gold and effectively
+   unreadable. The gradient is light, so the label has to be dark in both. */
+.btn-gold { background: var(--gold-gradient); color: #1a0a2e; font-weight: 700; }
 .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255, 215, 0, 0.4); }
 
 .btn-sm { padding: 0.4rem 1rem; font-size: 0.8rem; }

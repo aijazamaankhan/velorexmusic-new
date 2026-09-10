@@ -53,10 +53,37 @@
   mask-image: radial-gradient(ellipse at 50% 40%, #000 10%, transparent 72%);
 }
 
-[data-theme="light"] .hero { background: #fdfbff; }
-[data-theme="light"] .hero-aurora { opacity: 0.4; }
-[data-theme="light"] .hero-aurora .aurora-2 { background: radial-gradient(circle, rgba(83, 52, 131, 0.3), transparent 68%); }
-[data-theme="light"] .hero-grid-lines { background-image: linear-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(15, 23, 42, 0.05) 1px, transparent 1px); }
+/* ---- Light theme --------------------------------------------------------
+   The dark hero gets its depth from three things that all evaporate on white:
+   saturated aurora blobs, visible grid lines, and heavy black drop shadows.
+   Turned down to near-nothing (opacity 0.4 over #fdfbff, 5%-alpha grid) the
+   banner read as a blank page with some text on it — the largest, most
+   important element on the site looking unfinished.
+
+   So: a tinted ground rather than near-white, the aurora brought back up to
+   where the colour actually registers, grid lines you can see, and shadows
+   re-tinted from black to slate so artwork sits on the page instead of
+   smudging it. */
+[data-theme="light"] .hero {
+  background:
+    radial-gradient(ellipse 90% 70% at 15% 0%, rgba(255, 107, 53, 0.10), transparent 60%),
+    radial-gradient(ellipse 80% 70% at 85% 10%, rgba(83, 52, 131, 0.10), transparent 60%),
+    linear-gradient(180deg, #fbf7fb 0%, #f4f1f8 100%);
+}
+[data-theme="light"] .hero-aurora { opacity: 0.85; filter: blur(90px); }
+[data-theme="light"] .hero-aurora .aurora-1 { background: radial-gradient(circle, rgba(255, 107, 53, 0.42), transparent 68%); }
+[data-theme="light"] .hero-aurora .aurora-2 { background: radial-gradient(circle, rgba(83, 52, 131, 0.34), transparent 68%); }
+[data-theme="light"] .hero-aurora .aurora-3 { background: radial-gradient(circle, rgba(245, 158, 11, 0.26), transparent 68%); }
+[data-theme="light"] .hero-grid-lines { background-image: linear-gradient(rgba(15, 23, 42, 0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(15, 23, 42, 0.055) 1px, transparent 1px); }
+
+/* Black at 0.55 alpha is a grey smear on a pale ground. Slate-tinted, tighter
+   and lighter reads as a shadow instead. */
+[data-theme="light"] .hero-sleeve-art { box-shadow: 0 24px 55px rgba(30, 27, 56, 0.22), 0 0 0 1px rgba(15, 23, 42, 0.07); }
+[data-theme="light"] .hero-sleeve-disc { box-shadow: 0 16px 36px rgba(30, 27, 56, 0.28); }
+[data-theme="light"] .hero-sleeve-art::after {
+  background: linear-gradient(105deg, rgba(255,255,255,0.30) 0 2%, rgba(255,255,255,0.10) 4%, transparent 12%),
+              linear-gradient(to top, rgba(15, 23, 42, 0.16), transparent 45%);
+}
 
 /* ---- Slide stack --------------------------------------------------------- */
 .hero-track { position: relative; z-index: 1; display: grid; grid-template-areas: "slide"; align-items: center; }
@@ -126,11 +153,11 @@
 .hero-chip:hover { color: var(--text); border-color: var(--secondary); background: rgba(255, 107, 53, 0.1); transform: translateY(-2px); }
 .hero-chip i { color: var(--secondary); }
 
-/* ---- Brand slide: trust stats ------------------------------------------- */
-.hero-stats { display: flex; gap: clamp(1.25rem, 3vw, 2.5rem); margin-top: 2.25rem; flex-wrap: wrap; }
-.hero-stat-value { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; color: var(--text); line-height: 1.1; }
-.hero-stat-value span { background: var(--orange-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-.hero-stat-label { font-size: 0.74rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 0.3rem; }
+/* The brand slide's trust stats moved OUT of the hero and into their own
+   moving band under the carousel — src/styles/components/trust-band.css. Don't
+   reintroduce .hero-stats here: two definitions of the same look, in two files
+   loaded in <link> order, is the "I edited the hero and nothing changed" trap
+   described at the top of this file. */
 
 /* ---- Visual column ------------------------------------------------------- */
 .hero-visual { position: relative; display: flex; align-items: center; justify-content: center; }
@@ -253,8 +280,10 @@
 .hero-carousel.is-paused .hero-dot.is-active .hero-dot-fill { animation-play-state: paused; }
 @keyframes heroDotFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
-[data-theme="light"] .hero-dot { background: rgba(15, 23, 42, 0.15); }
-[data-theme="light"] .hero-dot.is-active { background: rgba(15, 23, 42, 0.12); }
+[data-theme="light"] .hero-dot { background: rgba(15, 23, 42, 0.14); }
+/* Was 0.12 — FAINTER than an inactive dot, so the track the progress fill runs
+   along was the least visible thing in the row. */
+[data-theme="light"] .hero-dot.is-active { background: rgba(15, 23, 42, 0.22); }
 [data-theme="light"] .hero-chip,
 [data-theme="light"] .hero-meta-item,
 [data-theme="light"] .hero-arrow { background: rgba(15, 23, 42, 0.035); }
@@ -268,7 +297,7 @@
   .hero { min-height: 0; }
   .hero-container { grid-template-columns: 1fr; text-align: center; padding: 3rem 1.5rem 5rem; gap: 2.25rem; }
   .hero-desc { margin-left: auto; margin-right: auto; }
-  .hero-cta, .hero-chips, .hero-stats, .hero-eyebrow, .hero-meta, .hero-price { justify-content: center; }
+  .hero-cta, .hero-chips, .hero-eyebrow, .hero-meta, .hero-price { justify-content: center; }
   /* The brand slide's bare record adds nothing on a phone and costs a repaint
      every frame; the product slides' artwork IS the content, so that one stays
      and moves above the copy. */
@@ -288,8 +317,6 @@
   /* Arrows are redundant next to a swipe on a touch screen and they crowd the
      dots at this width. */
   .hero-arrow { display: none; }
-  .hero-stats { gap: 1.25rem; }
-  .hero-stat-value { font-size: 1.2rem; }
   .hero-grid-lines { display: none; }
 }
 

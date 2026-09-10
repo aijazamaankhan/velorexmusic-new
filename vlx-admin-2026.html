@@ -53,7 +53,7 @@
   <script src="src/js/admin/combos.js?v=de76275c"></script>
   <!-- Abandoned carts + newsletter subscribers. Loaded after main.js because
        both panels call adminAuthHeaders() at runtime. -->
-  <script src="src/js/admin/marketing.js?v=7b4f96c1"></script>
+  <script src="src/js/admin/marketing.js?v=41a67266"></script>
   <script src="src/js/admin/toast.js?v=9a4bf3e8"></script>
 </head>
 
@@ -1214,6 +1214,33 @@
   <!-- Generic confirmation popup (driven by adminConfirm() in inventory.js).
        Used by the edit-modal image-delete flow; reusable for other confirms.
        z-index above other modals so it sits on top of the edit modal. -->
+  <!-- Recovery-email preview.
+       Shows the EXACT message a "Send" on the Abandoned panel would produce,
+       built server-side by marketing_send_recovery() in preview mode so the
+       eligibility rules and the copy cannot drift from the real send.
+
+       The body renders inside a SANDBOXED iframe with srcdoc and no
+       allow-scripts. The template interpolates product titles that came from
+       the products table, so it is untrusted-ish HTML being put on an
+       authenticated admin page; the sandbox means even a title containing a
+       <script> could not run here. It also stops the email's own CSS leaking
+       into the admin panel, which a plain innerHTML would guarantee. -->
+  <div class="modal-overlay" id="email-preview-modal" style="z-index: 1250;">
+    <div class="modal-content" style="max-width: 720px;">
+      <div class="modal-header">
+        <h2 class="modal-title">Email preview</h2>
+        <div class="modal-close" onclick="closeEmailPreview()">&#10005;</div>
+      </div>
+      <div id="email-preview-meta" style="font-size:0.82rem;line-height:1.7;color:var(--text-muted);margin-bottom:0.9rem;"></div>
+      <div id="email-preview-note" style="display:none;margin-bottom:0.9rem;padding:0.7rem 0.9rem;border-radius:8px;background:rgba(255,170,0,0.09);border:1px solid rgba(255,170,0,0.3);font-size:0.82rem;line-height:1.55;"></div>
+      <iframe id="email-preview-frame" title="Recovery email preview" sandbox
+              style="width:100%;height:60vh;border:1px solid var(--border);border-radius:8px;background:#ffffff;"></iframe>
+      <div style="margin-top:1.25rem;display:flex;justify-content:flex-end;gap:0.75rem;">
+        <button type="button" class="btn btn-cancel" style="width:auto;" onclick="closeEmailPreview()">Close</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="admin-confirm-modal" style="z-index: 1300;">
     <div class="modal-content" style="max-width: 420px;">
       <div class="modal-header">

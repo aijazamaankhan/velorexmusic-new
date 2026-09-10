@@ -2396,3 +2396,170 @@ personal data with no remaining purpose: past `RECOVERY_MAX_AGE_HOURS` nothing
 will ever be sent about it, and the admin panel's window is shorter still.
 Keeping them forever would mean holding a growing record of what strangers
 browsed, for no reason worth defending.
+
+## 27. Homepage bands: trust, recently sold, labels
+
+Three strips now sit between the hero and the curated product grids. All three
+are **static markup in `index.html`** wherever they can be, for the reason in
+§15: `/` is served as plain `index.html` and never reaches `seo-render.php`, so
+anything a non-executing crawler should read has to be in the file.
+
+| Band | Markup | Styles | Data |
+|---|---|---|---|
+| Trust band | `.trust-band` in [index.html](index.html) | [trust-band.css](src/styles/components/trust-band.css) | Static |
+| Recently Sold | `#recent-sales` in [index.html](index.html) | [recent-sales.css](src/styles/components/recent-sales.css) | [api/recent-sales.php](api/recent-sales.php) via [recent-sales.js](src/js/storefront/recent-sales.js) |
+| Record labels | `.label-band` in [index.html](index.html) | [label-band.css](src/styles/components/label-band.css) | Static |
+
+### The trust band was moved OUT of the hero
+
+`5 Formats / 100% Genuine / Pan-India` used to be `.hero-stats` inside the
+carousel's **brand slide** — so they were visible on one slide in six, and on a
+phone they sat below the fold. They are now their own full-width marquee under
+the carousel.
+
+`.hero-stats` is **gone from `hero-carousel.css`** and must not come back: two
+same-specificity definitions in two files makes the winner depend on `<link>`
+order, which is the trap called out at the top of that file.
+
+The item group is in the markup **twice** and the track translates `-50%`, so
+the loop is seamless with no JS. Keep the two groups byte-identical or it
+visibly jumps. The duplicate is `aria-hidden` (a screen reader must not read
+the same four claims twice) and is `display: none` under
+`prefers-reduced-motion`, where the band becomes a static centred row. It also
+pauses on hover and on focus-within — same rule as the carousel (§21).
+
+### Recently Sold mixes real sales with filler, and says which is which
+
+Rows come from `orders`, newest first, **de-duplicated by product** so one
+record selling five times is one card. Cancelled/refunded orders are excluded —
+showing one as a recent sale is a straightforwardly false claim.
+
+**Privacy is the constraint on this endpoint.** It is public and unauthenticated
+and it reads the order book, so it returns only *what* was bought, for how much,
+and the buyer's **city/state**. Never a name, email, phone, street address,
+order id or payment id. Extend the `SELECT` only after re-reading the header
+comment in [api/recent-sales.php](api/recent-sales.php).
+
+When there are fewer real sales than the strip needs, it is topped up with
+**filler**: a real, in-stock catalogue product with a *synthesised* city and
+timestamp, flagged `demo: true` in the payload. The filler is seeded per
+calendar day, so it is stable on refresh and moves on tomorrow — a "sale" that
+reshuffles on every reload is obviously fake.
+
+This is **the one place in the codebase that renders something we did not
+observe**, and it is here because the owner asked for it. Everywhere else the
+rule in §20 stands: a value we cannot derive shows as an em dash. Prices are ₹
+and locations are Indian because checkout is India-only (§12); a card reading
+"United Kingdom · $58" would advertise a lane the shop cannot serve.
+
+The section ships `display:none` and reveals itself only at four or more rows —
+a heading over an empty box reads as a broken shop, and a failed fetch must not
+leave one.
+
+### The label band takes logos it does not have yet
+
+Each chip renders the label's **name**; the `<img>` beside it is hidden until
+its own `onload` fires, which adds `.has-logo` and swaps the wordmark out. So a
+missing file is a finished-looking wordmark, a dropped-in file just starts
+working with no code change, and a 404 falls back silently. These are other
+companies' trademarks — read
+[src/img/labels/README.md](src/img/labels/README.md) before adding artwork.
+
+## 28. Category cards carry real photography
+
+The six cards under "Shop by Category" were flat CSS gradients with an emoji.
+They are now real `<img>` — **not** `background-image`, deliberately:
+
+- a background image is invisible to Google Images, and "buy vinyl records
+  online india" is exactly what these should be pulling;
+- `loading="lazy"` plus intrinsic `width`/`height` means six covers below the
+  fold cost nothing on first paint and shift nothing.
+
+**The filenames are the alt text's twin** — `buy-vinyl-records-online-india.jpg`,
+not `cat1.jpg`. Files live in [src/img/categories/](src/img/categories/), sized
+to 900px wide and re-encoded (~355 KB for all six, down from ~11 MB of source
+PNGs). Regenerate the same way if you replace one: the perf rules in §14 apply
+to these as much as to product covers.
+
+**Card titles match `velorex_categories()`' labels exactly** — "Blu-ray Movies"
+and "DVD Movies", not "Blu-rays"/"DVDs" — so the homepage anchor text matches
+the `<h1>` and `<title>` of the page it points at. If you rename a category in
+[src/seo/seo-lib.php](src/seo/seo-lib.php), rename the card too.
+
+## 29. Light theme: the failures were systemic, not cosmetic
+
+An audit of every button and text run across home / products / detail / cart /
+login / profile / combos found 26 elements below 3:1 contrast in light mode.
+Four root causes, all fixed at the source rather than per-component:
+
+| Cause | Symptom | Fix |
+|---|---|---|
+| `--accent` was `#f59e0b` | 2.1:1 on white. This is the **price** colour (`.product-price`, cart total, order totals), the star colour and the sign-in link colour. | `--accent: #b45309` in the light block of [tokens.css](src/styles/tokens.css) — ~5.4:1, still recognisably the same amber. Dark theme keeps `#ffd700`. |
+| `.btn-gold { color: var(--primary) }` | `--primary` flips to `#ffffff` in light, so **"Buy Now" was white on gold**. | A literal `#1a0a2e`. The gold gradient is light in *both* themes, so its ink must be dark in both. |
+| `.product-detail-discount` on `#10b981` | White at 2.5:1 — failed in **both** themes, since the pill is its own background. | `#047857`. |
+| Newsletter field inline `color: white` | The card sits on `--vinyl-gradient`, which is near-**white** in light mode. You could type and see nothing. | Moved off the inline style into `.newsletter-form input[type="email"]` with a `[data-theme="light"]` override. |
+
+**Do not re-introduce `var(--accent)` or `var(--primary)` as a text colour on a
+surface that is light in one theme and dark in the other.** Both tokens flip.
+Use a literal when the *background* does not flip.
+
+The hero also read as an empty white page in light mode: the aurora blobs were
+at `opacity: 0.4` over `#fdfbff`, the grid lines at 5% alpha, and every artwork
+shadow was `rgba(0,0,0,0.55)` — a grey smear on a pale ground. It now has a
+tinted gradient ground, aurora at 0.85, visible grid lines, and slate-tinted
+shadows. The active carousel dot was also *fainter* than an inactive one
+(`0.12` vs `0.15`).
+
+### Add to Cart / Buy Now are one size on every device
+
+`.product-actions-group` is a **grid**, not flex. Under flex the two buttons
+were different widths at every size (different label lengths), and the
+responsive rule meant to stack them — `grid-template-columns: 1fr` in the
+1024px block — silently did nothing because the container was not a grid.
+Two equal columns at desktop, one full-width column below: identical at every
+width. Verified at 1440 / 900 / 700 / 430.
+
+### The navbar sign-in was an unreadable glyph
+
+`fa-right-to-bracket` (arrow into a bracket) at 1.1rem reads as an exit, not a
+sign-in. It is now a person icon **plus the word "Sign in"**, with the label
+dropped below 1100px where the navbar collapses.
+
+## 30. Admin: why a recovery send failed, and what the email says
+
+Two gaps on the Abandoned panel, both of which made a working feature look
+broken.
+
+**The real SMTP error was invisible.** `send_mail()` never throws (by design —
+§10), and it wrote the failure to `error_log`, which an owner on Hostinger
+shared hosting cannot realistically read. The panel said "check error_log"
+while the actual answer — `Could not authenticate`, `550 Sender not allowed`,
+an IP-allowlist rejection — sat in a file nobody would open.
+`mailer_last_error()` in [api/_mailer.php](api/_mailer.php) now records the SMTP
+server's own reply and [api/_recovery.php](api/_recovery.php) passes it back, so
+the admin toast names the row in §10's troubleshooting table. **Admin-only** —
+it can contain the SMTP host's reply and the configured From address, so do not
+surface it from a public endpoint.
+
+**There was no way to see the email.** `POST { action: 'preview-recovery' }` on
+[api/admin/abandoned.php](api/admin/abandoned.php) returns the exact message a
+Send would produce. It runs through `marketing_send_recovery()` in **preview
+mode**, not through a second copy of the rules — a preview built separately
+would eventually show a cheerful template for a row the real sender refuses,
+which is worse than no preview.
+
+Preview is side-effect free, and each part of that matters:
+
+- it does **not** mint a `subscribers` row (`marketing_lookup_optout_token()` is
+  the read-only sibling of `marketing_contact_token()`);
+- it does **not** persist a freshly minted `recovery_token`;
+- it does **not** stamp `recovery_stage`, so opening a preview cannot burn one
+  of the two allowed nudges;
+- it does **not** require SMTP to be configured — being able to read the
+  template while Brevo is still being set up is when it is most useful.
+
+The body renders in a **sandboxed iframe** (`srcdoc`, no `allow-scripts`). The
+template interpolates product titles from the `products` table, so it is
+untrusted-ish HTML on an authenticated admin page; the sandbox also stops the
+email's own CSS leaking into the panel, which a plain `innerHTML` would
+guarantee.

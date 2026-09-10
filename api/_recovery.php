@@ -30,6 +30,22 @@ const RECOVERY_STAGE2_HOURS = 24;
 // quoted in the snapshot may no longer resemble the catalogue.
 const RECOVERY_MAX_AGE_HOURS = 96;
 
+// Read-only sibling of marketing_contact_token() below.
+//
+// Returns the existing token, '' when the address has no row yet, or null when
+// they have unsubscribed. It exists so PREVIEWING a recovery email cannot have
+// the side effect of enrolling that address in the subscribers table — a
+// preview must observe the shop, never change it.
+function marketing_lookup_optout_token(PDO $pdo, string $email): ?string {
+    marketing_ensure_tables($pdo);
+    $st = $pdo->prepare('SELECT token, status FROM subscribers WHERE email = :e LIMIT 1');
+    $st->execute([':e' => $email]);
+    $row = $st->fetch();
+    if (!$row) return '';
+    if ($row['status'] === 'unsubscribed') return null;
+    return (string)$row['token'];
+}
+
 // Find (or mint) the opt-out token for an address.
 //
 // A shopper who never used the newsletter form still needs a working
@@ -57,12 +73,20 @@ function marketing_contact_token(PDO $pdo, string $email, string $source = 'reco
     return $token;
 }
 
-// Returns ['ok' => bool, 'stage' => int, 'error' => string].
+// Returns ['ok' => bool, 'stage' => int, 'error' => string], plus
+// ['subject','html','text','to'] when $preview is true.
 //
 // $kind    'cart' | 'checkout'
 // $id      carts.id (int) | payment_orders.razorpay_order_id (string)
 // $trigger 'manual' | 'cron' — recorded in the log line only.
-function marketing_send_recovery(PDO $pdo, string $kind, $id, string $trigger = 'manual'): array {
+// $preview true = build the email and return it WITHOUT sending, without
+//          minting a subscribers row, and without stamping recovery_stage.
+//
+// Preview runs through this same function on purpose. A preview built by a
+// second copy of these rules would eventually show a cheerful template for a
+// row the real sender refuses, which is worse than no preview: it would tell
+// the owner the feature works when it does not.
+function marketing_send_recovery(PDO $pdo, string $kind, $id, string $trigger = 'manual', bool $preview = false): array {
     marketing_ensure_tables($pdo);
 
     $fail = function (string $msg) { return ['ok' => false, 'stage' => 0, 'error' => $msg]; };
@@ -132,21 +156,35 @@ function marketing_send_recovery(PDO $pdo, string $kind, $id, string $trigger = 
     $email = marketing_normalize_email($email);
     if ($email === '')         return $fail('No email address on file for this visitor');
     if ($stage >= 2)           return $fail('Both recovery emails have already been sent');
-    if (!mailer_is_configured()) return $fail('SMTP is not configured — see CLAUDE.md §10');
+    // Not required to PREVIEW. Being able to read the template while SMTP is
+    // still being set up is exactly when it is most useful.
+    if (!$preview && !mailer_is_configured()) return $fail('SMTP is not configured — see CLAUDE.md §10');
 
     // Respect the opt-out. A recovery email is marketing-adjacent; someone who
     // unsubscribed did not carve out an exception for it.
-    $optOutToken = marketing_contact_token($pdo, $email, $kind === 'cart' ? 'cart-recovery' : 'checkout-recovery');
-    if ($optOutToken === null) return $fail('This customer has unsubscribed from marketing email');
+    if ($preview) {
+        $optOutToken = marketing_lookup_optout_token($pdo, $email);
+        if ($optOutToken === null) return $fail('This customer has unsubscribed from marketing email');
+        // No row yet: show the link shape without creating the row a real send
+        // would create.
+        if ($optOutToken === '') $optOutToken = str_repeat('0', 32);
+    } else {
+        $optOutToken = marketing_contact_token($pdo, $email, $kind === 'cart' ? 'cart-recovery' : 'checkout-recovery');
+        if ($optOutToken === null) return $fail('This customer has unsubscribed from marketing email');
+    }
 
     if (!marketing_valid_key($token)) {
         $token = marketing_token();
-        if ($kind === 'cart') {
-            $pdo->prepare('UPDATE carts SET recovery_token = :t WHERE id = :id')
-                ->execute([':t' => $token, ':id' => (int)$id]);
-        } else {
-            $pdo->prepare('UPDATE payment_orders SET recovery_token = :t WHERE razorpay_order_id = :id')
-                ->execute([':t' => $token, ':id' => (string)$id]);
+        // A preview does not persist the freshly minted token — it is only
+        // needed to render a realistic link.
+        if (!$preview) {
+            if ($kind === 'cart') {
+                $pdo->prepare('UPDATE carts SET recovery_token = :t WHERE id = :id')
+                    ->execute([':t' => $token, ':id' => (int)$id]);
+            } else {
+                $pdo->prepare('UPDATE payment_orders SET recovery_token = :t WHERE razorpay_order_id = :id')
+                    ->execute([':t' => $token, ':id' => (string)$id]);
+            }
         }
     }
 
@@ -163,6 +201,18 @@ function marketing_send_recovery(PDO $pdo, string $kind, $id, string $trigger = 
         'unsubscribeUrl' => marketing_unsubscribe_url($optOutToken),
     ]);
 
+    if ($preview) {
+        return [
+            'ok'      => true,
+            'stage'   => $nextStage,
+            'error'   => '',
+            'to'      => $email,
+            'subject' => $tpl['subject'],
+            'html'    => $tpl['html'],
+            'text'    => $tpl['text'],
+        ];
+    }
+
     $ok = send_mail($email, $firstName, $tpl['subject'], $tpl['html'], $tpl['text'], [
         'List-Unsubscribe'      => '<' . marketing_unsubscribe_url($optOutToken) . '>',
         'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click',
@@ -173,7 +223,14 @@ function marketing_send_recovery(PDO $pdo, string $kind, $id, string $trigger = 
         // next cron pass retries instead of silently skipping this customer
         // forever because of one bad SMTP minute.
         error_log('[recovery] send failed (' . $trigger . ') ' . $kind . ' ' . $id . ' -> ' . $email);
-        return $fail('SMTP refused the message — check error_log');
+        // Pass the SMTP server's own words back to the admin. "Check
+        // error_log" is not an answer an owner on shared hosting can act on,
+        // and the real reply ("Could not authenticate", "550 Sender not
+        // allowed", an IP-allowlist rejection) names the exact fix in
+        // CLAUDE.md §10's troubleshooting table. Admin-only endpoint, so this
+        // detail never reaches a customer.
+        $why = mailer_last_error();
+        return $fail($why !== '' ? ('SMTP refused the message: ' . $why) : 'SMTP refused the message — check error_log');
     }
 
     if ($kind === 'cart') {

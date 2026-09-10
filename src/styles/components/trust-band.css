@@ -1,0 +1,151 @@
+/* =============================================================================
+   Velorex Music — trust band
+   Used by: index.html (the strip directly under the hero carousel)
+
+   The three structural facts (5 formats / 100% genuine / pan-India) used to sit
+   inside the hero's brand slide, where they were only visible on one of six
+   slides and were pushed below the fold on a phone. They now run as their own
+   band across the full width, immediately under the hero, so they are on screen
+   whichever slide the carousel happens to be showing.
+
+   MARQUEE MECHANICS
+   The track holds the item group TWICE and translates by exactly -50%, so the
+   second copy lands where the first started and the loop is seamless with no
+   JS. The duplicate is aria-hidden — a screen reader must not read the same
+   four claims twice — and it is `display: none` under reduced motion, where the
+   band becomes a static centred row instead.
+
+   Everything here is content the shop can actually stand behind. Same rule as
+   the hero and the admin dashboard cards (CLAUDE.md §20): no invented customer
+   count, no invented rating.
+   ============================================================================= */
+
+.trust-band {
+  position: relative;
+  overflow: hidden;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background:
+    linear-gradient(90deg, rgba(255, 107, 53, 0.07), rgba(83, 52, 131, 0.07) 55%, rgba(255, 107, 53, 0.07)),
+    var(--surface);
+  padding: 0.95rem 0;
+}
+
+/* Feather both ends so items enter and leave instead of being guillotined at
+   the viewport edge. mask-image over an overlay element: an overlay would need
+   a solid colour and this band sits on a gradient. */
+.trust-band-viewport {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+}
+
+.trust-band-track {
+  display: flex;
+  width: max-content;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  animation: trust-band-scroll 38s linear infinite;
+}
+
+/* Hover and keyboard focus both stop it. A band that keeps moving while
+   someone is reading it is the same complaint people have about carousels —
+   see the pause rules in hero-carousel.css. */
+.trust-band:hover .trust-band-track,
+.trust-band:focus-within .trust-band-track { animation-play-state: paused; }
+
+.trust-band-group {
+  display: flex;
+  align-items: center;
+  gap: clamp(1.75rem, 4vw, 3.5rem);
+  padding-right: clamp(1.75rem, 4vw, 3.5rem);
+  margin: 0;
+}
+
+.trust-band-item {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  white-space: nowrap;
+}
+
+.trust-band-icon {
+  display: grid;
+  place-items: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: rgba(255, 107, 53, 0.12);
+  border: 1px solid var(--border);
+  color: var(--secondary);
+  font-size: 0.95rem;
+}
+
+/* The item's markup is spans inside a span, so the two text lines have to be
+   told to stack — inline is the default and it runs them together as
+   "100% Genuine HAND-CHECKED STOCK". Spans rather than divs because the whole
+   band is a <ul> of short labelled facts, not a set of blocks. */
+.trust-band-text { display: block; }
+
+.trust-band-value {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.15;
+}
+.trust-band-value span {
+  background: var(--orange-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+          background-clip: text;
+}
+
+.trust-band-label {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 0.2rem;
+}
+
+@keyframes trust-band-scroll {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+
+@media (max-width: 640px) {
+  .trust-band { padding: 0.8rem 0; }
+  .trust-band-icon { width: 2rem; height: 2rem; font-size: 0.85rem; }
+  .trust-band-value { font-size: 1rem; }
+  .trust-band-track { animation-duration: 26s; }
+}
+
+/* ---- Reduced motion ------------------------------------------------------
+   Not "slower" — stopped. The whole point of this band is a line of text
+   sliding sideways, which is exactly the motion the setting is about. The
+   duplicate group is dropped so nothing is stated twice, and the remaining
+   group wraps and centres so it still fills the band at any width. */
+@media (prefers-reduced-motion: reduce) {
+  .trust-band-track {
+    animation: none;
+    width: 100%;
+    justify-content: center;
+  }
+  .trust-band-group[aria-hidden="true"] { display: none; }
+  .trust-band-group {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.25rem 2.25rem;
+    padding-right: 0;
+    padding-inline: 1rem;
+  }
+  .trust-band-viewport {
+    -webkit-mask-image: none;
+            mask-image: none;
+  }
+}

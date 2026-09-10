@@ -1,0 +1,90 @@
+/* =============================================================================
+   Velorex Music — record-label band
+   Used by: index.html ("Discover music from the industry's leading labels")
+
+   A row of the labels whose pressings the shop stocks. Static markup, like the
+   hero's brand slide and the trust band — `/` is served as plain index.html and
+   never reaches seo-render.php (CLAUDE.md §15), so this is a block of real
+   label names in the served HTML rather than something a crawler has to
+   execute JS to see.
+
+   LOGO / WORDMARK, and why it is built this way.
+   Each chip ships with the label's NAME as text and an optional <img> pointing
+   at src/img/labels/<slug>.svg. The image starts hidden; its onload handler
+   adds .has-logo to the chip, which swaps the text out for the artwork. So:
+     • no logo file present (today)  → clean themed wordmark, nothing broken
+     • file dropped in later         → it simply starts rendering, no code edit
+     • file present but 404s / fails → onload never fires, wordmark stands
+   There is deliberately no flash of the wrong state: the wordmark is the
+   default and the logo only ever replaces it after it has actually decoded.
+   See src/img/labels/README.md.
+   ============================================================================= */
+
+.label-band {
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  padding: 3rem 0;
+}
+
+.label-band-title {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: clamp(1.15rem, 2.2vw, 1.6rem);
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 2rem;
+}
+.label-band-title span {
+  background: var(--orange-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+          background-clip: text;
+}
+
+.label-band-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem clamp(1rem, 3vw, 2.5rem);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.label-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.25rem;
+  padding: 0.6rem 1.35rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.035);
+  transition: var(--transition);
+}
+[data-theme="light"] .label-chip { background: #ffffff; }
+.label-chip:hover { border-color: var(--secondary); transform: translateY(-2px); }
+
+.label-chip-name {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: var(--transition);
+}
+.label-chip:hover .label-chip-name { color: var(--text); }
+
+/* Hidden until its onload handler says the artwork actually decoded. */
+.label-chip-logo { display: none; max-height: 2rem; width: auto; }
+.label-chip.has-logo .label-chip-logo { display: block; }
+.label-chip.has-logo .label-chip-name { display: none; }
+
+@media (max-width: 640px) {
+  .label-band { padding: 2.25rem 0; }
+  .label-band-title { margin-bottom: 1.35rem; }
+  .label-chip { min-height: 2.75rem; padding: 0.5rem 1rem; }
+  .label-chip-name { font-size: 0.85rem; }
+}

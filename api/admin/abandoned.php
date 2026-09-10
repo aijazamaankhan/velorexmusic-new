@@ -238,6 +238,30 @@ try {
             exit;
         }
 
+        // Render the exact email a Send would produce, without sending it,
+        // without minting a subscribers row and without advancing the stage.
+        // It runs through marketing_send_recovery() in preview mode so the
+        // eligibility rules cannot differ between what the owner is shown and
+        // what would actually go out.
+        if ($action === 'preview-recovery') {
+            $built = marketing_send_recovery($pdo, $kind, $id, 'preview', true);
+            if (!$built['ok']) {
+                http_response_code(422);
+                echo json_encode(['error' => $built['error']]);
+                exit;
+            }
+            echo json_encode([
+                'ok'      => true,
+                'stage'   => $built['stage'],
+                'to'      => $built['to'],
+                'subject' => $built['subject'],
+                'html'    => $built['html'],
+                'text'    => $built['text'],
+                'mailerReady' => mailer_is_configured(),
+            ]);
+            exit;
+        }
+
         if ($action === 'send-recovery') {
             $sent = marketing_send_recovery($pdo, $kind, $id, 'manual');
             if (!$sent['ok']) {

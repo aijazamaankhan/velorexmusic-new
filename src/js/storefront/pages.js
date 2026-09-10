@@ -218,6 +218,13 @@
       if (typeof HeroCarousel !== 'undefined') {
         try { HeroCarousel.init(); } catch (e) { console.warn('hero carousel failed:', e); }
       }
+      // Recently Sold reads its own endpoint, not the product cache, so like
+      // the combo strip it runs above the cold-cache early return below. It
+      // fetches once per page load and hides its own section when there is not
+      // enough to show.
+      if (typeof RecentSales !== 'undefined') {
+        try { RecentSales.init(); } catch (e) { console.warn('recent sales failed:', e); }
+      }
       var products = Storage.getProducts();
       var bsg = document.getElementById('best-selling-grid'), nrg = document.getElementById('new-releases-grid'), ug = document.getElementById('upcoming-grid');
       // Cold cache: skeleton the category counts, but keep the three curated

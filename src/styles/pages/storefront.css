@@ -106,6 +106,30 @@ body { padding-top: 70px; }
 .navbar-actions { display: flex; align-items: center; gap: 0.5rem; }
 .nav-action-btn { position: relative; display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; color: var(--text-muted); font-size: 1.1rem; transition: var(--transition); }
 .nav-action-btn:hover { background: rgba(255, 107, 53, 0.1); color: var(--secondary); }
+
+/* Sign in reads as a WORD, not as a glyph.
+   It used to be a bare fa-right-to-bracket — an arrow pointing into a square
+   bracket, which at 1.1rem is an ambiguous shape that nobody recognises as
+   "sign in"; several people read it as a logout or an exit. A person icon plus
+   the actual word removes the guess. The label is dropped below 1100px, where
+   the navbar collapses to the hamburger and every pixel is contested; at that
+   size the person icon alone is the standard account affordance. */
+.nav-action-signin {
+  width: auto;
+  gap: 0.5rem;
+  padding: 0 0.85rem;
+  font-size: 0.95rem;
+  border: 1px solid var(--border);
+}
+.nav-action-signin .nav-action-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+@media (max-width: 1100px) {
+  .nav-action-signin { width: 40px; padding: 0; border: 0; font-size: 1.1rem; }
+  .nav-action-signin .nav-action-label { display: none; }
+}
 .cart-badge { position: absolute; top: -4px; right: -4px; background: var(--secondary); color: white; font-size: 0.65rem; font-weight: 700; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; display: none; }
 .cart-badge.visible { display: flex; }
 /* Second .hamburger declaration kept from original — overrides padding only when present */
@@ -211,11 +235,18 @@ body { padding-top: 70px; }
 .categories-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
 .category-card { position: relative; border-radius: var(--radius-lg); overflow: hidden; aspect-ratio: 16/9; cursor: pointer; transition: var(--transition); }
 .category-card:hover { transform: scale(1.02); box-shadow: var(--shadow-lg); }
-.category-card-bg { position: absolute; inset: 0; background-size: cover; background-position: center; transition: transform 0.5s ease; }
+/* An <img>, not a background-image, since the covers went in — see the comment
+   above .categories-grid in index.html. width/height:100% + object-fit gives
+   the same cover-crop the old background-size:cover gave, while the intrinsic
+   width/height attributes on the tag still reserve the box against layout
+   shift. */
+.category-card-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; transition: transform 0.5s ease; }
 .category-card:hover .category-card-bg { transform: scale(1.05); }
-.category-card-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(13, 13, 13, 0.9) 0%, rgba(13, 13, 13, 0.3) 60%, transparent 100%); }
+/* Darker and taller than it was: these cards now sit on busy photographs
+   rather than a flat two-stop gradient, and the title has to stay legible over
+   whatever happens to be in the bottom third of the image. */
+.category-card-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(8, 8, 12, 0.94) 0%, rgba(8, 8, 12, 0.6) 45%, rgba(8, 8, 12, 0.12) 75%, transparent 100%); }
 .category-card-content { position: absolute; bottom: 0; left: 0; right: 0; padding: 1.5rem; color: #ffffff; z-index: 2; }
-.category-card-icon { font-size: 2rem; margin-bottom: 0.5rem; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)); }
 .category-card-title { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: #ffffff; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3); }
 .category-card-count { font-size: 0.8rem; color: rgba(255, 255, 255, 0.9); margin-top: 0.25rem; font-weight: 500; }
 
@@ -283,11 +314,23 @@ body { padding-top: 70px; }
 .product-detail-price-meta { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
 .product-detail-price { font-size: clamp(2.25rem, 3vw, 3rem); font-weight: 900; letter-spacing: -0.04em; color: var(--text); }
 .product-detail-price-original { color: var(--text-muted); font-size: 0.95rem; text-decoration: line-through; margin-left: 0.5rem; }
-.product-detail-discount { display: inline-flex; align-items: center; justify-content: center; padding: 0.45rem 0.85rem; background: #10b981; color: white; border-radius: 999px; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.03em; }
+/* #047857, not the #10b981 this used to be: white on that lighter green is
+   2.5:1, which fails in BOTH themes — the pill is its own background, so the
+   page behind it never helped. */
+.product-detail-discount { display: inline-flex; align-items: center; justify-content: center; padding: 0.45rem 0.85rem; background: #047857; color: #ffffff; border-radius: 999px; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.03em; }
 .product-detail-availability { color: var(--text-muted); font-size: 0.95rem; }
 .product-detail-actions { display: grid; gap: 1rem; }
-.product-detail-actions .product-actions-group { display: flex; gap: 1rem; flex-wrap: wrap; }
-.product-detail-actions .btn { min-width: 160px; }
+/* GRID, not flex. "Add to Cart" and "Buy Now" are different lengths, so under
+   flex they were different widths at every size, and the responsive rule that
+   was meant to stack them (`grid-template-columns: 1fr` in the ≤1024px block)
+   silently did nothing because the container was not a grid. Two equal columns
+   here and one full-width column there means the two buttons are the same size
+   as each other on every device. */
+.product-detail-actions .product-actions-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+/* min-width:0 lets a button shrink inside its track instead of pushing the
+   grid wider than the column; justify-content centres the label now that the
+   width comes from the track rather than from the text. */
+.product-detail-actions .btn { min-width: 0; justify-content: center; text-align: center; }
 .quantity-control { display: flex; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; width: fit-content; }
 .qty-btn { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; color: var(--text); cursor: pointer; transition: var(--transition); }
 .qty-btn:hover { background: rgba(255, 107, 53, 0.12); color: var(--secondary); }
@@ -534,16 +577,27 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   margin: 0 auto;
   gap: 0.75rem;
 }
+/* The card sits on --vinyl-gradient, which is deep purple in dark mode but
+   near-WHITE in light mode. A white-on-10%-white field was therefore invisible
+   in light theme — you could type into it and see nothing. Both the field and
+   its text follow the theme instead of assuming a dark ground. */
 .newsletter-form input[type="email"] {
   flex: 1;
   min-width: 0; /* lets flex shrink properly inside the form */
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
-  color: white;
+  color: #ffffff;
   padding: 0.75rem 1rem;
   font-size: 0.9rem;
 }
+.newsletter-form input[type="email"]::placeholder { color: rgba(255, 255, 255, 0.6); }
+[data-theme="light"] .newsletter-form input[type="email"] {
+  background: #ffffff;
+  border-color: var(--border);
+  color: var(--text);
+}
+[data-theme="light"] .newsletter-form input[type="email"]::placeholder { color: var(--text-muted); }
 .newsletter-form .btn { flex-shrink: 0; }
 
 @media (max-width: 600px) {

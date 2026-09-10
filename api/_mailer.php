@@ -40,6 +40,29 @@ require_once __DIR__ . '/lib/PHPMailer/SMTP.php';
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception as PHPMailerException;
 
+// Why the LAST send failed, in the SMTP server's own words.
+//
+// send_mail() deliberately never throws, so until now the only record of a
+// failure was a line in PHP's error_log — which on Hostinger shared hosting an
+// owner cannot realistically read. The result was an admin panel that said
+// "check error_log" while the actual answer ("Could not authenticate", "550
+// Sender not allowed") sat in a file nobody would open. Callers that surface
+// errors to a human — the admin's manual Send — read this and show it.
+//
+// Not exposed to any PUBLIC endpoint: it can contain the SMTP host's reply and
+// the configured From address.
+$GLOBALS['VELOREX_MAILER_LAST_ERROR'] = '';
+
+function mailer_last_error(): string {
+    return (string)($GLOBALS['VELOREX_MAILER_LAST_ERROR'] ?? '');
+}
+
+function mailer_set_last_error(string $msg): void {
+    // One line, bounded — this ends up in a JSON response and a toast.
+    $msg = trim(preg_replace('/\s+/', ' ', $msg));
+    $GLOBALS['VELOREX_MAILER_LAST_ERROR'] = mb_substr($msg, 0, 300);
+}
+
 function mailer_is_configured(): bool {
     // SMTP_HOST is the only hard requirement — local catchers (Mailpit,
     // MailHog) don't need creds, so we let SMTP_USER/SMTP_PASS be blank
@@ -61,8 +84,10 @@ function mailer_is_configured(): bool {
 // ORDER RECEIPTS too, not just for the marketing message carrying them.
 // Transactional mail passes nothing and is unaffected.
 function send_mail(string $to, string $toName, string $subject, string $htmlBody, string $textBody = '', array $extraHeaders = []): bool {
+    mailer_set_last_error('');
     if (!mailer_is_configured()) {
         error_log('[mailer] SMTP not configured — skipping send to ' . $to . ' subject="' . $subject . '"');
+        mailer_set_last_error('SMTP is not configured (SMTP_HOST/SMTP_USER/SMTP_PASS in the secrets file).');
         return false;
     }
 
@@ -151,9 +176,11 @@ function send_mail(string $to, string $toName, string $subject, string $htmlBody
         // PHPMailer's ErrorInfo is more useful than the exception message —
         // it includes the SMTP server's reply text on auth/delivery failures.
         error_log('[mailer] PHPMailer error sending to ' . $to . ': ' . $mail->ErrorInfo);
+        mailer_set_last_error((string)$mail->ErrorInfo !== '' ? (string)$mail->ErrorInfo : $e->getMessage());
         return false;
     } catch (Throwable $t) {
         error_log('[mailer] unexpected error sending to ' . $to . ': ' . $t->getMessage());
+        mailer_set_last_error($t->getMessage());
         return false;
     }
 }

@@ -266,6 +266,14 @@
             + (busy ? 'Sending…' : 'Send') + '</button>';
         }
 
+        // Always offered, even when Send is disabled. "Why is nothing being
+        // sent?" and "what does the email actually say?" are the two questions
+        // this panel could not answer, and the second one has no reason to
+        // depend on SMTP being wired up.
+        const previewBtn = '<button type="button" class="btn btn-secondary btn-sm" style="width:auto;"'
+          + ' onclick="previewAbandonedEmail(' + JSON.stringify(r.kind) + ',' + JSON.stringify(String(r.id)) + ')"'
+          + ' title="See the exact email a Send would produce">Preview</button>';
+
         const dismissBtn = r.dismissedAt
           ? '<button type="button" class="btn btn-secondary btn-sm" style="width:auto;" onclick="setAbandonedDismissed(' + JSON.stringify(r.kind) + ',' + JSON.stringify(String(r.id)) + ',false)">Restore</button>'
           : '<button type="button" class="btn btn-secondary btn-sm" style="width:auto;" onclick="setAbandonedDismissed(' + JSON.stringify(r.kind) + ',' + JSON.stringify(String(r.id)) + ',true)">Dismiss</button>';
@@ -278,13 +286,73 @@
           + '<td style="font-weight:700;white-space:nowrap;">₹' + Number(r.subtotal || 0).toLocaleString('en-IN') + '</td>'
           + '<td style="white-space:nowrap;">' + abandonAgo(r.lastActiveAt) + '</td>'
           + '<td>' + reminders + '</td>'
-          + '<td><div style="display:flex;gap:0.4rem;flex-wrap:wrap;">' + sendBtn + dismissBtn + '</div></td>'
+          + '<td><div style="display:flex;gap:0.4rem;flex-wrap:wrap;">' + sendBtn + previewBtn + dismissBtn + '</div></td>'
           + '</tr>';
       }).join('');
 
       if (meta) {
         meta.textContent = 'Showing ' + rows.length + ' of ' + AbandonState.rows.length + ' rows.';
       }
+    }
+
+    // ---- Recovery-email preview --------------------------------------------
+    // The rendered email comes from the server, not from a copy of the
+    // template in JS: api/_marketing_templates.php is the one definition of
+    // this message, and a second one here would drift the moment either is
+    // edited.
+    async function previewAbandonedEmail(kind, id) {
+      const frame = document.getElementById('email-preview-frame');
+      const meta  = document.getElementById('email-preview-meta');
+      const note  = document.getElementById('email-preview-note');
+      const modal = document.getElementById('email-preview-modal');
+      if (!frame || !modal) return;
+
+      meta.textContent = 'Building preview…';
+      note.style.display = 'none';
+      frame.removeAttribute('srcdoc');
+      modal.style.display = 'flex'; // admin modals are shown by display, not a class
+
+      try {
+        const res = await fetch(API_BASE + '/admin/abandoned.php', {
+          method: 'POST',
+          headers: adminAuthHeaders(),
+          body: JSON.stringify({ action: 'preview-recovery', kind: kind, id: id }),
+        });
+        const data = await res.json().catch(function () { return {}; });
+        if (!res.ok || !data.ok) throw new Error(data.error || 'HTTP ' + res.status);
+
+        meta.innerHTML =
+            '<div><strong>To:</strong> ' + escapeHTML(String(data.to || '')) + '</div>'
+          + '<div><strong>Subject:</strong> ' + escapeHTML(String(data.subject || '')) + '</div>'
+          + '<div><strong>Reminder:</strong> stage ' + escapeHTML(String(data.stage))
+          + ' of 2 — this is what the next Send would deliver.</div>';
+
+        // Nothing was sent and nothing was written: say so, so nobody assumes
+        // opening a preview burned one of the two allowed nudges.
+        var notes = ['Nothing was sent and no reminder was recorded — this is a preview only.'];
+        if (data.mailerReady === false) {
+          notes.push('<strong>SMTP is not configured</strong>, so Send would still fail. '
+            + 'Set the <code>SMTP_*</code> constants in the secrets file (CLAUDE.md §10).');
+        }
+        note.innerHTML = notes.join('<br>');
+        note.style.display = 'block';
+
+        frame.setAttribute('srcdoc', String(data.html || ''));
+      } catch (e) {
+        meta.textContent = '';
+        note.innerHTML = 'Could not build the preview: ' + escapeHTML(e.message);
+        note.style.display = 'block';
+        frame.setAttribute('srcdoc', '');
+      }
+    }
+
+    function closeEmailPreview() {
+      const modal = document.getElementById('email-preview-modal');
+      const frame = document.getElementById('email-preview-frame');
+      if (modal) modal.style.display = 'none';
+      // Drop the document rather than leaving the last preview loaded behind
+      // a hidden overlay.
+      if (frame) frame.setAttribute('srcdoc', '');
     }
 
     async function sendAbandonedRecovery(kind, id) {
@@ -300,7 +368,10 @@
         if (!res.ok || !data.ok) throw new Error(data.error || 'HTTP ' + res.status);
         showToast('Reminder sent (stage ' + data.stage + ')', 'success');
       } catch (e) {
+        // The message can now be the SMTP server's own reply (see
+        // mailer_last_error()), which is long but is the actual answer.
         showToast('Could not send: ' + e.message, 'error');
+        console.warn('[abandoned] send failed:', e.message);
       } finally {
         AbandonState.busyKey = null;
         // Re-fetch rather than patching in place: the send advanced the stage

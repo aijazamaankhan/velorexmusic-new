@@ -122,9 +122,9 @@
           ${isAdmin ? '' : `<a href="/cart" rel="nofollow" onclick="navigate('cart'); return false;" class="nav-action-btn"><i class="fas fa-shopping-cart"></i><span class="cart-badge" id="cartBadge"></span></a>`}
           <button class="nav-action-btn" id="themeToggle" onclick="toggleTheme()" title="Toggle Theme"><i class="fas fa-moon"></i></button>
           ${Auth.isLoggedIn()
-            ? `<a href="/profile" rel="nofollow" onclick="navigate('profile'); return false;" class="nav-action-btn" title="My Profile"><i class="fas fa-user"></i></a>
-               <a href="#" rel="nofollow" onclick="handleCustomerLogout(); return false;" class="nav-action-btn" title="Sign out"><i class="fas fa-right-from-bracket"></i></a>`
-            : `<a href="/login" rel="nofollow" onclick="navigate('login'); return false;" class="nav-action-btn" title="Sign in"><i class="fas fa-right-to-bracket"></i></a>`}
+            ? `<a href="/profile" rel="nofollow" onclick="navigate('profile'); return false;" class="nav-action-btn" title="My Profile" aria-label="My profile"><i class="fas fa-circle-user"></i></a>
+               <a href="#" rel="nofollow" onclick="handleCustomerLogout(); return false;" class="nav-action-btn" title="Sign out" aria-label="Sign out"><i class="fas fa-arrow-right-from-bracket"></i></a>`
+            : `<a href="/login" rel="nofollow" onclick="navigate('login'); return false;" class="nav-action-btn nav-action-signin" title="Sign in"><i class="fas fa-user"></i><span class="nav-action-label">Sign in</span></a>`}
           <div class="hamburger" id="hamburger" onclick="toggleMobileNav()"><span></span><span></span><span></span></div>
         </div>
       </nav>`;

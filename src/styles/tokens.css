@@ -56,7 +56,13 @@
 :root[data-theme="light"] {
   --primary: #ffffff;
   --secondary: #ff4d00;
-  --accent: #f59e0b;
+  /* Deep amber, NOT the #f59e0b that used to be here. --accent is the price
+     colour (.product-price, the cart total, order totals), the star colour and
+     the link colour on the sign-in pages, and #f59e0b measured 2.1:1 against
+     the white cards those all sit on — under the 4.5:1 floor and genuinely
+     hard to read. This reads at ~5.4:1 while staying recognisably the same
+     amber. Dark theme keeps #ffd700; it sits on near-black there. */
+  --accent: #b45309;
   --bg: #f8fafc;
   --surface: #ffffff;
   --surface2: #f1f5f9;

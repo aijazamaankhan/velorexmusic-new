@@ -164,7 +164,7 @@
        end up in script-scope; the inline <script> at the bottom of <body>
        just bootstraps DOMContentLoaded. -->
   <script src="src/js/storefront/carriers.js?v=488bf189"></script>
-  <script src="src/js/storefront/pages.js?v=90bb0f08"></script>
+  <script src="src/js/storefront/pages.js?v=ca24b601"></script>
   <!-- Blog views. Must load before router.js, whose initPage dispatcher calls
        initPageBlog / initPageBlogPost. -->
   <!-- Homepage hero carousel. Must load before router.js: its initPage
@@ -175,28 +175,32 @@
   <script src="src/js/storefront/search.js?v=b7fbf620"></script>
   <script src="src/js/storefront/combos.js?v=52ddd306"></script>
   <script src="src/js/storefront/blog.js?v=38e36528"></script>
+  <script src="src/js/storefront/recent-sales.js?v=d2256592"></script>
   <!-- Newsletter signup. Bound from router.js's boot and from the inline
        onclick on the homepage form. -->
   <script src="src/js/storefront/newsletter.js?v=db0df9b9"></script>
-  <script src="src/js/storefront/router.js?v=7d882242"></script>
+  <script src="src/js/storefront/router.js?v=e0f68779"></script>
   <script src="src/js/storefront/checkout.js?v=761de60a"></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
        they can be shared between the storefront pages without duplication.
        See src/styles/tokens.css and src/styles/base.css. -->
-  <link rel="stylesheet" href="src/styles/tokens.css?v=a893990f">
+  <link rel="stylesheet" href="src/styles/tokens.css?v=3fdd4211">
   <link rel="stylesheet" href="src/styles/base.css?v=45f8212c">
-  <link rel="stylesheet" href="src/styles/components/buttons.css?v=e55e967c">
+  <link rel="stylesheet" href="src/styles/components/buttons.css?v=cef36620">
   <link rel="stylesheet" href="src/styles/components/forms.css?v=75a50a70">
   <link rel="stylesheet" href="src/styles/components/modal.css?v=6d89eb5d">
   <link rel="stylesheet" href="src/styles/components/payment-modal.css?v=02096d61">
   <link rel="stylesheet" href="src/styles/components/toast.css?v=1b13f717">
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
-  <link rel="stylesheet" href="src/styles/components/hero-carousel.css?v=cfa114f1">
+  <link rel="stylesheet" href="src/styles/components/hero-carousel.css?v=79603785">
   <link rel="stylesheet" href="src/styles/components/cursor.css?v=fb46709c">
   <link rel="stylesheet" href="src/styles/components/search.css?v=046a8aed">
+  <link rel="stylesheet" href="src/styles/components/trust-band.css?v=8edcca10">
+  <link rel="stylesheet" href="src/styles/components/recent-sales.css?v=5995bdf7">
+  <link rel="stylesheet" href="src/styles/components/label-band.css?v=58b6bd4e">
   <!-- Page-specific styles (hero, products, cart, profile, footer, etc.).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=c0298276">
+  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=0dbe4303">
 </head>
 
 <body>
@@ -270,23 +274,10 @@
                   <a href="/dvd-movies" onclick="navigate('products', {cat:'dvd'}); return false;" class="hero-chip"><i class="fas fa-film"></i> DVDs</a>
                   <a href="/pre-owned" onclick="navigate('preowned'); return false;" class="hero-chip"><i class="fas fa-recycle"></i> Pre-owned</a>
                 </div>
-                <!-- Structural facts only. Don't put an invented customer count
-                     or star rating here — same rule as the admin dashboard
-                     cards (CLAUDE.md §20). -->
-                <div class="hero-stats hero-rise">
-                  <div>
-                    <div class="hero-stat-value"><span>5</span> Formats</div>
-                    <div class="hero-stat-label">Vinyl to Blu-ray</div>
-                  </div>
-                  <div>
-                    <div class="hero-stat-value"><span>100%</span> Genuine</div>
-                    <div class="hero-stat-label">Hand-checked stock</div>
-                  </div>
-                  <div>
-                    <div class="hero-stat-value">Pan-India</div>
-                    <div class="hero-stat-label">Tracked delivery</div>
-                  </div>
-                </div>
+                <!-- The three trust stats that used to sit here now run as
+                     their own moving band directly under the carousel — see
+                     .trust-band below. They were only ever visible on this one
+                     slide of six, and on a phone they sat below the fold. -->
               </div>
               <div class="hero-visual">
                 <div class="vinyl-showcase">
@@ -331,6 +322,84 @@
         </div>
       </section>
 
+      <!-- ==================== TRUST BAND ====================
+           The structural facts, moved out of the hero's brand slide so they are
+           on screen no matter which carousel slide is showing. Static markup on
+           purpose: `/` is served as plain index.html and never reaches
+           seo-render.php (CLAUDE.md §15), so anything a non-executing crawler
+           should see has to be in this file.
+
+           The item group is repeated ONCE for the seamless -50% scroll. The
+           second copy is aria-hidden so a screen reader is not read the same
+           four claims twice, and CSS drops it entirely under reduced motion.
+           Keep the two groups byte-identical or the loop visibly jumps. -->
+      <section class="trust-band" aria-label="Why buy from Velorex Music">
+        <div class="trust-band-viewport">
+          <div class="trust-band-track">
+            <ul class="trust-band-group">
+              <li class="trust-band-item">
+                <span class="trust-band-icon" aria-hidden="true"><i class="fas fa-compact-disc"></i></span>
+                <span class="trust-band-text">
+                  <span class="trust-band-value"><span>5</span> Formats</span>
+                  <span class="trust-band-label">Vinyl to Blu-ray</span>
+                </span>
+              </li>
+              <li class="trust-band-item">
+                <span class="trust-band-icon" aria-hidden="true"><i class="fas fa-certificate"></i></span>
+                <span class="trust-band-text">
+                  <span class="trust-band-value"><span>100%</span> Genuine</span>
+                  <span class="trust-band-label">Hand-checked stock</span>
+                </span>
+              </li>
+              <li class="trust-band-item">
+                <span class="trust-band-icon" aria-hidden="true"><i class="fas fa-truck-fast"></i></span>
+                <span class="trust-band-text">
+                  <span class="trust-band-value">Pan-India</span>
+                  <span class="trust-band-label">Tracked delivery</span>
+                </span>
+              </li>
+              <li class="trust-band-item">
+                <span class="trust-band-icon" aria-hidden="true"><i class="fas fa-lock"></i></span>
+                <span class="trust-band-text">
+                  <span class="trust-band-value">Secure Checkout</span>
+                  <span class="trust-band-label">UPI, cards &amp; netbanking</span>
+                </span>
+              </li>
+            </ul>
+            <ul class="trust-band-group" aria-hidden="true">
+              <li class="trust-band-item">
+                <span class="trust-band-icon" aria-hidden="true"><i class="fas fa-compact-disc"></i></span>
+                <span class="trust-band-text">
+                  <span class="trust-band-value"><span>5</span> Formats</span>
+                  <span class="trust-band-label">Vinyl to Blu-ray</span>
+                </span>
+              </li>
+              <li class="trust-band-item">
+                <span class="trust-band-icon" aria-hidden="true"><i class="fas fa-certificate"></i></span>
+                <span class="trust-band-text">
+                  <span class="trust-band-value"><span>100%</span> Genuine</span>
+                  <span class="trust-band-label">Hand-checked stock</span>
+                </span>
+              </li>
+              <li class="trust-band-item">
+                <span class="trust-band-icon" aria-hidden="true"><i class="fas fa-truck-fast"></i></span>
+                <span class="trust-band-text">
+                  <span class="trust-band-value">Pan-India</span>
+                  <span class="trust-band-label">Tracked delivery</span>
+                </span>
+              </li>
+              <li class="trust-band-item">
+                <span class="trust-band-icon" aria-hidden="true"><i class="fas fa-lock"></i></span>
+                <span class="trust-band-text">
+                  <span class="trust-band-value">Secure Checkout</span>
+                  <span class="trust-band-label">UPI, cards &amp; netbanking</span>
+                </span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
       <section class="section" id="shop-categories">
         <div class="container">
           <div class="section-header">
@@ -339,41 +408,89 @@
               <p class="section-subtitle">Find your favorite format and language</p>
             </div>
           </div>
+          <!-- Category covers are real <img> with descriptive alt text, not CSS
+               background-images. Three reasons, all deliberate:
+                 • a background-image is invisible to Google Images, and "buy
+                   vinyl records online india" is exactly the query these cards
+                   should be pulling;
+                 • loading="lazy" + width/height reserve the box, so six covers
+                   below the fold cost nothing on first paint and shift nothing;
+                 • the FILENAMES are the alt text's twin — see src/img/README.md.
+               Card titles match velorex_categories()' labels in
+               src/seo/seo-lib.php exactly ("Blu-ray Movies", not "Blu-rays"),
+               so the anchor text on the homepage matches the <h1> and <title>
+               of the page it points at. -->
           <div class="categories-grid">
             <a href="/vinyl-records" onclick="navigate('products', {cat:'vinyl'}); return false;" class="category-card">
-              <div class="category-card-bg" style="background: linear-gradient(135deg, #1a0a2e, #533483);"></div>
+              <img class="category-card-bg" src="src/img/categories/buy-vinyl-records-online-india.jpg"
+                   alt="Original vinyl LP records with sleeves, available to buy online in India"
+                   width="900" height="503" loading="lazy" decoding="async">
               <div class="category-card-overlay"></div>
-              <div class="category-card-content"><div class="category-card-icon">💿</div><div class="category-card-title">Vinyl Records</div><div class="category-card-count" id="vinyl-count">Loading...</div></div>
+              <div class="category-card-content"><div class="category-card-title">Vinyl Records</div><div class="category-card-count" id="vinyl-count">Loading...</div></div>
             </a>
             <a href="/audio-cds" onclick="navigate('products', {cat:'cd'}); return false;" class="category-card">
-              <div class="category-card-bg" style="background: linear-gradient(135deg, #0f3460, #16213e);"></div>
+              <img class="category-card-bg" src="src/img/categories/buy-audio-cds-online-india.jpg"
+                   alt="Audio music CDs in jewel cases, available to buy online in India"
+                   width="900" height="503" loading="lazy" decoding="async">
               <div class="category-card-overlay"></div>
-              <div class="category-card-content"><div class="category-card-icon">💽</div><div class="category-card-title">Audio CDs</div><div class="category-card-count" id="cd-count">Loading...</div></div>
+              <div class="category-card-content"><div class="category-card-title">Audio CDs</div><div class="category-card-count" id="cd-count">Loading...</div></div>
             </a>
             <a href="/cassettes" onclick="navigate('products', {cat:'cassette'}); return false;" class="category-card">
-              <div class="category-card-bg" style="background: linear-gradient(135deg, #3d1a00, #8b4513);"></div>
+              <img class="category-card-bg" src="src/img/categories/buy-music-cassettes-online-india.jpg"
+                   alt="Vintage pre-recorded audio cassettes, available to buy online in India"
+                   width="900" height="503" loading="lazy" decoding="async">
               <div class="category-card-overlay"></div>
-              <div class="category-card-content"><div class="category-card-icon">📼</div><div class="category-card-title">Cassettes</div><div class="category-card-count" id="cassette-count">Loading...</div></div>
+              <div class="category-card-content"><div class="category-card-title">Cassettes</div><div class="category-card-count" id="cassette-count">Loading...</div></div>
             </a>
             <a href="/blu-ray-movies" onclick="navigate('products', {cat:'bluray'}); return false;" class="category-card">
-              <div class="category-card-bg" style="background: linear-gradient(135deg, #004d40, #00251a);"></div>
+              <img class="category-card-bg" src="src/img/categories/buy-blu-ray-movies-online-india.jpg"
+                   alt="Blu-ray movie discs in blue cases, available to buy online in India"
+                   width="900" height="503" loading="lazy" decoding="async">
               <div class="category-card-overlay"></div>
-              <div class="category-card-content"><div class="category-card-icon">🎬</div><div class="category-card-title">Blu-rays</div><div class="category-card-count" id="bluray-count">Loading...</div></div>
+              <div class="category-card-content"><div class="category-card-title">Blu-ray Movies</div><div class="category-card-count" id="bluray-count">Loading...</div></div>
             </a>
             <a href="/dvd-movies" onclick="navigate('products', {cat:'dvd'}); return false;" class="category-card">
-              <div class="category-card-bg" style="background: linear-gradient(135deg, #4a148c, #1a0033);"></div>
+              <img class="category-card-bg" src="src/img/categories/buy-dvd-movies-online-india.jpg"
+                   alt="DVD movie cases and disc, Bollywood and English films available to buy online in India"
+                   width="900" height="503" loading="lazy" decoding="async">
               <div class="category-card-overlay"></div>
-              <div class="category-card-content"><div class="category-card-icon">🎞️</div><div class="category-card-title">DVDs</div><div class="category-card-count" id="dvd-count">Loading...</div></div>
+              <div class="category-card-content"><div class="category-card-title">DVD Movies</div><div class="category-card-count" id="dvd-count">Loading...</div></div>
             </a>
             <!-- Combos sit alongside the formats here, but they are not a product
                  category — the card is hidden until initHomeCombos() confirms
                  there is at least one published combo, so it can never lead to an
                  empty page. Same rule as the combo strip below. -->
             <a href="/combos" onclick="navigate('combos'); return false;" class="category-card" id="combos-category-card" style="display:none;">
-              <div class="category-card-bg" style="background: linear-gradient(135deg, #7a1f1f, #2b0a0a);"></div>
+              <img class="category-card-bg" src="src/img/categories/music-combo-offers-bundles-india.jpg"
+                   alt="Music combo offer bundle of vinyl, CD, cassette, Blu-ray and DVD with a tote bag"
+                   width="900" height="503" loading="lazy" decoding="async">
               <div class="category-card-overlay"></div>
-              <div class="category-card-content"><div class="category-card-icon">🎁</div><div class="category-card-title">Combo Offers</div><div class="category-card-count" id="combos-count">Loading...</div></div>
+              <div class="category-card-content"><div class="category-card-title">Combo Offers</div><div class="category-card-count" id="combos-count">Loading...</div></div>
             </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- ==================== RECENTLY SOLD ====================
+           Filled by RecentSales.init() from /api/recent-sales.php. Ships
+           display:none and is revealed only when the endpoint returns enough
+           rows — same rule as the combo strip below: a heading over an empty
+           box reads as a broken shop, and a failed fetch must not leave one.
+
+           Nothing here is server-rendered, and that is fine: this is social
+           proof, not content worth ranking, and the products it links to all
+           have their own indexable pages reached from the grids further down. -->
+      <section class="section section-alt" id="recent-sales" style="display:none;">
+        <div class="container">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">Recently <span>Sold</span></h2>
+              <p class="section-subtitle">What collectors across India picked up lately</p>
+            </div>
+            <a href="/products" onclick="navigate('products'); return false;" class="btn btn-secondary">Shop All →</a>
+          </div>
+          <div class="recent-sales-strip">
+            <div class="recent-sales-row" id="recent-sales-row"></div>
           </div>
         </div>
       </section>
@@ -419,9 +536,60 @@
         </div>
       </section>
 
+      <!-- ==================== RECORD LABELS ====================
+           The labels whose pressings we stock. Static markup for the same
+           reason the hero's brand slide is (CLAUDE.md §15): `/` never reaches
+           seo-render.php, so anything a non-executing crawler should read has
+           to live in this file — and "Saregama vinyl", "T-Series records" are
+           exactly the queries this shop wants to be findable for.
+
+           Each chip renders the label's NAME today. Drop an official logo at
+           src/img/labels/<slug>.svg and it swaps itself in with no code change
+           — the <img> is hidden until its own onload fires. See
+           src/img/labels/README.md for the sourcing rules; these are other
+           companies' trademarks, so the artwork has to come from their own
+           press/brand pages, not from a search-result thumbnail. -->
+      <section class="label-band" aria-labelledby="label-band-title">
+        <div class="container">
+          <h2 class="label-band-title" id="label-band-title">Discover music from the industry's <span>leading labels</span></h2>
+          <ul class="label-band-list">
+            <li class="label-chip">
+              <img class="label-chip-logo" src="src/img/labels/t-series.svg" alt="T-Series"
+                   loading="lazy" decoding="async" onload="this.parentElement.classList.add('has-logo')">
+              <span class="label-chip-name">T-Series</span>
+            </li>
+            <li class="label-chip">
+              <img class="label-chip-logo" src="src/img/labels/saregama.svg" alt="Saregama"
+                   loading="lazy" decoding="async" onload="this.parentElement.classList.add('has-logo')">
+              <span class="label-chip-name">Saregama</span>
+            </li>
+            <li class="label-chip">
+              <img class="label-chip-logo" src="src/img/labels/sony-music.svg" alt="Sony Music"
+                   loading="lazy" decoding="async" onload="this.parentElement.classList.add('has-logo')">
+              <span class="label-chip-name">Sony Music</span>
+            </li>
+            <li class="label-chip">
+              <img class="label-chip-logo" src="src/img/labels/universal-music-group.svg" alt="Universal Music Group"
+                   loading="lazy" decoding="async" onload="this.parentElement.classList.add('has-logo')">
+              <span class="label-chip-name">Universal Music Group</span>
+            </li>
+            <li class="label-chip">
+              <img class="label-chip-logo" src="src/img/labels/tips-music.svg" alt="Tips Music"
+                   loading="lazy" decoding="async" onload="this.parentElement.classList.add('has-logo')">
+              <span class="label-chip-name">Tips Music</span>
+            </li>
+            <li class="label-chip">
+              <img class="label-chip-logo" src="src/img/labels/zee-music.svg" alt="Zee Music Co."
+                   loading="lazy" decoding="async" onload="this.parentElement.classList.add('has-logo')">
+              <span class="label-chip-name">Zee Music Co.</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
       <section class="section">
         <div class="container">
-          <div style="background: var(--vinyl-gradient); border-radius: var(--radius-lg); padding: 3rem; text-align: center; position: relative; overflow: hidden;">
+          <div class="newsletter-card">
             <div style="position:absolute;inset:0;background:radial-gradient(ellipse at center, rgba(255,107,53,0.2), transparent);pointer-events:none;"></div>
             <!-- No subscriber count here. It read "Join 10,000+ Music Lovers",
                  which was never a real figure — same rule as the hero stats and
@@ -433,8 +601,8 @@
                  handler, no endpoint and no table. Every address typed into it
                  was discarded. Wired to /api/subscribe.php via
                  src/js/storefront/newsletter.js. -->
-            <div class="newsletter-form" id="newsletter-form" style="display:flex;max-width:400px;margin:0 auto;gap:0.75rem;">
-              <input id="newsletter-email" type="email" name="email" autocomplete="email" placeholder="Enter your email..." aria-label="Email address for the Velorex Record Club newsletter" style="flex:1;min-width:0;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:8px;color:white;padding:0.75rem 1rem;font-size:0.9rem;">
+            <div class="newsletter-form" id="newsletter-form">
+              <input id="newsletter-email" class="newsletter-input" type="email" name="email" autocomplete="email" placeholder="Enter your email..." aria-label="Email address for the Velorex Record Club newsletter">
               <button id="newsletter-submit" type="button" class="btn btn-primary" onclick="Newsletter.submit('newsletter')">Subscribe</button>
             </div>
             <p id="newsletter-note" role="status" aria-live="polite" style="display:none;max-width:400px;margin:0.7rem auto 0;font-size:0.8rem;line-height:1.5;color:var(--text-muted);"></p>
