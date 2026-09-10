@@ -83,3 +83,34 @@
 @media (max-width: 640px) {
   .set-help { max-width: none; }
 }
+
+/* ---- ads.txt status ------------------------------------------------------
+   AdSense verification fetches /ads.txt and, when it 404s, reports only
+   "we couldn't verify your site" — which does not say why. This block is the
+   answer to that, shown next to the field that controls it. */
+.set-adstxt-ok,
+.set-adstxt-bad {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.set-adstxt-ok  { color: var(--success); }
+.set-adstxt-bad { color: var(--danger); }
+
+/* The literal line a crawler receives — monospace so it can be compared
+   character by character against what AdSense says it expects. */
+.set-adstxt {
+  margin: 0.7rem 0 0;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  color: var(--text);
+  overflow-x: auto;
+  white-space: pre;
+}

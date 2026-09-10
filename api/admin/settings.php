@@ -20,6 +20,28 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../_settings_helpers.php';
 require_once __DIR__ . '/../_mailer.php';
 
+// The exact line /ads.txt is serving, or why it is serving nothing. Mirrors
+// ads-txt.php — same regex, same prefix handling — so the panel cannot claim
+// something the file does not do.
+function ads_txt_status(): array {
+    try {
+        $client = trim((string)settings_get(db(), 'adsense_client'));
+    } catch (Throwable $e) {
+        return ['ok' => false, 'line' => '', 'reason' => 'Could not read settings'];
+    }
+    if ($client === '') {
+        return ['ok' => false, 'line' => '',
+                'reason' => 'No publisher ID set — /ads.txt returns 404, so AdSense cannot verify the site.'];
+    }
+    if (!preg_match('/^ca-pub-(\d{10,20})$/', $client, $m)) {
+        return ['ok' => false, 'line' => '',
+                'reason' => 'That publisher ID is not in the ca-pub-0000000000000000 shape, so /ads.txt returns 404.'];
+    }
+    return ['ok' => true,
+            'line' => 'google.com, pub-' . $m[1] . ', DIRECT, f08c47fec0942fa0',
+            'reason' => ''];
+}
+
 require_admin();
 
 try {
@@ -58,6 +80,12 @@ try {
                 'brevoConfigured' => defined('BREVO_API_KEY') && BREVO_API_KEY !== '',
                 'uploadsDir'      => defined('UPLOADS_PERSIST_DIR') ? (string)UPLOADS_PERSIST_DIR : '',
                 'phpVersion'      => PHP_VERSION,
+                // What /ads.txt is actually serving right now. AdSense
+                // verification fetches that URL, and a 404 there is the whole
+                // reason a "we couldn't verify your site" loop happens — but
+                // the 404 is invisible from inside the admin, so it is
+                // reported here rather than left to be guessed at.
+                'adsTxt'          => ads_txt_status(),
             ],
         ]);
         exit;

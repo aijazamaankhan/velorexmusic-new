@@ -146,6 +146,25 @@
           + '<span class="dash-list-sub">' + escapeHTML(detail || '') + '</span></span></li>';
       };
 
+      // ---- ads.txt -----------------------------------------------------------
+      // AdSense verification fetches https://<site>/ads.txt. When that 404s the
+      // only feedback is Google's own "we couldn't verify your site", which
+      // does not say why — so the line being served (or the reason none is) is
+      // shown here, next to the field that controls it.
+      const at = (env.adsTxt || {});
+      const adsTxtHtml = '<section class="admin-card dash-panel">'
+        + '<h3 class="dash-panel-title">ads.txt</h3>'
+        + '<p class="set-help" style="margin:-0.5rem 0 1rem;">Served at '
+        +   '<a href="/ads.txt" target="_blank" rel="noopener">/ads.txt</a>, generated from the '
+        +   'publisher ID above. This is also how you should verify the site with AdSense — their other '
+        +   'two options put ad code on every page, not just the blog.</p>'
+        + (at.ok
+            ? '<div class="set-adstxt-ok"><i class="fas fa-circle-check"></i> Serving now</div>'
+              + '<pre class="set-adstxt">' + escapeHTML(String(at.line || '')) + '</pre>'
+            : '<div class="set-adstxt-bad"><i class="fas fa-circle-exclamation"></i> '
+              + escapeHTML(String(at.reason || 'Not being served')) + '</div>')
+        + '</section>';
+
       const envHtml = '<section class="admin-card dash-panel">'
         + '<h3 class="dash-panel-title">Environment</h3>'
         + '<p class="set-help" style="margin:-0.5rem 0 1rem;">Read-only. These come from the secrets file on the '
@@ -170,7 +189,7 @@
         + '<p class="set-help" style="margin-top:1rem;">PHP ' + escapeHTML(String(env.phpVersion || '—')) + '</p>'
         + '</section>';
 
-      root.innerHTML = sections + envHtml
+      root.innerHTML = sections + adsTxtHtml + envHtml
         + '<div class="set-actions">'
         +   '<button type="button" class="btn btn-primary" id="settings-save" style="width:auto;"'
         +     (SettingsState.dirty ? '' : ' disabled') + ' onclick="saveSettings()">'
