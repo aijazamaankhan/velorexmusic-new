@@ -62,24 +62,28 @@
       margin-bottom: 3.5rem;
     }
 
-    .logo-v {
-      width: 28px;
-      height: 28px;
-      background: linear-gradient(135deg, #ff6b35, #ff3a00);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 900;
-      font-size: 1rem;
+    /* The real lockup replaced a gradient "V" square plus the word "Velorex".
+       width:auto with a capped height so the artwork keeps its own aspect
+       ratio whatever export is dropped in; the width/height attributes on the
+       tag still reserve the box against layout shift. */
+    .sidebar-logo-img {
+      height: 34px;
+      width: auto;
+      max-width: 100%;
+      display: block;
     }
+    .sidebar-logo-light { display: none; }
+    [data-theme="light"] .sidebar-logo-dark  { display: none; }
+    [data-theme="light"] .sidebar-logo-light { display: block; }
 
-    .logo-text {
-      font-size: 1.5rem;
-      font-weight: 800;
-      color: white;
-      letter-spacing: -0.02em;
+    /* The stacked lockup already contains the wordmark AND the tagline, so the
+       login screen renders no separate brand text. */
+    .login-logo-img {
+      display: block;
+      width: 100%;
+      max-width: 260px;
+      height: auto;
+      margin: 0 auto 1.5rem;
     }
 
     .nav-menu {

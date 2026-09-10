@@ -31,7 +31,7 @@
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
   <!-- Page-specific styles (sidebar, header, panels, tables, drawer, dashboard).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/admin/pages/admin.css?v=0a92b95f">
+  <link rel="stylesheet" href="src/styles/admin/pages/admin.css?v=09fb85b1">
   <link rel="stylesheet" href="src/styles/admin/pages/dashboard.css?v=ef59ea1f">
   <link rel="stylesheet" href="src/styles/admin/pages/settings.css?v=b34fa78c">
   <!-- Admin JS modules extracted in PR 4. Plain scripts (not type="module") so
@@ -48,7 +48,8 @@
        (the admin showToast — different shape from the storefront's). -->
   <script src="src/js/admin/main.js?v=45b4240d"></script>
   <script src="src/js/admin/customers.js?v=127735c1"></script>
-  <script src="src/js/admin/orders.js?v=fef46ea8"></script>
+  <script src="src/js/admin/orders.js?v=5f5e6bfb"></script>
+  <script src="src/js/admin/invoice.js?v=0e254b60"></script>
   <script src="src/js/admin/image-cropper.js?v=0dfdbe4f"></script>
   <script src="src/js/admin/inventory.js?v=a37fd7f7"></script>
   <script src="src/js/admin/blog.js?v=3698c8d7"></script>
@@ -66,7 +67,8 @@
   <!-- Login Screen -->
   <div id="login-screen">
     <div class="login-card">
-      <div class="login-logo">Velorex Music</div>
+      <img src="src/img/logo-stacked-dark.png" class="login-logo-img"
+           alt="Velorex Music — Feel the Music. Own the Legacy." width="760" height="471">
       <div class="login-title">Admin Command Center</div>
       <form id="login-form" onsubmit="return false;">
         <div class="form-group">
@@ -95,9 +97,18 @@
 
     <!-- Sidebar -->
     <aside class="sidebar" id="adminSidebar">
-      <a href="index.html" class="sidebar-logo">
-        <div class="logo-v">V</div>
-        <span class="logo-text">Velorex</span>
+      <!-- The real brand lockup, not a "V" square and the word "Velorex".
+           PNG exports, not the SVG masters: the masters set the wordmark as
+           live <text> in Aktiv Grotesk and Poppins, fonts no browser has, so
+           the SVG silently falls back to a different typeface (src/img/README.md).
+           Two variants swapped by [data-theme] — the hidden one is display:none
+           and so also leaves the accessibility tree, which is why both can
+           carry the same alt without it being announced twice. -->
+      <a href="index.html" class="sidebar-logo" aria-label="Velorex Music — back to the storefront">
+        <img src="src/img/logo-lockup-dark.png" class="sidebar-logo-img sidebar-logo-dark"
+             alt="Velorex Music" width="420" height="96">
+        <img src="src/img/logo-lockup-light.png" class="sidebar-logo-img sidebar-logo-light"
+             alt="Velorex Music" width="420" height="96">
       </a>
 
       <nav class="nav-menu">

@@ -51,7 +51,9 @@ function newsletter_welcome_email(string $email, string $unsubToken): array {
         .   '<tr><td align="center" style="padding:24px 12px;">'
         .     '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.04);">'
         .       '<tr><td style="background:#0a0a14;padding:28px;text-align:center;">'
-        .         '<a href="' . _vv_esc($base) . '/" style="text-decoration:none;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:0.02em;">Velorex Music</a>'
+        .         '<a href="' . _vv_esc($base) . '/" style="text-decoration:none;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:0.02em;">'
+        .           '<img src="' . _vv_esc($base) . '/src/img/logo-lockup-dark.png" alt="Velorex Music" width="190" height="44" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-width:190px;margin:0 auto;">'
+        .         '</a>'
         .         '<div style="margin-top:8px;font-size:11px;color:#ff6b35;letter-spacing:0.14em;text-transform:uppercase;font-weight:700;">Record Club</div>'
         .       '</td></tr>'
         .       '<tr><td style="padding:34px 28px 8px;">'
@@ -216,7 +218,12 @@ function abandoned_cart_email(array $data): array {
         .       '<tr><td style="background:#0a0a14;padding:24px 28px;">'
         .         '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%"><tr>'
         .           '<td style="font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:800;letter-spacing:0.02em;color:#ffffff;">'
-        .             '<a href="' . _vv_esc($base) . '/" style="text-decoration:none;color:#ffffff;">Velorex Music</a>'
+        // Brand lockup — same treatment as the receipt in _email_templates.php.
+        // Absolute https URL, explicit dimensions, display:block; the alt text
+        // is the fallback for clients that block images.
+        .             '<a href="' . _vv_esc($base) . '/" style="text-decoration:none;color:#ffffff;">'
+        .               '<img src="' . _vv_esc($base) . '/src/img/logo-lockup-dark.png" alt="Velorex Music" width="170" height="39" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-width:170px;">'
+        .             '</a>'
         .           '</td>'
         .           '<td align="right" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#ff6b35;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;">Cart saved</td>'
         .         '</tr></table>'

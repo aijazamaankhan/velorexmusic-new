@@ -567,52 +567,12 @@
       );
     }
 
-    function printCurrentOrder() {
-      var id = window._currentOrderIdForPrint;
-      if (!id) return;
-      var orders = Storage.getOrders();
-      var order = orders.find(function (o) { return String(o.id) === String(id); });
-      if (!order) return;
-
-      var html = buildOrderDetailsHtml(order);
-      var w = window.open('', '_blank');
-      if (!w) {
-        showToast('❌ Popup blocked. Allow popups to print.', 'danger');
-        return;
-      }
-
-      w.document.open();
-      w.document.write(
-        '<!doctype html><html><head><meta charset="utf-8">' +
-        '<meta name="viewport" content="width=device-width, initial-scale=1">' +
-        '<title>Order #' + (order.id || '') + '</title>' +
-        '<style>' +
-        'body{margin:0;padding:24px;font-family:system-ui,Segoe UI,Roboto,Arial;background:#050508;color:#f8fafc;}' +
-        '.wrap{max-width:980px;margin:0 auto;}' +
-        '.hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}' +
-        '.brand{font-weight:900;font-size:18px;letter-spacing:-0.02em;}' +
-        '.muted{color:#94a3b8;font-size:12px;}' +
-        '.badge{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;font-weight:800;font-size:12px;border:1px solid rgba(255,255,255,0.08);}' +
-        '.order-details-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;}' +
-        '.order-details-card{background:#11111e;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:14px;}' +
-        '.order-details-label{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:0.08em;font-weight:900;margin-bottom:6px;}' +
-        '.order-details-value{font-weight:900;word-break:break-word;}' +
-        '.order-items{background:#11111e;border:1px solid rgba(255,255,255,0.08);border-radius:16px;overflow:hidden;}' +
-        '.order-item-row{display:grid;grid-template-columns:1fr auto;gap:12px;padding:12px 14px;border-bottom:1px solid rgba(255,255,255,0.08);align-items:center;}' +
-        '.order-item-row:last-child{border-bottom:none;}' +
-        '.order-item-name{font-weight:900;}' +
-        '.order-item-sub{font-size:12px;color:#94a3b8;margin-top:2px;}' +
-        '.order-total-bar{display:flex;justify-content:space-between;align-items:center;padding:14px;background:rgba(255,215,0,0.08);border-top:1px solid rgba(255,215,0,0.18);font-weight:900;}' +
-        '@media print{body{background:#fff;color:#111} .order-details-card,.order-items{border-color:#ddd} .order-total-bar{background:#f6f6f6;border-top-color:#ddd} .order-item-sub,.order-details-label{color:#555}}' +
-        '</style></head><body><div class="wrap">' +
-        '<div class="hdr"><div><div class="brand">Velorex Music</div><div class="muted">Order print · Use “Save as PDF” in the print dialog</div></div>' +
-        '<div class="muted">#' + (order.id || '') + '</div></div>' +
-        html +
-        '<script>setTimeout(()=>{window.print();},250);<\\/script>' +
-        '</div></body></html>'
-      );
-      w.document.close();
-    }
+    // printCurrentOrder() moved to src/js/admin/invoice.js.
+    //
+    // It used to print THIS module's dark on-screen order card — grey text on
+    // near-black, which is illegible on paper and expensive in toner. The
+    // replacement is a proper branded A4 invoice; see that file's header for
+    // why it is a browser print rather than a server-side PDF.
 
     function openOrderModal(order) {
       var modal = document.getElementById('order-modal');

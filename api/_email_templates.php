@@ -152,7 +152,16 @@ function order_receipt_email(array $orderData): array {
         .         '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">'
         .           '<tr>'
         .             '<td style="font-family:Arial,Helvetica,sans-serif;font-size:20px;font-weight:800;letter-spacing:0.02em;color:#ffffff;">'
-        .               '<a href="' . _vv_esc($storeUrl) . '" style="text-decoration:none;color:#ffffff;">Velorex Music</a>'
+        // The brand LOCKUP, not the words "Velorex Music".
+        // Absolute https URL — an email is rendered outside our origin, so a
+        // relative src resolves against nothing. Explicit width/height plus
+        // display:block is what stops Outlook stretching it and Gmail adding a
+        // baseline gap under it. The <a> keeps the alt text as the fallback for
+        // the many clients that block images by default, which is why the link
+        // still carries a colour.
+        .               '<a href="' . _vv_esc($storeUrl) . '" style="text-decoration:none;color:#ffffff;">'
+        .               '<img src="' . _vv_esc($storeUrl) . '/src/img/logo-lockup-dark.png" alt="Velorex Music" width="170" height="39" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-width:170px;">'
+        .               '</a>'
         .             '</td>'
         .             '<td align="right" style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#ff6b35;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;">Order Confirmed</td>'
         .           '</tr>'
