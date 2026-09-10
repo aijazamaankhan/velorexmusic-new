@@ -206,6 +206,10 @@
             'SMTP configured — receipts and reminders can send',
             'SMTP not configured — no receipt or reminder will send',
             'Set the SMTP_* constants in the secrets file (CLAUDE.md §10).')
+        + healthRow('WhatsApp order alerts', h.whatsappReady,
+            'Sending via ' + escapeHTML(String(h.whatsappVia || '')),
+            'Configured but incomplete — no alert will send',
+            'Check the WHATSAPP_* constants in the secrets file (CLAUDE.md §39).')
         + healthRow('Payments', h.razorpayKeyed,
             'Razorpay keys present · <strong>' + escapeHTML(String(h.razorpayMode || '')) + '</strong> mode',
             'Razorpay keys missing or RAZORPAY_MODE unset — checkout will fail',

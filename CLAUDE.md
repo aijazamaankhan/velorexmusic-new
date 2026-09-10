@@ -2934,3 +2934,85 @@ different properties means they compose. The drift pauses on hover and
 focus-within — a moving copy target is worse than a static one — and stops
 entirely under `prefers-reduced-motion`, where the card still appears because it
 is information, not decoration.
+
+## 39. WhatsApp order alerts
+
+A message to the shop's own phone when an order lands, alongside the admin
+email. [api/_whatsapp.php](api/_whatsapp.php), fired from `finalize_payment()`.
+
+**Same discipline as the mailer, for the same reason.** It runs after the
+payment is captured and the order committed, so it never throws, never blocks
+for long (8s ceiling, tighter than SMTP's 30 — the customer is watching a
+spinner), and can never affect whether an order exists. Silently skipped until
+`WHATSAPP_PROVIDER` is set, so it was safe to deploy before any account existed.
+
+| Provider | Trade-off |
+|---|---|
+| `callmebot` | Working in ~5 minutes, free, **sends only to your own number**. No business account, no template approval. Not commercial-grade. |
+| `cloud` | Meta's official Cloud API. Free tier, proper deliverability, but needs a Meta Business account and an **approved message template** — a business-initiated message outside a 24-hour window can only be a template. That is a WhatsApp rule, not a limit of this code. |
+
+**Never used to message a customer.** Receipts go by email (§10). A second
+customer channel means a second consent story, and WhatsApp's rules on
+business-initiated messaging are stricter than email's.
+
+Template variables are ordered `{{1}}` order id, `{{2}}` amount, `{{3}}` item
+count, `{{4}}` customer name, `{{5}}` city — and are whitespace-collapsed before
+sending, because a newline inside a template parameter makes WhatsApp reject the
+entire message. The amount is written `Rs 1,234` rather than with the ₹ glyph;
+template parameters are safest as ASCII.
+
+`whatsapp_last_error()` mirrors `mailer_last_error()` (§30) and carries the
+provider's own words — an unapproved template, a number not on the test allow
+list — because those name the actual fix. Admin-only; it can contain the
+configured phone number.
+
+The Dashboard's Store health block reports it, with **null when no provider is
+chosen** so "not set up" prints an em dash rather than a red cross. Setup steps
+are in [api/secrets.example.php](api/secrets.example.php).
+
+## 40. AdSense — blog pages only
+
+Off until `adsense_client` **and** `adsense_slot` are set in Settings → Ads.
+Nothing loads and no request reaches Google before that.
+[src/js/storefront/ads.js](src/js/storefront/ads.js).
+
+### Why blog-only is the entire design
+
+An ad on a product page, a category page or the cart is an invitation to leave
+for a competitor, priced in fractions of a rupee, at the moment the customer was
+about to spend thousands. The blog is different: it exists to pull search
+traffic, most of which was never going to buy today.
+
+**The SPA is what makes this non-trivial.** The storefront never reloads, so a
+script appended once stays for the session and any slot left in the DOM keeps
+rendering. A naive "add the tag on the blog page" would put ads on the checkout.
+So:
+
+- the tag is injected on the **first** blog view and never re-injected;
+- `initPage()` in [router.js](src/js/storefront/router.js) calls
+  `AdSense.teardown()` on **every** navigation that is not a blog page;
+- slots are only ever created by `renderBlogPost()`.
+
+Verified: 1 unit on a long post, 0 on a short one, and **0 on cart, products and
+home after visiting a post**. If you add a route, that teardown guard is the
+line that keeps this true.
+
+### Policy points baked in
+
+- **Nothing renders under 300 words.** A unit on a two-paragraph post is the
+  thin content AdSense declines to serve, and it looks like a content farm.
+- **Every unit is labelled "Advertisement"** and sits below a rule. An
+  unlabelled block inside an article reads as part of the article — the
+  placement AdSense prohibits and readers resent.
+- **`min-height` is reserved** so filling the slot does not shove the paragraph
+  someone is reading.
+- The publisher id is regex-checked (`ca-pub-` + digits) before it goes anywhere
+  near a `<script src>`, and the slot must be numeric. Anything else is treated
+  as unset.
+- **`/privacy.html`'s Cookies section must stay accurate while this is on** —
+  AdSense requires a visible disclosure of ad cookies, and that page is now
+  editable (§35), so it can drift.
+
+Worth knowing before switching it on: AdSense approval needs original content
+and a real privacy policy, and a blog with a handful of posts is often declined
+on first application.

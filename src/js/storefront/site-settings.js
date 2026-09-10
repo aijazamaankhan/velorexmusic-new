@@ -29,6 +29,8 @@
         contact_email:         '',
         contact_phone:         '',
         store_address:         '',
+        adsense_client:        '',
+        adsense_slot:          '',
       },
       loaded: false,
 

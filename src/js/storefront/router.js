@@ -475,6 +475,14 @@
     }
 
     function initPage(page, params) {
+      // Ads live on blog pages and nowhere else. Torn down on EVERY navigation
+      // that is not a blog page, because this SPA never reloads — a unit
+      // rendered on /blog/x would otherwise still be in the document when the
+      // customer reached the cart. See src/js/storefront/ads.js.
+      if (typeof AdSense !== 'undefined' && page !== 'blog-post' && page !== 'blog') {
+        try { AdSense.teardown(); } catch (e) {}
+      }
+
       if (page === 'index') initPageIndex();
       else if (page === 'products') initPageProducts(params);
       else if (page === 'product') initPageProduct(params);

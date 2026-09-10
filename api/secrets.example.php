@@ -150,3 +150,51 @@ define('SMTP_DEBUG', 0);
 // customer receipt still fires either way).
 //   define('ADMIN_NOTIFY_EMAIL', 'orders@velorexmusic.com');
 //   define('ADMIN_NOTIFY_EMAIL', 'owner@example.com, manager@example.com');
+
+// -----------------------------------------------------------------------------
+// WHATSAPP ORDER ALERTS (optional)
+//
+// A message to the shop's own phone when an order lands, alongside the admin
+// email above. Silently skipped until WHATSAPP_PROVIDER is set, so the code is
+// safe to deploy before you have set any of this up.
+//
+// Never used to message a CUSTOMER — see the header of api/_whatsapp.php.
+//
+// -------- Option A: CallMeBot (fastest — working in about five minutes) ------
+// Free, and sends only to YOUR OWN number. No business account, no template
+// approval. Not a commercial-grade channel; fine for an owner alert.
+//
+//   1. Save +34 644 51 95 23 in your phone as "CallMeBot".
+//   2. WhatsApp it:  I allow callmebot to send me messages
+//   3. It replies with your personal API key.
+//
+//   define('WHATSAPP_PROVIDER', 'callmebot');
+//   define('WHATSAPP_TO',       '919876543210');  // digits only, with country code, no +
+//   define('WHATSAPP_APIKEY',   '123456');
+//
+// -------- Option B: Meta WhatsApp Cloud API (official) -----------------------
+// Free tier, proper deliverability, and what you want if this ever grows past
+// one owner's phone. More setup:
+//
+//   1. developers.facebook.com -> create an app -> add "WhatsApp".
+//   2. Note the Phone number ID and generate a permanent access token
+//      (a System User token; the 24-hour test token will expire on you).
+//   3. Create a MESSAGE TEMPLATE and get it approved. A business-initiated
+//      message outside a 24-hour customer window can ONLY be a template —
+//      this is a WhatsApp rule, not a limitation of this code.
+//      Body, with the variables in exactly this order:
+//         New order {{1}} — {{2}}, {{3}} items. {{4}}, {{5}}.
+//      (order id, amount, item count, customer name, city)
+//   4. While the app is in test mode, add your own number as a recipient in
+//      the WhatsApp -> API Setup screen, or nothing will arrive.
+//
+//   define('WHATSAPP_PROVIDER',      'cloud');
+//   define('WHATSAPP_TO',            '919876543210');
+//   define('WHATSAPP_TOKEN',         'EAAG…');       // permanent access token
+//   define('WHATSAPP_PHONE_ID',      '123456789012345');
+//   define('WHATSAPP_TEMPLATE',      'new_order_alert');
+//   define('WHATSAPP_TEMPLATE_LANG', 'en');          // must match the approved template
+//
+// The admin Dashboard's Store health block reports whether this is configured,
+// and a failed send records the provider's own error message.
+

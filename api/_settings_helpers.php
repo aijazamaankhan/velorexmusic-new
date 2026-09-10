@@ -87,6 +87,24 @@ function settings_schema(): array {
             'consumer' => 'api/admin/abandoned.php + api/_recovery.php',
         ],
 
+        // ---- Ads ------------------------------------------------------------
+        // BLOG PAGES ONLY, enforced in src/js/storefront/ads.js and by the
+        // router tearing units down on every non-blog navigation. An ad on a
+        // product page or the cart invites the customer to leave for a
+        // competitor, for pennies, at the moment they were about to spend.
+        'adsense_client' => [
+            'type' => 'string', 'max' => 40, 'default' => '', 'public' => true,
+            'group' => 'Ads (blog only)', 'label' => 'AdSense publisher ID',
+            'help'  => 'Looks like ca-pub-1234567890123456. Blank means no ads anywhere, and the Google script is never even loaded. Ads appear ONLY inside blog posts, and only on posts over 300 words.',
+            'consumer' => 'src/js/storefront/ads.js',
+        ],
+        'adsense_slot' => [
+            'type' => 'string', 'max' => 30, 'default' => '', 'public' => true,
+            'group' => 'Ads (blog only)', 'label' => 'Ad unit (slot) ID',
+            'help'  => 'The numeric ID of a display unit created in your AdSense account. Both fields are needed before anything renders. Keep the Cookies section of /privacy.html accurate while this is on.',
+            'consumer' => 'src/js/storefront/ads.js',
+        ],
+
         // ---- Contact --------------------------------------------------------
         // Shown on the storefront, so these are public by definition.
         'contact_email' => [

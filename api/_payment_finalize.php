@@ -19,6 +19,7 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/_mailer.php';
 require_once __DIR__ . '/_email_templates.php';
 require_once __DIR__ . '/_coupon_helpers.php';
+require_once __DIR__ . '/_whatsapp.php';
 
 // Returns ['orderId' => 'VD-XXXXXXXX', 'alreadyFinalized' => bool, 'userId' => int]
 // or throws on:
@@ -253,6 +254,16 @@ function finalize_payment(PDO $pdo, string $razorpayOrderId, string $razorpayPay
             } catch (Throwable $mailErr) {
                 error_log('[finalize] admin alert mail crashed for ' . $internalOrderId . ': ' . $mailErr->getMessage());
             }
+        }
+
+        // WhatsApp alert to the owner's phone. Same rules as the email above:
+        // after the commit, best-effort, result ignored, and it can never
+        // affect whether the order exists. Silently skipped until the
+        // WHATSAPP_* constants are set, so this is safe to deploy first.
+        try {
+            whatsapp_notify_new_order($orderData);
+        } catch (Throwable $waErr) {
+            error_log('[finalize] whatsapp alert crashed for ' . $internalOrderId . ': ' . $waErr->getMessage());
         }
 
         return [

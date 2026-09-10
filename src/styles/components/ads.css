@@ -1,0 +1,33 @@
+/* =============================================================================
+   Velorex Music — in-article ad unit (BLOG PAGES ONLY)
+   Used by: src/js/storefront/ads.js
+
+   The label is not decoration. An unlabelled ad block inside an article reads
+   as part of the article, which is the placement AdSense prohibits and readers
+   resent — so the wrapper always carries one, and the rule is styled to sit
+   apart from the prose rather than blend into it.
+   ============================================================================= */
+
+.vlx-ad-wrap {
+  margin: 2.5rem 0 1rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.vlx-ad-label {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.6rem;
+}
+
+/* A reserved minimum height so the article does not jump when the unit fills —
+   an ad that shoves the paragraph someone is reading is the worst version of
+   this. */
+.vlx-ad {
+  display: block;
+  min-height: 120px;
+}

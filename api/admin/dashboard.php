@@ -20,6 +20,7 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../_mailer.php';
 require_once __DIR__ . '/../_marketing_helpers.php';
 require_once __DIR__ . '/../_settings_helpers.php';
+require_once __DIR__ . '/../_whatsapp.php';
 
 require_admin();
 
@@ -238,6 +239,11 @@ try {
             'uploadsOk'     => $uploadsOk,
             'uploadsCount'  => $uploadsOk ? $uploadsCount : null,
             'smtpReady'     => mailer_is_configured(),
+            // null, not false, when no provider is chosen: "not set up" and
+            // "set up and broken" are different states, and the panel prints
+            // an em dash for the first rather than a red cross.
+            'whatsappReady' => whatsapp_provider() === '' ? null : whatsapp_is_configured(),
+            'whatsappVia'   => whatsapp_provider() !== '' ? whatsapp_provider() : null,
             'razorpayMode'  => $razorpayMode !== '' ? $razorpayMode : null,
             'razorpayKeyed' => $razorpayKeyed,
             'cartsReady'    => $cartsReady,

@@ -138,6 +138,18 @@
         + '<a href="/products" onclick="navigate(\'products\');return false;" class="btn btn-primary">Browse the shop</a>'
         + '</div></article>';
 
+      // In-article ad unit, blog pages only, and only when the post is long
+      // enough to carry one. Appended AFTER the body so it never lands between
+      // a heading and its paragraph.
+      if (typeof AdSense !== 'undefined') {
+        try {
+          var words = String(post.content || '').replace(/<[^>]*>/g, ' ')
+            .split(/\s+/).filter(Boolean).length;
+          var body = host.querySelector('.blog-post-body');
+          AdSense.render(body, words);
+        } catch (e) { console.warn('ad render failed:', e); }
+      }
+
       try { Seo.syncBlogPost(post); } catch (e) { console.warn('SEO blog sync failed:', e); }
       try { updateBreadcrumbs('blog-post', { slug: post.slug }); } catch (e) {}
     }
