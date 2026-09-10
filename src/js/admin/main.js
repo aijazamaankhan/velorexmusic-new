@@ -409,7 +409,7 @@
         users: { t: 'Customer Management', s: 'Search, edit, support and remove customer accounts' },
         abandoned: { t: 'Abandoned Carts', s: 'Baskets and checkouts that were walked away from' },
         subscribers: { t: 'Newsletter Subscribers', s: 'The mailing list, split by consent' },
-        settings: { t: 'Store Configuration', s: 'Configure store-wide preferences' }
+        settings: { t: 'Store Configuration', s: 'Settings that actually change the shop' }
       };
 
       const titleEl = document.getElementById('panel-title');
@@ -434,6 +434,10 @@
       // The Dashboard reads its own batched endpoint rather than the product /
       // order caches, so it needs no sync — and must not wait on one.
       if (panelId === 'overview') loadDashboard();
+      // Settings reads its own schema + values endpoint. Re-fetched on every
+      // visit rather than cached: it is small, and a stale toggle on a control
+      // panel is worse than a round trip.
+      if (panelId === 'settings') loadSettings();
 
       // Use initDashboard (not renderProductsTable alone) so the stat card +
       // recent-products list also refresh — paintPanelSkeleton above filled

@@ -1,0 +1,35 @@
+/* =============================================================================
+   Announcement bar
+   Markup: #announcement-bar in index.html, filled by SiteSettings.
+   Ships with the `hidden` attribute and is only revealed when Settings ->
+   Storefront enables it AND the text is non-empty.
+   ============================================================================= */
+
+.announcement-bar {
+  background: var(--orange-gradient);
+  color: #ffffff;
+  text-align: center;
+  font-size: 0.83rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 0.6rem 1rem;
+  line-height: 1.4;
+}
+/* The UA rule [hidden]{display:none} loses to the class rule above, exactly as
+   it does for .intro-splash (CLAUDE.md §15). Without this the bar renders as an
+   empty orange strip on every page. */
+.announcement-bar[hidden] { display: none !important; }
+
+.announcement-bar a,
+.announcement-bar .announcement-link {
+  color: #ffffff;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+  padding-bottom: 1px;
+}
+.announcement-bar .announcement-link:hover { border-bottom-color: #ffffff; }
+.announcement-bar i { font-size: 0.75em; margin-left: 0.15rem; }
+
+@media (max-width: 640px) {
+  .announcement-bar { font-size: 0.76rem; padding: 0.5rem 0.85rem; }
+}

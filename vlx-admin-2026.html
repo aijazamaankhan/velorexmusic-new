@@ -33,6 +33,7 @@
        Must load AFTER components so page-level rules override defaults. -->
   <link rel="stylesheet" href="src/styles/admin/pages/admin.css?v=0a92b95f">
   <link rel="stylesheet" href="src/styles/admin/pages/dashboard.css?v=ef59ea1f">
+  <link rel="stylesheet" href="src/styles/admin/pages/settings.css?v=b34fa78c">
   <!-- Admin JS modules extracted in PR 4. Plain scripts (not type="module") so
        the existing inline <script> + onclick= handlers resolve them via
        script-scope. Order: leaves first. -->
@@ -45,7 +46,7 @@
        script-scope. Load order: main first (defines shared helpers like
        adminAuthHeaders, switchPanel), then per-panel files, then toast last
        (the admin showToast — different shape from the storefront's). -->
-  <script src="src/js/admin/main.js?v=2f094c1a"></script>
+  <script src="src/js/admin/main.js?v=45b4240d"></script>
   <script src="src/js/admin/customers.js?v=127735c1"></script>
   <script src="src/js/admin/orders.js?v=fef46ea8"></script>
   <script src="src/js/admin/image-cropper.js?v=0dfdbe4f"></script>
@@ -55,7 +56,8 @@
   <!-- Abandoned carts + newsletter subscribers. Loaded after main.js because
        both panels call adminAuthHeaders() at runtime. -->
   <script src="src/js/admin/marketing.js?v=cf88524c"></script>
-  <script src="src/js/admin/dashboard.js?v=dfc7b3e8"></script>
+  <script src="src/js/admin/dashboard.js?v=3ffa681c"></script>
+  <script src="src/js/admin/settings.js?v=b33b0506"></script>
   <script src="src/js/admin/toast.js?v=9a4bf3e8"></script>
 </head>
 
@@ -638,25 +640,16 @@
         </div>
       </div>
 
+      <!-- ==================== SETTINGS ====================
+           Rendered by renderSettings() in src/js/admin/settings.js from the
+           schema the server sends. This was previously three hardcoded inputs
+           and a Save button with NO handler — it looked like configuration and
+           configured nothing. Do not hand-write fields back into this markup:
+           the field list lives in settings_schema() in
+           api/_settings_helpers.php so the form and its validator cannot
+           drift. -->
       <div id="panel-settings" class="panel">
-        <div class="card">
-          <h3 style="margin-bottom: 1.5rem; font-family: var(--font-display);">Store Configuration</h3>
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Store Name</label>
-              <input type="text" class="form-control" value="Velorex Music">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Contact Email</label>
-              <input type="email" class="form-control" value="contact@velorexmusic.com">
-            </div>
-            <div class="form-group full-width">
-              <label class="form-label">Admin Notification Emails</label>
-              <input type="text" class="form-control" value="admin@velorexmusic.com, alerts@velorexmusic.com">
-            </div>
-          </div>
-          <button class="btn btn-primary" style="width: auto; margin-top: 1rem;">Save Settings</button>
-        </div>
+        <div id="settings-body"></div>
       </div>
 
     </main>

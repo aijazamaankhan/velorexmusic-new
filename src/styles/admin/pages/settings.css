@@ -1,0 +1,85 @@
+/* =============================================================================
+   Velorex Music — admin Settings panel (#panel-settings)
+   Used by: vlx-admin-2026.html, rendered by src/js/admin/settings.js
+
+   Owns every .set-* class and nothing else uses them. The panel reuses
+   .admin-card / .dash-panel / .dash-list from the Dashboard for its section
+   chrome, so the two panels stay visually the same thing.
+   ============================================================================= */
+
+.set-group { margin-bottom: 1.25rem; }
+
+.set-row {
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.set-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.set-row:first-of-type { padding-top: 0; }
+
+.set-label {
+  display: block;
+  font-size: 0.86rem;
+  font-weight: 600;
+  margin-bottom: 0.45rem;
+}
+
+/* Help text is the difference between a switch and a switch someone dares to
+   touch — several of these change what customers see. */
+.set-help {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-top: 0.45rem;
+  max-width: 60ch;
+}
+
+/* Per-field, next to the field. A toast saying "invalid" without naming which
+   of eleven fields is no help at all. */
+.set-error {
+  font-size: 0.76rem;
+  color: var(--danger);
+  margin-top: 0.4rem;
+  font-weight: 600;
+}
+.set-error[hidden] { display: none !important; }
+
+/* A real <input type="checkbox">, only restyled — it stays keyboard-reachable
+   and correctly announced, which a styled <div> would not be. */
+.set-row-bool { padding: 0.75rem 0; }
+.set-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  cursor: pointer;
+  margin: 0;
+}
+.set-toggle input[type="checkbox"] {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: 0 0 auto;
+  accent-color: var(--secondary);
+  cursor: pointer;
+  margin: 0;
+}
+.set-toggle .set-label { margin-bottom: 0; }
+/* The help line sits under the whole row, aligned past the box. */
+.set-row-bool .set-help { padding-left: 1.75rem; margin-top: 0.3rem; }
+
+.set-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0 1.5rem;
+}
+
+.set-saved {
+  font-size: 0.8rem;
+  color: var(--success);
+  font-weight: 600;
+}
+.set-saved[hidden] { display: none !important; }
+
+@media (max-width: 640px) {
+  .set-help { max-width: none; }
+}

@@ -19,6 +19,7 @@
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../_mailer.php';
 require_once __DIR__ . '/../_marketing_helpers.php';
+require_once __DIR__ . '/../_settings_helpers.php';
 
 require_admin();
 
@@ -91,9 +92,16 @@ try {
     $newCustomers30 = (int)dash_scalar($pdo,
         'SELECT COUNT(*) FROM users WHERE created_at >= (NOW() - INTERVAL 30 DAY)', [], 0);
 
+    // Settings -> Commerce -> low-stock threshold. The same number drives the
+    // storefront's "Only N left" badge, so the shop and this panel cannot
+    // disagree about what "low" means.
+    $lowThreshold = (int)settings_get($pdo, 'low_stock_threshold');
+    if ($lowThreshold < 1) $lowThreshold = 3;
+
     $productCount = (int)dash_scalar($pdo, 'SELECT COUNT(*) FROM products', [], 0);
     $outOfStock   = (int)dash_scalar($pdo, 'SELECT COUNT(*) FROM products WHERE stock <= 0', [], 0);
-    $lowStock     = (int)dash_scalar($pdo, 'SELECT COUNT(*) FROM products WHERE stock > 0 AND stock <= 3', [], 0);
+    $lowStock     = (int)dash_scalar($pdo,
+        'SELECT COUNT(*) FROM products WHERE stock > 0 AND stock <= :t', [':t' => $lowThreshold], 0);
     $stockValue   = (int)dash_scalar($pdo, 'SELECT COALESCE(SUM(price * GREATEST(stock,0)), 0) FROM products', [], 0);
 
     // ---- Recent orders ------------------------------------------------------
@@ -133,13 +141,14 @@ try {
     // Products that are actually costing sales right now.
     $outList = [];
     try {
-        $st = $pdo->query(
+        $st = $pdo->prepare(
             'SELECT id, title, artist, stock, price
                FROM products
-              WHERE stock <= 3
+              WHERE stock <= :t
               ORDER BY stock ASC, price DESC
               LIMIT 8'
         );
+        $st->execute([':t' => $lowThreshold]);
         foreach ($st->fetchAll() as $p) {
             $outList[] = [
                 'id'     => (int)$p['id'],
@@ -156,14 +165,18 @@ try {
     $cartsReady = dash_table_exists($pdo, 'carts');
     $subsReady  = dash_table_exists($pdo, 'subscribers');
 
+    // The same grace window the Abandoned panel uses (Settings -> Marketing).
+    // Hardcoding 60 here would let this card and that panel report different
+    // numbers for the same shop.
+    $grace = (int)settings_get($pdo, 'abandon_grace_minutes');
+    if ($grace < 1) $grace = 60;
+    $abandonedWhere = 'converted_at IS NULL AND dismissed_at IS NULL
+            AND updated_at < (NOW() - INTERVAL :g MINUTE)';
+
     $abandonedCount = $cartsReady ? (int)dash_scalar($pdo,
-        'SELECT COUNT(*) FROM carts
-          WHERE converted_at IS NULL AND dismissed_at IS NULL
-            AND updated_at < (NOW() - INTERVAL 60 MINUTE)', [], 0) : null;
+        'SELECT COUNT(*) FROM carts WHERE ' . $abandonedWhere, [':g' => $grace], 0) : null;
     $abandonedValue = $cartsReady ? (int)dash_scalar($pdo,
-        'SELECT COALESCE(SUM(subtotal),0) FROM carts
-          WHERE converted_at IS NULL AND dismissed_at IS NULL
-            AND updated_at < (NOW() - INTERVAL 60 MINUTE)', [], 0) : null;
+        'SELECT COALESCE(SUM(subtotal),0) FROM carts WHERE ' . $abandonedWhere, [':g' => $grace], 0) : null;
     $subscriberCount = $subsReady ? (int)dash_scalar($pdo,
         "SELECT COUNT(*) FROM subscribers WHERE status = 'subscribed'", [], 0) : null;
     $optedInCount = $subsReady ? (int)dash_scalar($pdo,
@@ -209,6 +222,7 @@ try {
             'outOfStock'     => $outOfStock,
             'lowStock'       => $lowStock,
             'stockValue'     => $stockValue,
+            'lowThreshold'   => $lowThreshold,
         ],
         'recentOrders'   => $recent,
         'needsAttention' => [

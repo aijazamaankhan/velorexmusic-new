@@ -331,6 +331,14 @@ body { padding-top: 70px; }
    grid wider than the column; justify-content centres the label now that the
    width comes from the track rather than from the text. */
 .product-detail-actions .btn { min-width: 0; justify-content: center; text-align: center; }
+/* Same border BOX on every button in this group, so the pair is the same
+   height whether the grid stretches them (two columns) or sizes each row on
+   its own content (one column, on a phone). .btn-outline-primary carries a 2px
+   border and .btn-gold carries none, which made them 57px and 53px once
+   stacked. Transparent here, coloured by the variant rule below — both
+   selectors are (0,2,0), so source order decides and the variant wins. */
+.product-detail-actions .btn { border: 2px solid transparent; }
+.product-detail-actions .btn-outline-primary { border-color: var(--secondary); }
 .quantity-control { display: flex; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; width: fit-content; }
 .qty-btn { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; color: var(--text); cursor: pointer; transition: var(--transition); }
 .qty-btn:hover { background: rgba(255, 107, 53, 0.12); color: var(--secondary); }
@@ -726,7 +734,16 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   .footer-grid { grid-template-columns: 1fr; gap: 2rem; }
   .categories-grid { grid-template-columns: 1fr; }
   .products-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
-  .product-actions-group { grid-template-columns: 1fr; }
+  /* Qualified to match the desktop rule's specificity.
+     `.product-detail-actions .product-actions-group` (0,2,0) sets two columns;
+     a bare `.product-actions-group` (0,1,0) here LOSES to it even inside this
+     media query, so the buttons stayed side by side on a phone and clipped
+     their own labels to "Add to Ca". Specificity beats source order — being
+     inside a narrower media query counts for nothing. */
+  .product-detail-actions .product-actions-group { grid-template-columns: 1fr; }
+  /* btn-lg's 2.5rem of side padding is desktop sizing. Once these are full
+     width the label centres itself, so the padding is only squeezing the text. */
+  .product-detail-actions .btn-lg { padding-left: 1.25rem; padding-right: 1.25rem; }
   .form-grid { grid-template-columns: 1fr; }
   .section { padding: 3rem 0; }
   .page-hero { padding: 2rem 0; margin-bottom: 2rem; }

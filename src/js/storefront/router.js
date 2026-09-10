@@ -267,6 +267,12 @@
       var el = document.getElementById('intro-splash');
       if (!el) return;
       if (page !== 'index') return;                       // search landing pages: never
+      // Settings -> Storefront -> "Show the intro splash". Read from the cached
+      // defaults rather than awaited: the splash has to decide within the first
+      // frame or it is a flash of curtain, and SiteSettings is populated by the
+      // time this runs on any warm load. Default is ON, so a settings failure
+      // leaves today's behaviour untouched.
+      if (typeof SiteSettings !== 'undefined' && SiteSettings.get('intro_splash_enabled') === false) return;
       // A reload or an in-session revisit should not replay it.
       try { if (sessionStorage.getItem(SPLASH_KEY)) return; } catch (e) { return; }
       // Someone arriving deep-linked with a hash or query is going somewhere

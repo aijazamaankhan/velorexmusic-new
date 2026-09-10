@@ -32,6 +32,7 @@
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/_products_helpers.php';
+require_once __DIR__ . '/_settings_helpers.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     http_response_code(405);
@@ -149,7 +150,12 @@ try {
     // sell. Excludes anything already shown as a genuine sale, and anything out
     // of stock — a strip that sends people to a sold-out page is worse than a
     // short one.
-    if ($realCount < $limit) {
+    // Settings -> Recently Sold -> "Top the strip up with filler". OFF means
+    // ONLY genuine sales are ever returned, and the strip hides itself until
+    // there are enough of them (the client needs four). This is the switch that
+    // turns off everything CLAUDE.md §27 describes as synthesised.
+    $allowFiller = (bool)settings_get($pdo, 'recently_sold_filler');
+    if ($allowFiller && $realCount < $limit) {
         $need    = $limit - $realCount;
         $exclude = array_keys($seenProducts);
         $notIn   = $exclude

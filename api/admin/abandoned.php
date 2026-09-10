@@ -36,11 +36,30 @@ require_once __DIR__ . '/../_marketing_helpers.php';
 require_once __DIR__ . '/../_mailer.php';
 require_once __DIR__ . '/../_email_templates.php';
 require_once __DIR__ . '/../_recovery.php';
+require_once __DIR__ . '/../_settings_helpers.php';
 
 require_admin();
 
 // How long a cart must sit untouched before it counts as abandoned.
-const ABANDON_GRACE_MINUTES = 60;
+//
+// Configurable from Settings -> Marketing; the constant is the fallback for a
+// database that has no store_settings row yet. Resolved ONCE per request into
+// a function so every query and every flag in this file uses the same window —
+// two different windows in one response is how a row ends up counted in a stat
+// card and missing from the list under it.
+const ABANDON_GRACE_MINUTES_DEFAULT = 60;
+
+function abandon_grace_minutes(): int {
+    static $v = null;
+    if ($v !== null) return $v;
+    try {
+        $v = (int)settings_get(db(), 'abandon_grace_minutes');
+    } catch (Throwable $e) {
+        $v = ABANDON_GRACE_MINUTES_DEFAULT;
+    }
+    if ($v < 1) $v = ABANDON_GRACE_MINUTES_DEFAULT;
+    return $v;
+}
 // How far back the panel looks. Older rows are still in the table (the cron
 // prunes them) but a three-month-old cart is not a lead worth showing.
 const ABANDON_WINDOW_DAYS = 60;
@@ -55,7 +74,7 @@ function marketing_is_active(string $lastActive): bool {
     // connection here; a parse failure is treated as "not active" so an
     // unreadable timestamp can never hide a genuinely abandoned cart.
     if ($ts === false) return false;
-    return $ts > (time() - (ABANDON_GRACE_MINUTES * 60));
+    return $ts > (time() - (abandon_grace_minutes() * 60));
 }
 
 try {
@@ -194,7 +213,7 @@ try {
             // 60 minutes" instead of "nobody has a cart".
             'active'         => count($active),
             'activeValue'    => (int)array_sum(array_map(function ($r) { return (int)$r['subtotal']; }, $active)),
-            'graceMinutes'   => ABANDON_GRACE_MINUTES,
+            'graceMinutes'   => abandon_grace_minutes(),
             'windowDays'     => ABANDON_WINDOW_DAYS,
             'paymentOrdersReady' => $poReady,
         ];

@@ -38,6 +38,18 @@
 
         const section = document.getElementById('recent-sales');
         if (!section) return;
+
+        // Settings -> Recently Sold -> "Show the Recently Sold strip". Checked
+        // before the fetch so switching it off costs no round trip at all.
+        // SiteSettings defaults this to true, so a settings failure leaves the
+        // strip working.
+        if (typeof SiteSettings !== 'undefined' && SiteSettings.get('recently_sold_enabled') === false) {
+          section.style.display = 'none';
+          this._state = 'done';
+          this._rows = [];
+          return;
+        }
+
         this._state = 'loading';
 
         try {

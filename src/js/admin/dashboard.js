@@ -130,7 +130,7 @@
         + dashStat('Out of stock', k.outOfStock,
             k.outOfStock > 0 ? 'Not buyable right now' : 'Everything is buyable',
             k.outOfStock > 0 ? 'var(--danger)' : '')
-        + dashStat('Low stock (3 or fewer)', k.lowStock,
+        + dashStat('Low stock (' + (k.lowThreshold || 3) + ' or fewer)', k.lowStock,
             k.lowStock > 0 ? 'Reorder before these run out' : 'No thin shelves',
             k.lowStock > 0 ? 'var(--warning)' : '')
         + dashStat('Baskets left behind', n.abandonedCount,

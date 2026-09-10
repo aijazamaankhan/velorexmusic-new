@@ -18,6 +18,7 @@ require_once __DIR__ . '/_marketing_helpers.php';
 require_once __DIR__ . '/_mailer.php';
 require_once __DIR__ . '/_email_templates.php';
 require_once __DIR__ . '/_marketing_templates.php';
+require_once __DIR__ . '/_settings_helpers.php';
 
 // The two nudges. Hours since the cart was last touched.
 //   Stage 1 — a short, "did the page break?" reminder while intent is warm.
@@ -151,6 +152,14 @@ function marketing_send_recovery(PDO $pdo, string $kind, $id, string $trigger = 
     }
 
     // ---- Eligibility --------------------------------------------------------
+    // Settings -> Marketing -> "Send abandoned-cart reminders". One switch for
+    // BOTH the cron and the manual Send button, so turning recovery off does
+    // not mean editing a cron job. Checked before anything is built or sent,
+    // and NOT skipped for a preview — an owner reading the template should
+    // still be told that sending is currently off.
+    if (!$preview && !settings_get($pdo, 'recovery_enabled')) {
+        return $fail('Recovery emails are switched off in Settings -> Marketing');
+    }
     if ($dismissed)            return $fail('This row was dismissed');
     if (!is_array($items) || !$items) return $fail('Nothing in this cart to send');
     $email = marketing_normalize_email($email);

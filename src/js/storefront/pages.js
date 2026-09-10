@@ -897,7 +897,12 @@
         specOrder.forEach(key => { if (product.specs[key] !== undefined && product.specs[key] !== '') specsHtml += `<div class="spec-row"><span class="spec-label">${specLabels[key]}</span><span class="spec-value">${product.specs[key]}</span></div>`; });
         Object.entries(product.specs).forEach(([k, v]) => { if (!specOrder.includes(k)) specsHtml += `<div class="spec-row"><span class="spec-label">${k.charAt(0).toUpperCase() + k.slice(1)}</span><span class="spec-value">${v}</span></div>`; });
       }
-      var stockWarn = (product.stock <= 5 && product.stock > 0) ? `<span style="color:var(--danger);font-size:0.8rem;font-weight:600;">⚠️ Only ${product.stock} left!</span>` : '';
+      // Settings -> Commerce -> low-stock threshold. Was a hardcoded 5 here
+      // while the admin's restock list used 3, so the shop said "Only 4 left!"
+      // on products the owner's own panel called healthy. One number now.
+      var lowAt = (typeof SiteSettings !== 'undefined') ? Number(SiteSettings.get('low_stock_threshold')) : 3;
+      if (!isFinite(lowAt) || lowAt < 1) lowAt = 3;
+      var stockWarn = (product.stock <= lowAt && product.stock > 0) ? `<span style="color:var(--danger);font-size:0.8rem;font-weight:600;"><i class="fas fa-triangle-exclamation"></i> Only ${product.stock} left!</span>` : '';
       var actionBtns = isOOS ? '<button class="btn btn-secondary" disabled style="opacity:0.5;cursor:not-allowed;">❌ Out of Stock</button>'
         : '<div class="product-actions-group"><button class="btn btn-outline-primary btn-lg" id="addCartBtn" onclick="handleAddToCartDetail(' + product.id + ')"><i class="fas fa-cart-shopping"></i> Add to Cart</button><button class="btn btn-gold btn-lg" onclick="handleBuyNowDetail(' + product.id + ')"><i class="fas fa-bolt"></i> Buy Now</button></div>';
       var origPriceHtml = product.originalPrice ? `<span class="product-detail-price-original">₹${product.originalPrice.toLocaleString()}</span>` : '';
