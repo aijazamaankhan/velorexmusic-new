@@ -22,3 +22,7 @@ playwright-report/
 .mcp.json
 .test-images/
 .playwright-mcp/
+
+# Stray drop-zone for source images. The optimised, referenced copies live
+# in src/img/categories/ — see CLAUDE.md §28.
+images/
