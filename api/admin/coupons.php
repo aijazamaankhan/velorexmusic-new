@@ -20,6 +20,9 @@
 
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../_coupon_helpers.php';
+require_once __DIR__ . '/../_mailer.php';
+require_once __DIR__ . '/../_marketing_templates.php';
+require_once __DIR__ . '/../_recovery.php';   // marketing_contact_token()
 
 require_admin();
 
@@ -142,6 +145,65 @@ try {
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $body = read_json_body();
+
+        // Email the customer their personal code.
+        //
+        // Only for a RESERVED coupon: a public code has no one customer to send
+        // it to, and mailing a public code to an address we happen to hold is
+        // the kind of unsolicited send that costs a sending domain its
+        // reputation (CLAUDE.md §26).
+        if (($body['action'] ?? '') === 'notify') {
+            $id = (int)($body['id'] ?? 0);
+            $st = $pdo->prepare('SELECT * FROM coupons WHERE id = :id');
+            $st->execute([':id' => $id]);
+            $c = $st->fetch();
+            if (!$c) { http_response_code(404); echo json_encode(['error' => 'Coupon not found']); exit; }
+
+            $to = trim((string)($c['customer_email'] ?? ''));
+            if ($to === '') {
+                http_response_code(422);
+                echo json_encode(['error' => 'This coupon is not reserved for a customer, so there is nobody to email']);
+                exit;
+            }
+            if (!mailer_is_configured()) {
+                http_response_code(422);
+                echo json_encode(['error' => 'SMTP is not configured — see CLAUDE.md §10']);
+                exit;
+            }
+
+            // Respect the opt-out, and mint a stable unsubscribe token if this
+            // address has never had one. Same path the recovery mailer uses, so
+            // an unsubscribe here is honoured everywhere.
+            $unsub = marketing_contact_token($pdo, strtolower($to), 'coupon');
+            if ($unsub === null) {
+                http_response_code(422);
+                echo json_encode(['error' => 'That customer has unsubscribed from marketing email']);
+                exit;
+            }
+
+            // A first name makes it a note rather than a mailshot. Looked up
+            // from the account when there is one; blank is fine.
+            $firstName = '';
+            try {
+                $u = $pdo->prepare('SELECT first_name FROM users WHERE email = :e LIMIT 1');
+                $u->execute([':e' => $to]);
+                $firstName = (string)($u->fetchColumn() ?: '');
+            } catch (Throwable $e) { /* optional */ }
+
+            $tpl = personal_coupon_email($c, $to, $unsub, $firstName);
+            $sent = send_mail($to, $firstName, $tpl['subject'], $tpl['html'], $tpl['text'], [
+                'List-Unsubscribe'      => '<' . marketing_unsubscribe_url($unsub) . '>',
+                'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click',
+            ]);
+            if (!$sent) {
+                http_response_code(422);
+                $why = mailer_last_error();
+                echo json_encode(['error' => $why !== '' ? ('SMTP refused the message: ' . $why) : 'Could not send the email']);
+                exit;
+            }
+            echo json_encode(['ok' => true, 'sentTo' => $to]);
+            exit;
+        }
 
         // Quick enable/disable from the list, without opening the editor.
         if (($body['action'] ?? '') === 'toggle') {

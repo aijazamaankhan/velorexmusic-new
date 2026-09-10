@@ -28,6 +28,7 @@
         low_stock_threshold:   3,
         contact_email:         '',
         contact_phone:         '',
+        store_address:         '',
       },
       loaded: false,
 

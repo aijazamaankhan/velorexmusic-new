@@ -31,19 +31,19 @@ function settings_schema(): array {
             'type' => 'bool', 'default' => false, 'public' => true,
             'group' => 'Storefront', 'label' => 'Show announcement bar',
             'help'  => 'A single line across the top of every storefront page.',
-            'consumer' => 'src/js/storefront/announcement.js',
+            'consumer' => 'SiteSettings.renderAnnouncement() in src/js/storefront/site-settings.js',
         ],
         'announcement_text' => [
             'type' => 'string', 'max' => 160, 'default' => '', 'public' => true,
             'group' => 'Storefront', 'label' => 'Announcement text',
             'help'  => 'Kept to one line on purpose — a banner that wraps to three pushes the shop off the screen.',
-            'consumer' => 'src/js/storefront/announcement.js',
+            'consumer' => 'SiteSettings.renderAnnouncement() in src/js/storefront/site-settings.js',
         ],
         'announcement_link' => [
             'type' => 'path', 'max' => 200, 'default' => '', 'public' => true,
             'group' => 'Storefront', 'label' => 'Announcement link (optional)',
             'help'  => 'A path on this site, e.g. /combos. Leave blank for plain text.',
-            'consumer' => 'src/js/storefront/announcement.js',
+            'consumer' => 'SiteSettings.renderAnnouncement() in src/js/storefront/site-settings.js',
         ],
         'intro_splash_enabled' => [
             'type' => 'bool', 'default' => true, 'public' => true,
@@ -94,6 +94,12 @@ function settings_schema(): array {
             'group' => 'Contact', 'label' => 'Public contact email',
             'help'  => 'Shown to customers. This is NOT the address order alerts go to — that is ADMIN_NOTIFY_EMAIL in the secrets file.',
             'consumer' => 'storefront footer + contact page',
+        ],
+        'store_address' => [
+            'type' => 'string', 'max' => 300, 'default' => '', 'public' => true,
+            'group' => 'Contact', 'label' => 'Store address',
+            'help'  => 'Printed on invoices and shown to customers. One line per address — separate multiple locations with a semicolon. NOTE: if you change this, update contact.html and the Store JSON-LD to match. Google suppresses local rankings when the name, address and phone disagree across a site (CLAUDE.md §15).',
+            'consumer' => 'invoice footer + storefront contact',
         ],
         'contact_phone' => [
             'type' => 'string', 'max' => 40, 'default' => '', 'public' => true,

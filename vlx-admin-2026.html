@@ -35,6 +35,7 @@
   <link rel="stylesheet" href="src/styles/admin/pages/dashboard.css?v=ef59ea1f">
   <link rel="stylesheet" href="src/styles/admin/pages/settings.css?v=b34fa78c">
   <link rel="stylesheet" href="src/styles/admin/pages/coupons.css?v=5d57fc72">
+  <link rel="stylesheet" href="src/styles/admin/pages/policies.css?v=95601739">
   <!-- Admin JS modules extracted in PR 4. Plain scripts (not type="module") so
        the existing inline <script> + onclick= handlers resolve them via
        script-scope. Order: leaves first. -->
@@ -47,10 +48,10 @@
        script-scope. Load order: main first (defines shared helpers like
        adminAuthHeaders, switchPanel), then per-panel files, then toast last
        (the admin showToast — different shape from the storefront's). -->
-  <script src="src/js/admin/main.js?v=c6270d31"></script>
+  <script src="src/js/admin/main.js?v=61f5e86f"></script>
   <script src="src/js/admin/customers.js?v=127735c1"></script>
   <script src="src/js/admin/orders.js?v=5f5e6bfb"></script>
-  <script src="src/js/admin/invoice.js?v=0e254b60"></script>
+  <script src="src/js/admin/invoice.js?v=bdbd72dd"></script>
   <script src="src/js/admin/image-cropper.js?v=0dfdbe4f"></script>
   <script src="src/js/admin/inventory.js?v=a37fd7f7"></script>
   <script src="src/js/admin/blog.js?v=3698c8d7"></script>
@@ -60,7 +61,8 @@
   <script src="src/js/admin/marketing.js?v=cf88524c"></script>
   <script src="src/js/admin/dashboard.js?v=3ffa681c"></script>
   <script src="src/js/admin/settings.js?v=b33b0506"></script>
-  <script src="src/js/admin/coupons.js?v=71a81fe3"></script>
+  <script src="src/js/admin/coupons.js?v=7be30985"></script>
+  <script src="src/js/admin/policies.js?v=e5841fa0"></script>
   <script src="src/js/admin/toast.js?v=9a4bf3e8"></script>
 </head>
 
@@ -147,6 +149,11 @@
         <li class="nav-item">
           <a href="#" class="nav-link" data-nav="combos" onclick="switchPanel('combos', this)">
             <i class="fas fa-layer-group"></i> Combos
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#" class="nav-link" data-nav="policies" onclick="switchPanel('policies', this)">
+            <i class="fas fa-file-contract"></i> Policies
           </a>
         </li>
         <li class="nav-item">
@@ -656,6 +663,15 @@
           </div>
           <div id="subscribers-meta" style="margin-top:0.75rem;color:var(--text-muted);font-size:0.8rem;"></div>
         </div>
+      </div>
+
+      <!-- ==================== POLICIES ====================
+           Rendered by renderPolicies() in src/js/admin/policies.js. Edits ONLY
+           the body of shipping.html / returns.html / terms.html /
+           privacy.html — the <head> and SEO tags stay in those files. See
+           api/_policy_helpers.php for why it is built that way. -->
+      <div id="panel-policies" class="panel">
+        <div id="policies-body"></div>
       </div>
 
       <!-- ==================== COUPONS ====================

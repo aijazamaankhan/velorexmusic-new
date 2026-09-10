@@ -199,6 +199,8 @@
                 <a href="/track-order.html" rel="nofollow" class="footer-link">Track Order</a>
                 <a href="/contact.html" class="footer-link">Contact Us</a>
                 <a href="/faq.html" class="footer-link">FAQ</a>
+                <a href="/terms.html" class="footer-link">Terms &amp; Conditions</a>
+                <a href="/privacy.html" class="footer-link">Privacy Policy</a>
               </div>
             </div>
           </div>

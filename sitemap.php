@@ -216,6 +216,8 @@ foreach ([
     '/faq.html'      => '0.5',
     '/shipping.html' => '0.4',
     '/returns.html'  => '0.4',
+    '/terms.html'    => '0.3',
+    '/privacy.html'  => '0.3',
 ] as $path => $priority) {
     $xml .= velorex_sitemap_url(VELOREX_SITE_URL . $path, null, 'monthly', $priority);
 }

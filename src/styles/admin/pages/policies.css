@@ -1,0 +1,40 @@
+/* =============================================================================
+   Velorex Music — admin Policies panel (#panel-policies)
+   Used by: vlx-admin-2026.html, rendered by src/js/admin/policies.js
+
+   Owns the .pol-* classes. The editor itself reuses .blog-editor and
+   .blog-toolbar from the Blog panel — two rich editors in one admin would be
+   two sets of paste bugs to fix.
+   ============================================================================= */
+
+.pol-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.pol-url {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.pol-url:hover { color: var(--secondary); }
+.pol-url i { font-size: 0.72em; }
+
+/* "This page is still the copy that ships in the code" — worth stating, so an
+   owner can tell an untouched page from one they edited months ago. */
+.pol-default {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  align-self: center;
+}
+
+.pol-edited {
+  color: var(--secondary);
+  font-size: 1.1em;
+  line-height: 0;
+  vertical-align: middle;
+}

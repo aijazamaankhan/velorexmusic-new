@@ -410,6 +410,7 @@
         abandoned: { t: 'Abandoned Carts', s: 'Baskets and checkouts that were walked away from' },
         subscribers: { t: 'Newsletter Subscribers', s: 'The mailing list, split by consent' },
         coupons:  { t: 'Discount Coupons', s: 'Codes customers can apply at checkout' },
+        policies: { t: 'Policy Pages', s: 'Shipping, returns, terms and privacy' },
         settings: { t: 'Store Configuration', s: 'Settings that actually change the shop' }
       };
 
@@ -440,6 +441,7 @@
       // panel is worse than a round trip.
       if (panelId === 'settings') loadSettings();
       if (panelId === 'coupons')  loadCoupons();
+      if (panelId === 'policies') loadPolicies();
 
       // Use initDashboard (not renderProductsTable alone) so the stat card +
       // recent-products list also refresh — paintPanelSkeleton above filled

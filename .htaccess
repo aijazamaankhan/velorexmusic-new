@@ -112,6 +112,15 @@ DirectoryIndex index.html index.php
   # on a hard refresh or the user gets a 404 after, say, reloading /cart.
   # They are marked noindex by src/js/seo.js once the SPA boots.
   RewriteRule ^(cart|profile|login|signup|forgot|checkout)/?$ index.html [L]
+
+  # Editable policy pages.
+  #
+  # The URL is UNCHANGED — these are the same paths Google has indexed, and the
+  # <head> served is still the one in the static file. policy.php only swaps the
+  # body between the velorex:policy markers for whatever the admin has stored,
+  # and falls back to serving the file untouched on any failure. See
+  # api/_policy_helpers.php for why it is built as a shim rather than a renderer.
+  RewriteRule ^(shipping|returns|terms|privacy)\.html$ policy.php?page=$1 [L,QSA]
 </IfModule>
 
 # -----------------------------------------------------------------------------

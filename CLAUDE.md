@@ -2731,6 +2731,23 @@ A reserved code **can never be the featured promo** — enforced in the admin
 validator *and* in the promo query, so the two settings cannot be saved in a
 combination that would advertise someone's personal code to every visitor.
 
+### The promo card stays until the code is taken
+
+Two flags, because "I have the code" and "not now" are different answers:
+
+| Flag | Where | Meaning |
+|---|---|---|
+| `vv_promo_copied` | localStorage | They copied it. **Never shown again**, across sessions — they have what it offers. |
+| `vv_promo_dismissed` | sessionStorage | They closed it without copying. Gone for this visit, back on the next one. |
+
+**Nothing is recorded when the card is merely SHOWN.** Being seen is not being
+acted on, and marking it on show is what made one stray click lose the offer
+permanently. The guard is checked in `show()` as well as `init()`, so the rule
+holds wherever it is called from.
+
+The X still works and still suppresses it for the visit, so this can never
+become something a visitor cannot get past.
+
 ### The promo card is a corner card, not an interstitial
 
 Constrained the same way the intro splash is (§15) and for the same reason: a
@@ -2747,3 +2764,99 @@ shows once per session, and is dismissible by button, Escape or clicking away.
 `.coupon_discount` are added on demand the same way the recovery columns are —
 no phpMyAdmin step. A failure to add them degrades to "no redemption recorded",
 never to a broken checkout.
+
+## 35. Editable policy pages
+
+Admin → **Policies**. Edits the body of `shipping.html`, `returns.html`,
+`terms.html` and `privacy.html`.
+
+| Piece | File |
+|---|---|
+| Schema, seed, sanitised write | [api/_policy_helpers.php](api/_policy_helpers.php) |
+| Front controller | [policy.php](policy.php) |
+| Admin endpoint | [api/admin/policies.php](api/admin/policies.php) |
+| Admin panel | [src/js/admin/policies.js](src/js/admin/policies.js) |
+| Rewrite | `^(shipping|returns|terms|privacy)\.html$` in [.htaccess](.htaccess) |
+
+### It is a template shim, not a renderer — and that is the point
+
+These pages have hand-written `<title>`, meta description, canonical and Open
+Graph tags (§15). Making them database-driven wholesale would have meant
+re-deriving all of that at render time: a lot of surface, and a lot of ways to
+break indexing, for a feature whose actual request was "let me edit the words".
+
+So **only the body is dynamic.** Each page keeps its file, its head and its
+chrome, with the editable region marked by
+
+```html
+<!-- velorex:policy:start --> … <!-- velorex:policy:end -->
+```
+
+`policy.php` reads the same static file the server would otherwise have served,
+swaps that region for the stored HTML when a row exists, and prints the result.
+The URL never changes. What this buys:
+
+- **The head is byte-identical** — title, canonical, OG tags untouched. Guarded
+  by the round-trip check: swapping the body leaves everything before the start
+  marker unchanged.
+- **The file in git is the seed AND the fallback.** An empty table, a failed
+  query or an unreachable database all render the shop's real policy rather
+  than a blank page.
+- **Reverting is deleting a row** — that is what "Reset to default" does.
+
+**If you edit a policy page's copy in the repo, that change becomes invisible on
+any install that has already overridden it.** Check the panel: an overridden
+page carries a dot next to its tab and offers Reset.
+
+### Bodies are sanitised on WRITE
+
+Through `blog_sanitize_html()` — the same allowlist parser and the same trust
+boundary as the blog. Unknown tags are unwrapped, `script`/`style`/`iframe`/
+`form` are destroyed, attributes off the allowlist are dropped (this is what
+kills `on*` handlers and `style`), and `href`/`src` are scheme-checked. Because
+the stored HTML is already safe, `policy.php` emits it raw — escaping there
+would print tags as visible text.
+
+The **sanitised** HTML is echoed back and re-rendered into the editor on save,
+so if the allowlist stripped something the person editing sees it immediately
+rather than discovering it on the live page.
+
+A page cannot be saved empty. Blanking a policy is what "Reset to default" is
+for, and that is explicit.
+
+`terms.html` and `privacy.html` are new, added to the footer and to
+`sitemap.php` at priority 0.3.
+
+## 36. Coupons: emailing a reserved code
+
+A coupon reserved for one customer can be emailed to them — a **Email code**
+action on the row, and an "email it when I save" toggle in the editor (which
+only appears once there is an address to send to).
+
+- **Only a reserved code can be emailed.** A public code has no one customer to
+  send it to, and mailing one to an address we happen to hold is the
+  unsolicited send that costs a sending domain its reputation (§26).
+- It goes through `marketing_contact_token()`, so **an unsubscribe anywhere is
+  honoured here**, and the message carries the unsubscribe link and the
+  RFC 8058 `List-Unsubscribe` headers like every other non-transactional email.
+  A personal gift is still a message the recipient did not ask for.
+- The email **states the conditions** — minimum spend, cap, expiry — not just
+  the headline. A code that turns out to need a spend the customer did not know
+  about is worse than no email.
+- The send happens **after** the save succeeds and never as part of it: a failed
+  email must not make it look as though the coupon was not created. The failure
+  reason is surfaced, because "they unsubscribed" and "SMTP is down" call for
+  completely different responses.
+
+Template: `personal_coupon_email()` in
+[api/_marketing_templates.php](api/_marketing_templates.php).
+
+## 37. Store address
+
+`store_address` in Settings → Contact. Multiple locations are separated with a
+semicolon; each becomes its own line on the printed invoice.
+
+**If you change it, update `contact.html` and the `Store` JSON-LD to match.**
+Google suppresses local rankings when the name, address and phone disagree
+across a site (§15), and those two are still hand-written. This is called out in
+the field's own help text as well, because the failure is silent.

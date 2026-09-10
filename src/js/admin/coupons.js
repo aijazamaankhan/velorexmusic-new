@@ -98,6 +98,11 @@
                   + '<button type="button" class="btn btn-secondary btn-sm" style="width:auto;"'
                     + ' onclick="toggleCoupon(' + c.id + ',\'' + (c.status === 'active' ? 'disabled' : 'active') + '\')">'
                     + (c.status === 'active' ? 'Disable' : 'Enable') + '</button>'
+                  + (c.customerEmail
+                      ? '<button type="button" class="btn btn-secondary btn-sm" style="width:auto;"'
+                        + ' onclick="emailCoupon(' + c.id + ')"'
+                        + ' title="Email this code to ' + escapeHTML(c.customerEmail) + '">Email code</button>'
+                      : '')
                   + '<button type="button" class="btn btn-secondary btn-sm" style="width:auto;"'
                     + ' onclick="deleteCoupon(' + c.id + ')">Delete</button>'
                 + '</div></td>'
@@ -190,11 +195,20 @@
         +     '<label class="form-label">Reserve for one customer (optional)</label>'
         +     '<input class="form-control" type="email" id="cpn-customerEmail"'
         +       ' value="' + escapeHTML(f('customerEmail', c.customerEmail)) + '"'
-        +       ' placeholder="Anyone can use this code" autocomplete="off">'
+        +       ' placeholder="Anyone can use this code" autocomplete="off"'
+        +       ' oninput="couponCustomerChanged()">'
         +     '<div class="set-help">Enter a customer email and only they can redeem it — matched against '
         +       'their signed-in account, or the address they type at guest checkout. Leave blank for a '
         +       'public code. A reserved code is never shown in the storefront promo.</div>'
         +     '<div class="set-error" id="cpn-customerEmail-err" hidden></div>'
+        +   '</div>'
+        +   '<div class="form-group full-width" id="cpn-notify-wrap">'
+        +     '<label class="set-toggle" for="cpn-notify">'
+        +       '<input type="checkbox" id="cpn-notify">'
+        +       '<span class="set-label">Email this code to the customer when I save</span>'
+        +     '</label>'
+        +     '<div class="set-help">Only for a reserved code. The email states the conditions and carries an '
+        +       'unsubscribe link — a customer who has opted out of offers is not emailed, and you will be told.</div>'
         +   '</div>'
         +   '<div class="form-group full-width">'
         +     '<label class="form-label">Promo headline</label>'
@@ -212,12 +226,22 @@
         + '</div>';
 
       couponTypeChanged();
+      couponCustomerChanged();
       const modal = document.getElementById('coupon-editor-modal');
       if (modal) modal.style.display = 'flex';
     }
 
     // A percentage cap is meaningless on a fixed amount, so the field goes away
     // rather than sitting there doing nothing.
+    // The notify toggle only makes sense once there is an address to send to.
+    function couponCustomerChanged() {
+      const email = (document.getElementById('cpn-customerEmail') || {}).value || '';
+      const wrap  = document.getElementById('cpn-notify-wrap');
+      const box   = document.getElementById('cpn-notify');
+      if (wrap) wrap.style.display = email.trim() ? '' : 'none';
+      if (!email.trim() && box) box.checked = false;
+    }
+
     function couponTypeChanged() {
       const type = (document.getElementById('cpn-type') || {}).value;
       const wrap = document.getElementById('cpn-max-wrap');
@@ -276,12 +300,35 @@
         if (!res.ok || !data.ok) throw new Error(data.error || 'HTTP ' + res.status);
 
         showToast('Coupon saved', 'success');
+
+        // Send AFTER the save succeeded, and never as part of it: a failed
+        // email must not make it look as though the coupon was not created.
+        const notify = (document.getElementById('cpn-notify') || {}).checked === true;
+        const savedId = data.coupon && data.coupon.id;
         closeCouponEditor();
         loadCoupons();
+        if (notify && savedId && coupon.customerEmail) emailCoupon(savedId);
       } catch (e) {
         showToast('Could not save: ' + e.message, 'error');
       } finally {
         if (btn) { btn.disabled = false; btn.textContent = 'Save coupon'; }
+      }
+    }
+
+    async function emailCoupon(id) {
+      try {
+        const res = await fetch(API_BASE + '/admin/coupons.php', {
+          method: 'POST',
+          headers: adminAuthHeaders(),
+          body: JSON.stringify({ action: 'notify', id: id }),
+        });
+        const data = await res.json().catch(function () { return {}; });
+        if (!res.ok || !data.ok) throw new Error(data.error || 'HTTP ' + res.status);
+        showToast('Code emailed to ' + data.sentTo, 'success');
+      } catch (e) {
+        // The reason matters here — "unsubscribed" and "SMTP is down" call for
+        // completely different responses from the owner.
+        showToast('Could not email the code: ' + e.message, 'error');
       }
     }
 

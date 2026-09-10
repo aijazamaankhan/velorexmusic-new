@@ -269,3 +269,108 @@ function abandoned_cart_email(array $data): array {
 
     return ['subject' => $subject, 'html' => $html, 'text' => $text];
 }
+
+// -----------------------------------------------------------------------------
+// personal_coupon_email — "here is your discount code"
+//
+// Sent when the admin issues a coupon reserved for one customer. Marketing-
+// adjacent, so it carries an unsubscribe link and the List-Unsubscribe headers
+// like every other non-transactional message here (CLAUDE.md §26) — a personal
+// gift is still a message the recipient did not ask for.
+//
+// $c is the coupon row. The email states the conditions (minimum spend, expiry)
+// rather than only the headline: a code that turns out to need a spend the
+// customer did not know about is worse than no email.
+// -----------------------------------------------------------------------------
+function personal_coupon_email(array $c, string $email, string $unsubToken, string $firstName = ''): array {
+    $base  = _vv_base_url();
+    $unsub = $base . '/api/unsubscribe.php?token=' . urlencode($unsubToken);
+    $code  = (string)$c['code'];
+
+    $value = (int)$c['value'];
+    $offer = ((string)$c['type'] === 'percent')
+        ? $value . '% off'
+        : _vv_money($value) . ' off';
+
+    $subject = 'Your ' . $offer . ' code at Velorex Music';
+    $hello   = $firstName !== '' ? ('Hi ' . $firstName . ',') : 'Hi,';
+
+    // Conditions, stated plainly. Only the ones that actually apply.
+    $terms = [];
+    if (!empty($c['min_order']))    $terms[] = 'Valid on orders over ' . _vv_money((int)$c['min_order']) . '.';
+    if (!empty($c['max_discount']) && (string)$c['type'] === 'percent') {
+        $terms[] = 'Maximum discount ' . _vv_money((int)$c['max_discount']) . '.';
+    }
+    if (!empty($c['expires_at']))   $terms[] = 'Use it by ' . date('j F Y', strtotime((string)$c['expires_at'])) . '.';
+    $terms[] = 'Reserved for this email address, and applies to items only — delivery is charged as usual.';
+
+    $termsHtml = '<ul style="margin:0;padding-left:18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#666;line-height:1.7;">'
+        . implode('', array_map(function ($t) { return '<li>' . _vv_esc($t) . '</li>'; }, $terms))
+        . '</ul>';
+
+    $html = '<!doctype html><html><head><meta charset="utf-8">'
+        . '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        . '<title>' . _vv_esc($subject) . '</title></head>'
+        . '<body style="margin:0;padding:0;background:#f4f4f7;font-family:Arial,Helvetica,sans-serif;">'
+        . '<span style="display:none;max-height:0;overflow:hidden;opacity:0;">'
+        .   _vv_esc($offer) . ' with code ' . _vv_esc($code) . ' at Velorex Music.'
+        . '</span>'
+        . '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f4f4f7;">'
+        .   '<tr><td align="center" style="padding:24px 12px;">'
+        .     '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.04);">'
+        .       '<tr><td align="center" style="background:#0a0a14;padding:24px 28px;">'
+        .         '<a href="' . _vv_esc($base) . '/" style="text-decoration:none;">'
+        .           '<img src="' . _vv_esc($base) . '/src/img/logo-lockup-dark.png" alt="Velorex Music" width="190" height="44" style="display:block;border:0;outline:none;text-decoration:none;height:auto;max-width:190px;margin:0 auto;">'
+        .         '</a>'
+        .       '</td></tr>'
+        .       '<tr><td style="padding:32px 28px 8px;">'
+        .         '<p style="margin:0 0 8px;font-size:16px;color:#111;">' . _vv_esc($hello) . '</p>'
+        .         '<p style="margin:0 0 20px;font-size:15px;line-height:1.55;color:#444;">'
+        .           'Here is a discount code we have set aside for you.'
+        .         '</p>'
+        .         '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:2px dashed #ff6b35;border-radius:12px;background:#fff7f3;margin:0 0 20px;">'
+        .           '<tr><td align="center" style="padding:22px 16px;">'
+        .             '<div style="font-size:13px;letter-spacing:0.14em;text-transform:uppercase;color:#ff6b35;font-weight:700;">'
+        .               _vv_esc($offer) . '</div>'
+        .             '<div style="font-size:30px;font-weight:800;letter-spacing:0.12em;color:#111;margin-top:8px;">'
+        .               _vv_esc($code) . '</div>'
+        .           '</td></tr>'
+        .         '</table>'
+        .         '<p style="margin:0 0 20px;text-align:center;">'
+        .           '<a href="' . _vv_esc($base) . '/products" target="_blank" style="display:inline-block;background:#ff6b35;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:12px 24px;border-radius:8px;">Start shopping &rarr;</a>'
+        .         '</p>'
+        .         '<p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#111;">Good to know</p>'
+        .         $termsHtml
+        .       '</td></tr>'
+        .       '<tr><td style="padding:24px 28px 28px;">'
+        .         '<p style="margin:0;font-size:12px;color:#999;line-height:1.55;">'
+        .           'Sent to <strong style="color:#666;">' . _vv_esc($email) . '</strong> because we issued this code for you.<br>'
+        .           '<a href="' . _vv_esc($unsub) . '" style="color:#999;">Unsubscribe from offers</a> &middot; '
+        .           '<a href="' . _vv_esc($base) . '/" style="color:#999;">velorexmusic.com</a>'
+        .         '</p>'
+        .       '</td></tr>'
+        .     '</table>'
+        .   '</td></tr>'
+        . '</table></body></html>';
+
+    $text = $hello . "
+
+"
+        . "Here is a discount code we have set aside for you.
+
+"
+        . $offer . " - code " . $code . "
+
+"
+        . implode("
+", $terms) . "
+
+"
+        . "Shop: " . $base . "/products
+
+"
+        . "Unsubscribe from offers: " . $unsub . "
+";
+
+    return ['subject' => $subject, 'html' => $html, 'text' => $text];
+}

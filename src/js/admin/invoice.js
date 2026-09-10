@@ -33,6 +33,7 @@
     const InvoiceContact = {
       email: '',
       phone: '',
+      address: '',
       loaded: false,
 
       async load() {
@@ -44,6 +45,7 @@
           const s = (data && data.settings) || {};
           this.email = String(s.contact_email || '');
           this.phone = String(s.contact_phone || '');
+          this.address = String(s.store_address || '');
         } catch (e) {
           // Silent: an invoice without a phone number still works.
           console.warn('invoice contact unavailable:', e);
@@ -234,7 +236,14 @@
         ? '<div class="col"><div class="k">Call us</div><div class="val">' + escapeHTML(InvoiceContact.phone) + '</div></div>' : '')
 +     (InvoiceContact.email
         ? '<div class="col"><div class="k">Email us</div><div class="val">' + escapeHTML(InvoiceContact.email) + '</div></div>' : '')
-+     '<div class="col"><div class="k">Our location</div><div class="val">Gurugram, India<br>Meerut, U.P., India</div></div>'
++     (InvoiceContact.address
+        // Semicolons separate locations; each becomes its own line.
+        ? '<div class="col"><div class="k">Our location</div><div class="val">'
+          + InvoiceContact.address.split(';')
+              .map(function (l) { return escapeHTML(l.trim()); })
+              .filter(Boolean).join('<br>')
+          + '</div></div>'
+        : '')
 +   '</div>'
 
 +   '<div class="strip">Vinyl · Cassettes · CDs · Music Memorabilia</div>'
