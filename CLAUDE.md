@@ -2653,3 +2653,97 @@ until a customer complains:
 
 A failing row prints the fix next to the problem, so nobody has to go looking it
 up while the shop is down.
+
+## 34. Discount coupons
+
+Admin → **Coupons**. Percentage or fixed-amount codes, optionally reserved for
+one customer, with a storefront promo card for whichever code is featured.
+
+| Piece | File |
+|---|---|
+| Schema, validation, the discount calculation | [api/_coupon_helpers.php](api/_coupon_helpers.php) |
+| Storefront quote (display only) | [api/coupon-validate.php](api/coupon-validate.php) |
+| Featured coupon for the promo | [api/coupons.php](api/coupons.php) |
+| Admin CRUD | [api/admin/coupons.php](api/admin/coupons.php) |
+| **Where a discount becomes real** | [api/payments/create-order.php](api/payments/create-order.php) |
+| Redemption record | `finalize_payment()` in [api/_payment_finalize.php](api/_payment_finalize.php) |
+| Admin panel | [src/js/admin/coupons.js](src/js/admin/coupons.js) |
+| Cart field + promo card | [src/js/storefront/coupon.js](src/js/storefront/coupon.js) |
+
+### The browser never decides a discount
+
+`coupon_evaluate()` is the **one** place a discount is computed.
+`create-order.php` calls it with the subtotal **it** derived from DB prices —
+never a number the browser sent — and mints the Razorpay order for the result.
+The cart's quote endpoint calls the same function, so what the cart shows and
+what the till takes are the same calculation on the same inputs.
+
+The applied coupon travels to checkout as a **code**, never as an amount. A
+tampered browser can at most ask for a discount the server then refuses.
+
+This is the property §17 describes for combos, and it is why a combo could not
+simply store a discount. **If you ever add a second copy of these checks — for
+speed, for a nicer message, anything — you have rebuilt the hole this file
+exists to avoid.**
+
+A code the browser sends that fails validation is **ignored**, not a 400: the
+cart already reported the failure when it was typed, and a coupon that expired
+between the cart and the Pay button should not strand someone ready to pay. The
+response carries `couponError`, and the checkout drops the code and says so
+before the Razorpay sheet opens.
+
+### Rules worth not changing
+
+- **Discounts never apply to shipping.** Delivery is a real per-parcel cost
+  (§16); a percentage eating into it turns a generous-looking offer into a loss
+  on small baskets.
+- **The discount is clamped to the subtotal.** Otherwise a large fixed-amount
+  code produces a negative total and a Razorpay order for a negative amount.
+- **Percentage is capped at 90, not 100.** A 100%-off code is a free-order
+  generator; if that is genuinely wanted it should be a deliberate decision, not
+  a typo in a percentage box.
+- **"No such code" and "disabled" return the same message.** Different messages
+  would make this endpoint a way to enumerate live codes.
+- **Redemption is recorded inside `finalize_payment()`'s transaction**, with a
+  `UNIQUE` key on `order_id`. It commits with the order or not at all, so a
+  rolled-back payment leaves no phantom redemption, and the verify + webhook
+  double-fire cannot double-count. `used_count` only advances when a row was
+  genuinely inserted.
+- **The coupon is bound to the `payment_orders` row at create time** and is
+  *not* re-evaluated at finalize. Re-running the rules minutes later could
+  reach a different answer (someone else exhausting the limit, the expiry
+  passing mid-payment) and would then disagree with the amount Razorpay already
+  captured. The charge is settled; finalize is bookkeeping.
+
+### Customer-specific codes
+
+`coupons.customer_email` reserves a code for one person. The identity it is
+matched against comes from the **session** (looked up in `users` by id) or from
+the address typed at **guest checkout** — never from a field the browser
+supplies, the same rule `/api/cart-sync.php` follows and for the same reason
+(§26).
+
+A signed-out visitor quoting a reserved code is told *"Sign in with the account
+this coupon was sent to"* rather than "invalid", which would read as a broken
+code to the one person it was made for.
+
+A reserved code **can never be the featured promo** — enforced in the admin
+validator *and* in the promo query, so the two settings cannot be saved in a
+combination that would advertise someone's personal code to every visitor.
+
+### The promo card is a corner card, not an interstitial
+
+Constrained the same way the intro splash is (§15) and for the same reason: a
+full-screen overlay on arrival is what Google classifies as an intrusive
+interstitial, a documented mobile ranking negative. So it appears after a
+delay, never covers the content, never blocks a click on the page behind it,
+shows once per session, and is dismissible by button, Escape or clicking away.
+**Don't promote it to a modal.**
+
+### Tables
+
+`coupons` and `coupon_redemptions` are created on first use, like `blog_posts`,
+`combo_offers`, `carts` and `store_settings`. `payment_orders.coupon_code` and
+`.coupon_discount` are added on demand the same way the recovery columns are —
+no phpMyAdmin step. A failure to add them degrades to "no redemption recorded",
+never to a broken checkout.

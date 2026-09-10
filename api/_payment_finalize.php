@@ -18,6 +18,7 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/_mailer.php';
 require_once __DIR__ . '/_email_templates.php';
+require_once __DIR__ . '/_coupon_helpers.php';
 
 // Returns ['orderId' => 'VD-XXXXXXXX', 'alreadyFinalized' => bool, 'userId' => int]
 // or throws on:
@@ -132,7 +133,19 @@ function finalize_payment(PDO $pdo, string $razorpayOrderId, string $razorpayPay
             fn($l) => (int)($l['lineTotal'] ?? 0),
             array_filter($items, 'is_array')
         ));
-        $shipping = max(0, $totalRupees - $subtotal);
+
+        // Coupon, as it was PRICED IN at create-order time — not re-evaluated
+        // here. Re-running the rules minutes later could reach a different
+        // answer (someone else exhausting the usage limit, the expiry passing
+        // mid-payment) and would then disagree with the amount Razorpay has
+        // already captured. The charge is settled; this is bookkeeping.
+        $couponCode     = isset($po['coupon_code']) ? (string)$po['coupon_code'] : '';
+        $couponDiscount = isset($po['coupon_discount']) ? (int)$po['coupon_discount'] : 0;
+        if ($couponCode === '') $couponDiscount = 0;
+
+        // Shipping is whatever the captured total is not accounted for by
+        // goods-minus-discount.
+        $shipping = max(0, $totalRupees - ($subtotal - $couponDiscount));
 
         $orderData = [
             'id'              => $internalOrderId,
@@ -142,6 +155,8 @@ function finalize_payment(PDO $pdo, string $razorpayOrderId, string $razorpayPay
             'razorpayOrderId' => $razorpayOrderId,
             'items'           => $items,
             'subtotal'        => $subtotal,
+            'discount'        => $couponDiscount,
+            'couponCode'      => $couponCode !== '' ? $couponCode : null,
             'shipping'        => $shipping,
             'total'           => $totalRupees,
             'amountPaise'     => $amountPaise,
@@ -167,6 +182,26 @@ function finalize_payment(PDO $pdo, string $razorpayOrderId, string $razorpayPay
             ':data' => json_encode($orderData),
             ':hist' => json_encode($initialHistory),
         ]);
+
+        // Redemption, INSIDE the transaction: it commits with the order or not
+        // at all, so a rolled-back payment can never leave a phantom
+        // redemption, and used_count cannot drift above the orders that
+        // actually exist. INSERT IGNORE on order_id makes the verify+webhook
+        // double-fire idempotent here too.
+        if ($couponCode !== '' && $couponDiscount > 0) {
+            try {
+                $cRow = coupon_find($pdo, $couponCode);
+                if ($cRow) {
+                    coupon_record_redemption(
+                        $pdo, (int)$cRow['id'], $couponCode, $internalOrderId,
+                        $userId, (string)($contact['email'] ?? ''), $couponDiscount
+                    );
+                }
+            } catch (Throwable $cErr) {
+                // Never fail a captured payment over bookkeeping.
+                error_log('[finalize] coupon redemption failed for ' . $internalOrderId . ': ' . $cErr->getMessage());
+            }
+        }
 
         $updPo = $pdo->prepare('UPDATE payment_orders
             SET status = :st, razorpay_payment_id = :pid, internal_order_id = :iid

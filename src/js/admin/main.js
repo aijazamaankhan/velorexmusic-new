@@ -409,6 +409,7 @@
         users: { t: 'Customer Management', s: 'Search, edit, support and remove customer accounts' },
         abandoned: { t: 'Abandoned Carts', s: 'Baskets and checkouts that were walked away from' },
         subscribers: { t: 'Newsletter Subscribers', s: 'The mailing list, split by consent' },
+        coupons:  { t: 'Discount Coupons', s: 'Codes customers can apply at checkout' },
         settings: { t: 'Store Configuration', s: 'Settings that actually change the shop' }
       };
 
@@ -438,6 +439,7 @@
       // visit rather than cached: it is small, and a stale toggle on a control
       // panel is worse than a round trip.
       if (panelId === 'settings') loadSettings();
+      if (panelId === 'coupons')  loadCoupons();
 
       // Use initDashboard (not renderProductsTable alone) so the stat card +
       // recent-products list also refresh — paintPanelSkeleton above filled

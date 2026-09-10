@@ -1,0 +1,49 @@
+/* =============================================================================
+   Velorex Music — admin Coupons panel (#panel-coupons)
+   Used by: vlx-admin-2026.html, rendered by src/js/admin/coupons.js
+
+   Owns every .cpn-* class. Section chrome is reused from the Dashboard
+   (.admin-card / .dash-panel / .dash-empty) and the field styles from the
+   Settings panel (.set-help / .set-error / .set-toggle), so the three panels
+   stay visibly the same product.
+   ============================================================================= */
+
+.cpn-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+/* Monospace so 0/O and 1/l are distinguishable — these get read aloud down a
+   phone and typed from a screenshot. */
+.cpn-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-size: 0.9rem;
+}
+
+.cpn-featured {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(255, 107, 53, 0.14);
+  color: var(--secondary);
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.cpn-sub { font-size: 0.76rem; color: var(--text-muted); line-height: 1.6; }
+
+/* The code field types in caps because the server normalises to uppercase —
+   showing lowercase while storing uppercase makes the two look like different
+   codes. */
+.cpn-upper { text-transform: uppercase; letter-spacing: 0.06em; }
+.cpn-upper::placeholder { text-transform: none; letter-spacing: normal; }

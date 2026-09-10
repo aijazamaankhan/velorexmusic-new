@@ -34,6 +34,7 @@ require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../_razorpay.php';
 require_once __DIR__ . '/../_address_helpers.php';
 require_once __DIR__ . '/../_shipping_helpers.php';
+require_once __DIR__ . '/../_coupon_helpers.php';
 require_once __DIR__ . '/../_products_helpers.php';  // products_has_shipping_columns()
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -214,7 +215,44 @@ try {
     // the SAME DB rows the prices came from, so a client cannot influence it.
     $shipQuote = shipping_calculate((int)$subtotal, $addressSnapshot, $shippingItems);
     $shipping  = $shipQuote['shipping'];
-    $total     = $subtotal + $shipping;
+
+    // ---- Coupon -------------------------------------------------------------
+    // THIS is where a discount becomes real. coupon_evaluate() is handed the
+    // subtotal derived from DB prices a few lines above — never a number the
+    // browser sent — and the storefront's quote endpoint calls the same
+    // function, so what the cart shows and what the till takes are the same
+    // calculation on the same inputs.
+    //
+    // A code the browser sends that does not survive validation is IGNORED
+    // rather than 400-ing the checkout: the cart already showed the failure
+    // when it was typed, and a coupon that expired between the cart and the
+    // Pay button should not strand someone who is ready to pay. The response
+    // below reports the discount actually applied, so the browser can correct
+    // itself before the Razorpay sheet opens.
+    $couponCode     = isset($body['couponCode']) ? coupon_normalize_code((string)$body['couponCode']) : '';
+    $couponDiscount = 0;
+    $couponRow      = null;
+    $couponError    = null;
+    if ($couponCode !== '') {
+        // For a signed-in caller coupon_evaluate() resolves the address from
+        // the users table itself; for a guest it is the one typed above and
+        // already validated. Either way it is never a free field the browser
+        // chose.
+        $couponEmail = $userId !== null ? null : ($guestContact['email'] ?? null);
+        $evald = coupon_evaluate($pdo, $couponCode, (int)$subtotal, $userId, $couponEmail);
+        if ($evald['ok']) {
+            $couponDiscount = (int)$evald['discount'];
+            $couponRow      = $evald['coupon'];
+        } else {
+            $couponError = $evald['error'];
+        }
+    }
+
+    // Discount applies to GOODS only, never to delivery — see the note in
+    // coupon_evaluate(). Clamped again here so no arithmetic above can drive
+    // the charge below the cost of shipping.
+    $couponDiscount = max(0, min($couponDiscount, (int)$subtotal));
+    $total = $subtotal - $couponDiscount + $shipping;
     if ($total < 1) {
         http_response_code(400);
         echo json_encode(['error' => 'Order total must be at least ₹1']);
@@ -258,6 +296,31 @@ try {
         ':sa'   => json_encode($addressSnapshot),
     ]);
 
+    // Bind the coupon to this payment_orders row so finalize_payment() records
+    // the redemption against the SAME coupon that was priced in, rather than
+    // re-evaluating it minutes later when its usage limit may have been hit by
+    // somebody else. Stored as a column added on demand, the same way the
+    // recovery columns are (CLAUDE.md §26).
+    if ($couponRow !== null) {
+        try {
+            coupons_ensure_payment_columns($pdo);
+            $pdo->prepare('UPDATE payment_orders
+                              SET coupon_code = :c, coupon_discount = :d
+                            WHERE razorpay_order_id = :rid')
+                ->execute([
+                    ':c'   => (string)$couponRow['code'],
+                    ':d'   => $couponDiscount,
+                    ':rid' => $rzOrder['id'],
+                ]);
+        } catch (Throwable $e) {
+            // The customer is charged the discounted amount regardless — the
+            // Razorpay order is already minted for it. Losing the binding only
+            // costs us the redemption record, so log and carry on rather than
+            // failing a checkout that is otherwise fine.
+            error_log('[coupons] could not bind coupon to payment order: ' . $e->getMessage());
+        }
+    }
+
     echo json_encode([
         'ok'              => true,
         'keyId'           => $creds['keyId'],
@@ -267,6 +330,11 @@ try {
         'mode'            => $creds['mode'],
         'subtotal'        => $subtotal,
         'shipping'        => $shipping,
+        'discount'        => $couponDiscount,
+        'couponCode'      => $couponRow !== null ? (string)$couponRow['code'] : null,
+        // Present only when a code was sent and refused, so the cart can say
+        // why the total it quoted is not the total being charged.
+        'couponError'     => $couponError,
         'total'           => $total,
     ]);
 } catch (RuntimeException | InvalidArgumentException $e) {

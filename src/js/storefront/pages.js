@@ -1107,6 +1107,17 @@
         // here would have printed "Add ₹undefined more". Delivery now depends on
         // what is in the cart, so state that rather than dangling a target the
         // customer can no longer reach by spending more.
+        // Coupon, for DISPLAY. The code — never this amount — is what travels to
+        // create-order.php, which re-derives the discount server-side.
+        // refresh() re-quotes it against the cart as it now stands, so adding
+        // an item to a basket that was below a coupon's minimum makes the
+        // discount appear without the customer retyping anything.
+        var couponDiscount = (typeof Coupon !== 'undefined') ? Coupon.discount() : 0;
+        var couponCode     = (typeof Coupon !== 'undefined') ? Coupon.code() : '';
+        if (couponDiscount > subtotal) couponDiscount = subtotal;
+        var cartTotal = Math.max(0, total - couponDiscount);
+        if (typeof Coupon !== 'undefined') Coupon.refresh();
+
         var shippingHtml = quote.freeShipping
           ? '🚚 ✅ <strong style="color:var(--success);">Free delivery on this order</strong>'
           : `🚚 Delivery ₹${Number(quote.shipping || 0).toLocaleString()} — charged once per order, not per item`;
@@ -1118,8 +1129,10 @@
       <div><div class="cart-summary">
         <h3 class="summary-title">Order Summary</h3>
         <div class="summary-row"><span>Subtotal</span><span>₹${subtotal.toLocaleString()}</span></div>
+        ${couponDiscount > 0 ? `<div class="summary-row discount"><span>Discount${couponCode ? ' (' + Utils.escape(couponCode) + ')' : ''}</span><span>−₹${couponDiscount.toLocaleString()}</span></div>` : ''}
         <div class="summary-row"><span>Shipping</span><span>${quote.freeShipping ? '<span style="color:var(--success);">FREE</span>' : '<span style="color:var(--text-muted);font-size:0.85em;">Calculated at checkout</span>'}</span></div>
-        <div class="summary-row total"><span>Total</span><span class="amount">₹${total.toLocaleString()}${quote.freeShipping ? '' : '<span style="display:block;font-size:0.7rem;color:var(--text-muted);font-weight:400;margin-top:0.2rem;">+ shipping</span>'}</span></div>
+        <div class="summary-row total"><span>Total</span><span class="amount">₹${cartTotal.toLocaleString()}${quote.freeShipping ? '' : '<span style="display:block;font-size:0.7rem;color:var(--text-muted);font-weight:400;margin-top:0.2rem;">+ shipping</span>'}</span></div>
+        ${typeof Coupon !== 'undefined' ? Coupon.summaryHtml() : ''}
         <button class="btn btn-primary btn-lg btn-block" style="margin-top:1.5rem;" onclick="checkoutSPA()"><i class="fas fa-bolt"></i> Proceed to Checkout</button>
         <a href="#" onclick="navigate('products')" class="btn btn-secondary btn-block" style="margin-top:0.75rem;">← Continue Shopping</a>
       </div></div></div>`;

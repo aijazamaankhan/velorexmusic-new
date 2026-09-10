@@ -661,6 +661,14 @@
       // canonical total. The reply is the only thing we trust for amount/key.
       let createRes;
       try {
+        // The coupon travels as a CODE. create-order.php re-runs the same
+        // coupon_evaluate() the cart's quote used, against a subtotal it
+        // derives from DB prices, so a tampered browser can at most ask for a
+        // discount the server then refuses.
+        if (typeof Coupon !== 'undefined' && Coupon.code()) {
+          createBody.couponCode = Coupon.code();
+        }
+
         createRes = await fetch(API_BASE + '/payments/create-order.php', {
           method: 'POST',
           headers: { ...Auth.headers(), 'Content-Type': 'application/json' },
@@ -672,6 +680,17 @@
         return;
       }
       const created = await createRes.json().catch(() => ({}));
+
+      // The server is the authority on what is being charged. If it refused the
+      // code (expired between the cart and this click, usage limit reached by
+      // someone else), say so and drop it locally rather than letting the cart
+      // keep advertising a discount that is not in the amount about to be
+      // authorised.
+      if (created && created.couponError && typeof Coupon !== 'undefined') {
+        Coupon.clear(true);
+        showToast('Coupon not applied: ' + created.couponError, 'error');
+      }
+
       if (!createRes.ok || !created.ok) {
         setBtn('<i class="fas fa-bolt"></i> Pay Now', false);
         showToast(created.error || ('Could not create order (HTTP ' + createRes.status + ')'), 'error');
