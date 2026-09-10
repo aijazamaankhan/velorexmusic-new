@@ -3050,6 +3050,36 @@ line that keeps this true.
   AdSense requires a visible disclosure of ad cookies, and that page is now
   editable (§35), so it can drift.
 
+### Turning it on: no code to install, but ads.txt is not optional
+
+The ad-serving code is already deployed and inert. Switching ads on is two
+values in Settings → Ads. What is NOT covered by that, and would otherwise be
+found the hard way:
+
+**Site verification.** AdSense offers three ways to prove you own the site:
+paste their snippet into every page's `<head>`, add a meta tag, or add an
+**ads.txt** line. Choose **ads.txt**. The snippet option puts ad code on the
+whole storefront, which is precisely what this section exists to prevent.
+
+**`/ads.txt` is served by [ads-txt.php](ads-txt.php)**, rewritten in
+`.htaccess`, and generated from the publisher id in Settings — one place to
+type it, no static file to forget, and it follows the setting if it changes.
+
+Two details that make an otherwise-correct ads.txt fail:
+
+- The line uses **`pub-…`, not `ca-pub-…`**. Stripping the `ca-` prefix is the
+  single most common reason a file that looks right is rejected.
+- It **404s when no publisher id is set**, rather than serving an empty file.
+  An empty ads.txt is *worse* than none: crawlers cache it and read it as "no
+  seller is authorised to sell this inventory", which suppresses ads rather
+  than merely failing to enable them.
+
+`f08c47fec0942fa0` in that line is Google's own certification-authority id. It
+is identical for every AdSense publisher — not a secret, not account-specific.
+
+AdSense also flags "Earnings at risk" on any live site without an ads.txt, so
+this is required once ads are running, not just for verification.
+
 Worth knowing before switching it on: AdSense approval needs original content
 and a real privacy policy, and a blog with a handful of posts is often declined
 on first application.

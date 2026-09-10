@@ -74,6 +74,13 @@ DirectoryIndex index.html index.php
   # conventional .xml path that robots.txt and Search Console expect.
   RewriteRule ^sitemap\.xml$ sitemap.php [L]
 
+  # ads.txt is generated from the AdSense publisher id in Settings, so there is
+  # one place to type it and no static file to forget. It doubles as the site
+  # VERIFICATION method — choosing "ads.txt" in AdSense avoids their other two
+  # options, both of which would put ad code on the whole storefront rather
+  # than just the blog (CLAUDE.md §40).
+  RewriteRule ^ads\.txt$ ads-txt.php [L]
+
   # Never rewrite something that physically exists (index.html, /src/*, the
   # /uploads symlink, the /api directory). This MUST come before the catalogue
   # rules below, otherwise a real asset whose name happens to match a pattern
