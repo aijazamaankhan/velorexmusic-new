@@ -2511,14 +2511,51 @@ tinted gradient ground, aurora at 0.85, visible grid lines, and slate-tinted
 shadows. The active carousel dot was also *fainter* than an inactive one
 (`0.12` vs `0.15`).
 
+### The admin sidebar must be able to scroll
+
+The nav is eleven items plus a logo and a logout. At phone heights that is
+~860px of content in a ~740px drawer, and `.sidebar` had no `overflow-y` — so
+the overflow was simply **unreachable**, Logout included, on every phone. It
+appeared when Dashboard, Coupons and Policies were added; the list had been one
+item short of the fold.
+
+`overflow-y: auto` is on the BASE rule, not just the mobile one — a short laptop
+window overflows too. `overscroll-behavior: contain` stops reaching the end of
+the list from scrolling the page behind it.
+
+The drawer uses **`100dvh` with a `100vh` fallback line first**. On iOS Safari
+`100vh` is the height *without* browser chrome, so a `100vh` drawer runs under
+the URL bar and the last item is unreachable even when the list would fit.
+
+Mobile padding and item spacing are tightened so the whole nav fits without
+scrolling on a typical phone (390×740). Scrolling works, but not needing to is
+better — a drawer is a menu, not a page.
+
 ### Add to Cart / Buy Now are one size on every device
 
-`.product-actions-group` is a **grid**, not flex. Under flex the two buttons
-were different widths at every size (different label lengths), and the
-responsive rule meant to stack them — `grid-template-columns: 1fr` in the
-1024px block — silently did nothing because the container was not a grid.
-Two equal columns at desktop, one full-width column below: identical at every
-width. Verified at 1440 / 900 / 700 / 430.
+`.product-actions-group` is a **grid**, not flex — under flex the two buttons
+were different widths at every size, because their labels are different
+lengths.
+
+It uses **`repeat(auto-fit, minmax(10rem, 1fr))`, not `repeat(2, minmax(0, 1fr))`.**
+Two fixed tracks of `minmax(0, …)` are allowed to shrink below their own label,
+and in the product page's narrow right column they did: the pair rendered at
+114px each and clipped to *"Add to Ca"* at every desktop width. The floor is the
+width the longest label actually needs, so the grid drops to one full-width
+column rather than squeezing two — and since every track is `1fr`, the buttons
+stay identical to each other either way.
+
+`btn-lg`'s 2.5rem side padding is also trimmed inside this group. The button is
+already centred and already fills its track, so that padding bought nothing and
+cost ~80px of the space the label needed.
+
+There is deliberately **no media-query override** any more. `auto-fit` already
+stacks when two tracks will not fit, and the previous override had to be
+specificity-matched by hand to work at all — a second rule deciding the same
+thing is a second thing to keep in step.
+
+Verified with no clipping and matching sizes at 1440 / 1200 / 1024 / 900 / 768 /
+700 / 560 / 430 / 360 / 320.
 
 ### The navbar sign-in was an unreadable glyph
 

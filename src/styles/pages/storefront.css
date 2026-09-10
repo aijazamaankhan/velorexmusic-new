@@ -326,11 +326,23 @@ body { padding-top: 70px; }
    silently did nothing because the container was not a grid. Two equal columns
    here and one full-width column there means the two buttons are the same size
    as each other on every device. */
-.product-detail-actions .product-actions-group { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+/* auto-fit, NOT repeat(2, …).
+   Two fixed tracks of minmax(0, 1fr) are allowed to shrink below their own
+   label, and that is exactly what happened: in the product page's narrow right
+   column the pair rendered at 114px each and clipped to "Add to Ca". The floor
+   here is the width the longest label actually needs, so the grid drops to ONE
+   full-width column instead of squeezing two — and because every track is 1fr,
+   the two buttons stay identical to each other either way, which was the
+   original requirement. */
+.product-detail-actions .product-actions-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 1rem; }
 /* min-width:0 lets a button shrink inside its track instead of pushing the
    grid wider than the column; justify-content centres the label now that the
    width comes from the track rather than from the text. */
 .product-detail-actions .btn { min-width: 0; justify-content: center; text-align: center; }
+/* btn-lg carries 2.5rem of side padding for a standalone CTA. In a grid track
+   the button is already centred and already full-width, so that padding bought
+   nothing and cost ~80px of the space the label needed. */
+.product-detail-actions .btn-lg { padding-left: 1.25rem; padding-right: 1.25rem; }
 /* Same border BOX on every button in this group, so the pair is the same
    height whether the grid stretches them (two columns) or sizes each row on
    its own content (one column, on a phone). .btn-outline-primary carries a 2px
@@ -734,16 +746,11 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   .footer-grid { grid-template-columns: 1fr; gap: 2rem; }
   .categories-grid { grid-template-columns: 1fr; }
   .products-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
-  /* Qualified to match the desktop rule's specificity.
-     `.product-detail-actions .product-actions-group` (0,2,0) sets two columns;
-     a bare `.product-actions-group` (0,1,0) here LOSES to it even inside this
-     media query, so the buttons stayed side by side on a phone and clipped
-     their own labels to "Add to Ca". Specificity beats source order — being
-     inside a narrower media query counts for nothing. */
-  .product-detail-actions .product-actions-group { grid-template-columns: 1fr; }
-  /* btn-lg's 2.5rem of side padding is desktop sizing. Once these are full
-     width the label centres itself, so the padding is only squeezing the text. */
-  .product-detail-actions .btn-lg { padding-left: 1.25rem; padding-right: 1.25rem; }
+  /* No .product-actions-group override here any more: the base rule uses
+     repeat(auto-fit, minmax(10rem, 1fr)), which already drops to one column
+     whenever two will not fit. A second rule deciding the same thing is a
+     second thing to keep in step — and the previous one had to be
+     specificity-matched by hand to work at all. */
   .form-grid { grid-template-columns: 1fr; }
   .section { padding: 3rem 0; }
   .page-hero { padding: 2rem 0; margin-bottom: 2rem; }
