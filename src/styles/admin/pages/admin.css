@@ -173,6 +173,20 @@
       background: rgba(255, 255, 255, 0.1);
     }
 
+    /* `color: white` above is written for the dark chrome. In light mode the
+       header is white too, so the button was white-on-white — present, and
+       completely unreadable. Same class of bug as the storefront's gold
+       "Buy Now" (CLAUDE.md §29): a literal colour that only suits one theme. */
+    [data-theme="light"] .btn-view-store {
+      background: #ffffff;
+      color: var(--text);
+    }
+    [data-theme="light"] .btn-view-store:hover {
+      background: var(--surface-light);
+      border-color: var(--secondary);
+      color: var(--secondary);
+    }
+
     .profile-card {
       display: flex;
       align-items: center;

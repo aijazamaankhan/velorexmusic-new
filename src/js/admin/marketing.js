@@ -21,6 +21,35 @@
      - adminAuthHeaders                            (admin/main.js)
    ============================================================================= */
 
+    // A JS string literal that is safe to sit inside a DOUBLE-quoted HTML
+    // attribute.
+    //
+    // Every action button on the Abandoned and Subscribers panels was built as
+    //     onclick="doThing(' + JSON.stringify(value) + ')"
+    // and JSON.stringify emits DOUBLE quotes, so the rendered markup was
+    //     onclick="doThing("cart","1")"
+    // — the attribute ends at that first inner quote. The browser then parsed
+    // the remainder as stray attributes and threw "Unexpected end of input" on
+    // click, which surfaced as buttons that simply did nothing: Send, Dismiss,
+    // Restore, and both Subscribers actions were all dead on arrival.
+    //
+    // Single-quote the literal, escape for JS, then escape for HTML. Order
+    // matters — & has to go first or it would double-encode the entities the
+    // later replacements introduce.
+    function jsAttrArg(value) {
+      const BS = "\\"; // one backslash
+      const raw = String(value == null ? '' : value)
+        .split(BS).join(BS + BS)
+        .split("'").join(BS + "'")
+        .split('\r').join('')
+        .split('\n').join(BS + 'n');
+      return ("'" + raw + "'")
+        .split('&').join('&amp;')
+        .split('"').join('&quot;')
+        .split('<').join('&lt;')
+        .split('>').join('&gt;');
+    }
+
     // =============================================
     // ABANDONED CARTS + CHECKOUTS (panel-abandoned)
     // =============================================
@@ -262,7 +291,7 @@
         } else {
           sendBtn = '<button type="button" class="btn btn-primary btn-sm" style="width:auto;"'
             + (busy ? ' disabled' : '')
-            + ' onclick="sendAbandonedRecovery(' + JSON.stringify(r.kind) + ',' + JSON.stringify(String(r.id)) + ')">'
+            + ' onclick="sendAbandonedRecovery(' + jsAttrArg(r.kind) + ',' + jsAttrArg(r.id) + ')">'
             + (busy ? 'Sending…' : 'Send') + '</button>';
         }
 
@@ -271,12 +300,12 @@
         // this panel could not answer, and the second one has no reason to
         // depend on SMTP being wired up.
         const previewBtn = '<button type="button" class="btn btn-secondary btn-sm" style="width:auto;"'
-          + ' onclick="previewAbandonedEmail(' + JSON.stringify(r.kind) + ',' + JSON.stringify(String(r.id)) + ')"'
+          + ' onclick="previewAbandonedEmail(' + jsAttrArg(r.kind) + ',' + jsAttrArg(r.id) + ')"'
           + ' title="See the exact email a Send would produce">Preview</button>';
 
         const dismissBtn = r.dismissedAt
-          ? '<button type="button" class="btn btn-secondary btn-sm" style="width:auto;" onclick="setAbandonedDismissed(' + JSON.stringify(r.kind) + ',' + JSON.stringify(String(r.id)) + ',false)">Restore</button>'
-          : '<button type="button" class="btn btn-secondary btn-sm" style="width:auto;" onclick="setAbandonedDismissed(' + JSON.stringify(r.kind) + ',' + JSON.stringify(String(r.id)) + ',true)">Dismiss</button>';
+          ? '<button type="button" class="btn btn-secondary btn-sm" style="width:auto;" onclick="setAbandonedDismissed(' + jsAttrArg(r.kind) + ',' + jsAttrArg(r.id) + ',false)">Restore</button>'
+          : '<button type="button" class="btn btn-secondary btn-sm" style="width:auto;" onclick="setAbandonedDismissed(' + jsAttrArg(r.kind) + ',' + jsAttrArg(r.id) + ',true)">Dismiss</button>';
 
         return '<tr' + (r.dismissedAt ? ' style="opacity:0.55;"' : '') + '>'
           + '<td>' + stage + '</td>'
@@ -535,8 +564,8 @@
           : '<span style="color:var(--text-muted);">Unsubscribed</span>';
 
         const action = r.status === 'subscribed'
-          ? '<button type="button" class="btn btn-secondary btn-sm" style="width:auto;" onclick="setSubscriberStatus(' + JSON.stringify(r.email) + ',false)">Unsubscribe</button>'
-          : '<button type="button" class="btn btn-secondary btn-sm" style="width:auto;" onclick="setSubscriberStatus(' + JSON.stringify(r.email) + ',true)">Re-subscribe</button>';
+          ? '<button type="button" class="btn btn-secondary btn-sm" style="width:auto;" onclick="setSubscriberStatus(' + jsAttrArg(r.email) + ',false)">Unsubscribe</button>'
+          : '<button type="button" class="btn btn-secondary btn-sm" style="width:auto;" onclick="setSubscriberStatus(' + jsAttrArg(r.email) + ',true)">Re-subscribe</button>';
 
         const added = r.createdAt
           ? new Date(String(r.createdAt).replace(' ', 'T')).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })

@@ -899,7 +899,7 @@
       }
       var stockWarn = (product.stock <= 5 && product.stock > 0) ? `<span style="color:var(--danger);font-size:0.8rem;font-weight:600;">⚠️ Only ${product.stock} left!</span>` : '';
       var actionBtns = isOOS ? '<button class="btn btn-secondary" disabled style="opacity:0.5;cursor:not-allowed;">❌ Out of Stock</button>'
-        : '<div class="product-actions-group"><button class="btn btn-outline-primary btn-lg" id="addCartBtn" onclick="handleAddToCartDetail(' + product.id + ')">🛒 Add to Cart</button><button class="btn btn-gold btn-lg" onclick="handleBuyNowDetail(' + product.id + ')">⚡ Buy Now</button></div>';
+        : '<div class="product-actions-group"><button class="btn btn-outline-primary btn-lg" id="addCartBtn" onclick="handleAddToCartDetail(' + product.id + ')"><i class="fas fa-cart-shopping"></i> Add to Cart</button><button class="btn btn-gold btn-lg" onclick="handleBuyNowDetail(' + product.id + ')"><i class="fas fa-bolt"></i> Buy Now</button></div>';
       var origPriceHtml = product.originalPrice ? `<span class="product-detail-price-original">₹${product.originalPrice.toLocaleString()}</span>` : '';
       var discountHtml = discount ? `<span class="product-detail-discount">${discount}% OFF</span>` : '';
       var musicDirectorHtml = product.musicDirector ? `<p class="product-detail-music-director">Music Director: <strong>${Utils.escape(product.musicDirector)}</strong></p>` : '';
@@ -1049,7 +1049,7 @@
     function handleAddToCartDetail(id) {
       if (!CartHelpers.addToCart(id, _detailQty)) return;
       var btn = document.getElementById('addCartBtn');
-      if (btn) { btn.textContent = '✅ Added!'; btn.disabled = true; setTimeout(() => { btn.textContent = '🛒 Add to Cart'; btn.disabled = false; }, 2000); }
+      if (btn) { btn.innerHTML = '<i class="fas fa-check"></i> Added!'; btn.disabled = true; setTimeout(() => { btn.innerHTML = '<i class="fas fa-cart-shopping"></i> Add to Cart'; btn.disabled = false; }, 2000); }
     }
     function handleBuyNowDetail(id) { if (CartHelpers.addToCart(id, _detailQty)) navigate('cart'); }
 
@@ -1115,7 +1115,7 @@
         <div class="summary-row"><span>Subtotal</span><span>₹${subtotal.toLocaleString()}</span></div>
         <div class="summary-row"><span>Shipping</span><span>${quote.freeShipping ? '<span style="color:var(--success);">FREE</span>' : '<span style="color:var(--text-muted);font-size:0.85em;">Calculated at checkout</span>'}</span></div>
         <div class="summary-row total"><span>Total</span><span class="amount">₹${total.toLocaleString()}${quote.freeShipping ? '' : '<span style="display:block;font-size:0.7rem;color:var(--text-muted);font-weight:400;margin-top:0.2rem;">+ shipping</span>'}</span></div>
-        <button class="btn btn-primary btn-lg btn-block" style="margin-top:1.5rem;" onclick="checkoutSPA()">⚡ Proceed to Checkout</button>
+        <button class="btn btn-primary btn-lg btn-block" style="margin-top:1.5rem;" onclick="checkoutSPA()"><i class="fas fa-bolt"></i> Proceed to Checkout</button>
         <a href="#" onclick="navigate('products')" class="btn btn-secondary btn-block" style="margin-top:0.75rem;">← Continue Shopping</a>
       </div></div></div>`;
     }

@@ -254,6 +254,12 @@
       loginScreen.style.display = 'none';
       adminLayout.style.display = 'grid';
 
+      // The Dashboard is the landing panel now, and it reads its own batched
+      // endpoint — kick it off FIRST and do not await it, so the operator sees
+      // real numbers without waiting on the (much larger) product sync behind
+      // it. It paints its own skeleton and its own error state.
+      loadDashboard();
+
       // Pull latest data from server before rendering anything. Paint
        // skeletons in the destination panel first so the operator sees a
        // loading state during the round-trip rather than blank panels.
@@ -261,10 +267,12 @@
       await Storage.syncFromServer();
 
       try {
+        // Still primed on login: Inventory is one click away and its stat
+        // cards read from the cache we just filled.
         initDashboard();
       } catch (e) {
         console.error(e);
-        showToast('❌ Dashboard failed to load (check console)', 'danger');
+        showToast('❌ Inventory failed to load (check console)', 'danger');
       }
     }
 
@@ -392,6 +400,7 @@
 
       // Update header
       const titles = {
+        overview:  { t: 'Dashboard', s: 'What happened, what needs you, what is broken' },
         dashboard: { t: 'Inventory Management', s: 'Overview of your music empire' },
         orders: { t: 'Customer Orders', s: 'Track customer purchases and fulfillment' },
         categories: { t: 'Categories', s: 'Manage product categories' },
@@ -421,6 +430,10 @@
       if (panelId === 'dashboard' || panelId === 'orders') {
         await Storage.syncFromServer();
       }
+
+      // The Dashboard reads its own batched endpoint rather than the product /
+      // order caches, so it needs no sync — and must not wait on one.
+      if (panelId === 'overview') loadDashboard();
 
       // Use initDashboard (not renderProductsTable alone) so the stat card +
       // recent-products list also refresh — paintPanelSkeleton above filled

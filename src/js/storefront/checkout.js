@@ -72,7 +72,7 @@
       if (sumLine) sumLine.style.display = blocked ? 'none' : '';
       if (payBtn) {
         payBtn.disabled = !!blocked;
-        payBtn.innerHTML = blocked ? '🌍 International orders: email us' : '⚡ Pay Now';
+        payBtn.innerHTML = blocked ? '<i class="fas fa-earth-americas"></i> International orders: email us' : '<i class="fas fa-bolt"></i> Pay Now';
         payBtn.style.opacity = blocked ? '0.5' : '';
         payBtn.style.cursor = blocked ? 'not-allowed' : '';
       }
@@ -147,7 +147,7 @@
       recomputeCheckoutShipping();
 
       var payBtn = document.getElementById('payment-pay-btn');
-      if (payBtn) { payBtn.innerHTML = '⚡ Pay Now'; payBtn.disabled = false; }
+      if (payBtn) { payBtn.innerHTML = '<i class="fas fa-bolt"></i> Pay Now'; payBtn.disabled = false; }
 
       document.getElementById('payment-modal').classList.add('active');
       document.getElementById('payment-main-view').style.display = 'block';
@@ -599,9 +599,12 @@
     // ============================================================
     async function processPayment() {
       const payBtn = document.getElementById('payment-pay-btn');
+      // innerHTML, not textContent: the labels carry a Font Awesome <i>, and
+      // textContent would print the tag as visible text. Every string passed
+      // here is a literal in this file — no user input reaches it.
       const setBtn = (label, disabled) => {
         if (!payBtn) return;
-        payBtn.textContent = label;
+        payBtn.innerHTML = label;
         payBtn.disabled = !!disabled;
       };
 
@@ -664,13 +667,13 @@
           body: JSON.stringify(createBody),
         });
       } catch (e) {
-        setBtn('⚡ Pay Now', false);
+        setBtn('<i class="fas fa-bolt"></i> Pay Now', false);
         showToast('Network error — could not start payment: ' + e.message, 'error');
         return;
       }
       const created = await createRes.json().catch(() => ({}));
       if (!createRes.ok || !created.ok) {
-        setBtn('⚡ Pay Now', false);
+        setBtn('<i class="fas fa-bolt"></i> Pay Now', false);
         showToast(created.error || ('Could not create order (HTTP ' + createRes.status + ')'), 'error');
         return;
       }
@@ -707,7 +710,7 @@
           ondismiss: function () {
             // User closed Checkout without completing — nothing to do, the
             // payment_orders row stays in 'created' state and just expires.
-            setBtn('⚡ Pay Now', false);
+            setBtn('<i class="fas fa-bolt"></i> Pay Now', false);
           },
         },
         handler: async function (response) {
@@ -800,12 +803,12 @@
 
       const rzp = new Razorpay(options);
       rzp.on('payment.failed', response => {
-        setBtn('⚡ Pay Now', false);
+        setBtn('<i class="fas fa-bolt"></i> Pay Now', false);
         const desc = (response && response.error && response.error.description) || 'Payment failed';
         showToast('Payment Failed: ' + desc, 'error');
       });
       rzp.open();
       // Re-enable the button after Razorpay takes over so the user can retry
       // if they dismiss the modal without paying.
-      setBtn('⚡ Pay Now', false);
+      setBtn('<i class="fas fa-bolt"></i> Pay Now', false);
     }

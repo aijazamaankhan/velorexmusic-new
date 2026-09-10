@@ -2,15 +2,21 @@
    Velorex Music — "Recently Sold" strip
    Used by: index.html (homepage), rendered by src/js/storefront/recent-sales.js
 
-   A horizontally scrollable row of small cards: cover, title, price, and the
-   city it shipped to. Deliberately a SCROLLER and not a second marquee — the
-   trust band directly above it already moves, and two things sliding in
-   opposite directions on one screen is noise. Here the customer sets the pace,
-   with scroll-snap so a flick lands on a card rather than between two.
+   A row of small cards — cover, title, price, and the city it shipped to —
+   that drifts continuously to the left.
+
+   The drift is driven by NATIVE scrollLeft from RecentSales._autoScroll(), not
+   by a CSS transform on a track. That is the whole reason this file has no
+   marquee animation in it: a transform marquee cannot be dragged, swiped or
+   Tab-navigated, so the content would only ever be readable at the speed we
+   picked. Moving the real scroll position keeps every one of those working and
+   lets the drift simply yield while someone is using them. It also pauses on
+   hover, on focus inside, on a hidden tab, and stops entirely under
+   prefers-reduced-motion.
 
    The row scrolls inside its own container; the page body never scrolls
-   sideways. Both are needed — `overflow-x: auto` on a full-bleed row is what
-   stops the horizontal scrollbar appearing on <body> at narrow widths.
+   sideways. `overflow-x: auto` on a full-bleed row is what stops a horizontal
+   scrollbar appearing on <body> at narrow widths.
    ============================================================================= */
 
 .recent-sales-strip {
@@ -19,12 +25,14 @@
 
 .recent-sales-row {
   display: flex;
-  gap: 0.9rem;
   overflow-x: auto;
   overscroll-behavior-x: contain;
-  scroll-snap-type: x proximity;
-  scroll-padding-left: 0.25rem;
   padding: 0.35rem 0.25rem 1rem;
+  /* NO scroll-snap. The row drifts by nudging scrollLeft every frame
+     (RecentSales._autoScroll), and a snap point would fight that every time it
+     crossed one — the strip would tug back and forth instead of gliding.
+     Snap also mis-fires on a trackpad's sideways drift while someone is just
+     scrolling the page down. */
   /* Firefox + the WebKit block below: hide the native bar without killing the
      scroll. The fade on the right edge is what signals "there is more". */
   scrollbar-width: none;
@@ -32,8 +40,17 @@
 }
 .recent-sales-row::-webkit-scrollbar { display: none; }
 
+/* Two identical groups make the loop seamless — see the comment in
+   recent-sales.js. padding-right supplies the gap BETWEEN the groups, so one
+   group's measured width is exactly the distance to rewind. */
+.recent-sales-group {
+  display: flex;
+  gap: 0.9rem;
+  padding-right: 0.9rem;
+  flex: 0 0 auto;
+}
+
 .recent-sale-card {
-  scroll-snap-align: start;
   flex: 0 0 auto;
   width: 15.5rem;
   display: flex;

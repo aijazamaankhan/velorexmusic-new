@@ -1,0 +1,157 @@
+/* =============================================================================
+   Velorex Music — admin Dashboard panel (#panel-overview)
+   Used by: vlx-admin-2026.html, rendered by src/js/admin/dashboard.js
+
+   Kept in its own file rather than added to admin.css: this panel owns every
+   .dash-* class and nothing else in the admin uses them, so a change here
+   cannot reach the products table, the drawer or the login screen.
+   ============================================================================= */
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.dash-card {
+  background: var(--surface-light);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.35rem 1.5rem;
+}
+
+.dash-card-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.dash-card-value {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 800;
+  line-height: 1.15;
+  margin-top: 0.55rem;
+}
+
+/* The honest sub-line under every figure. It carries the "all time" or "0
+   joined" context that stops a 30-day number being read as the whole story —
+   and, when the figure itself is an em dash, it is what says why. */
+.dash-card-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.4rem;
+  line-height: 1.5;
+}
+.dash-card-sub a { color: var(--secondary); text-decoration: none; }
+.dash-card-sub a:hover { text-decoration: underline; }
+
+.dash-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+@media (max-width: 1100px) {
+  .dash-columns { grid-template-columns: 1fr; }
+}
+
+.dash-panel { padding: 1.5rem; margin-bottom: 0; }
+.dash-panel-title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 1.1rem;
+}
+
+.dash-list { list-style: none; margin: 0; padding: 0; }
+.dash-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.dash-list li:last-child { border-bottom: 0; }
+
+.dash-list-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  display: block;
+}
+.dash-list-sub {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+  line-height: 1.5;
+}
+/* Only rendered for a FAILING health row — the fix, next to the problem, so
+   nobody has to go and look it up while the shop is broken. */
+.dash-list-hint {
+  flex: 0 1 22rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  padding-left: 1rem;
+  border-left: 1px solid var(--border);
+}
+@media (max-width: 760px) {
+  .dash-list li { flex-wrap: wrap; }
+  .dash-list-hint { flex: 1 1 100%; padding-left: 0; border-left: 0; margin-top: 0.4rem; }
+}
+
+.dash-pill {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.dash-health li { align-items: flex-start; }
+.dash-health li i { margin-top: 0.15rem; }
+
+.dash-empty {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* A failed load must not look like a slow one — same rule as the Inventory
+   table (CLAUDE.md §20). This replaces the skeletons rather than sitting
+   beside them. */
+.dash-error {
+  background: rgba(255, 71, 87, 0.08);
+  border: 1px solid rgba(255, 71, 87, 0.32);
+  border-radius: 16px;
+  padding: 1.35rem 1.5rem;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+/* Test mode is the state most worth never confusing with live. */
+.dash-banner {
+  background: rgba(255, 184, 0, 0.09);
+  border: 1px solid rgba(255, 184, 0, 0.32);
+  border-radius: 12px;
+  padding: 0.8rem 1.1rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.84rem;
+  line-height: 1.6;
+}
+.dash-banner code {
+  background: rgba(255, 255, 255, 0.07);
+  padding: 0.1rem 0.35rem;
+  border-radius: 5px;
+  font-size: 0.95em;
+}
+[data-theme="light"] .dash-banner code { background: rgba(15, 23, 42, 0.06); }

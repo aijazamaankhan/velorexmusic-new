@@ -1403,6 +1403,7 @@ See `PLAYWRIGHT_MCP_README.md` for the optional MCP server setup if you want bro
 | SEO / crawlability | ✅ Shipped | Was the single biggest gap: hash routing made the whole catalogue one URL, so no product or category could rank. Now real paths (`/vinyl-records`, `/product/12-sholay-r-d-burman`) server-rendered by `seo-render.php` with per-page metadata + JSON-LD, plus `robots.txt`, a DB-generated sitemap, and real `<a href>` internal links. See [§15 SEO architecture](#15-seo-architecture). Outstanding manual steps (OG image, Search Console, Business Profile) are listed there. |
 | GA4 ecommerce events | ✅ Shipped | `view_item` → `add_to_cart` → `begin_checkout` → `purchase` and the rest of the recommended vocabulary. The tag was always installed but sent page views only, so every funnel and revenue report in GA was empty. See §26. |
 | Newsletter signup | ✅ Shipped | The homepage form was markup with no handler, no endpoint and no table — every address typed into it was discarded. Now `/api/subscribe.php` + a `subscribers` table + optional Brevo contact sync. See §26. |
+| Admin dashboard | ✅ Shipped | Real KPIs, recent orders, restock list and a store-health block (uploads symlink / SMTP / Razorpay mode). One batched read. See §33. |
 | Abandoned cart / checkout recovery | ✅ Shipped | Admin panel over both sources, plus automatic 2-hour and 24-hour emails once the cron is installed (§9). See §26. |
 | Server-side cart persistence | ✅ Shipped | `carts` table mirrored from the browser on a debounce. localStorage is still the source of truth — this is a one-way copy for reporting and recovery. See §26. |
 | Campaign sending | Manual | There is a consent-correct list and a Brevo sync, but no campaign composer here — write and send those from Brevo's dashboard. Filter on `Campaign safe: YES` in the CSV export, or on the opted-in list in Brevo. |
@@ -2563,3 +2564,92 @@ template interpolates product titles from the `products` table, so it is
 untrusted-ish HTML on an authenticated admin page; the sandbox also stops the
 email's own CSS leaking into the panel, which a plain `innerHTML` would
 guarantee.
+
+## 31. Inline `onclick` arguments must not be built with `JSON.stringify`
+
+Every action button on the Abandoned and Subscribers panels was dead — Send,
+Preview, Dismiss, Restore, and both subscriber actions. Clicking one did
+nothing at all.
+
+They were built like this:
+
+```js
+onclick="sendAbandonedRecovery(' + JSON.stringify(r.kind) + ')"
+```
+
+`JSON.stringify` emits **double** quotes, so the rendered markup was
+
+```html
+onclick="sendAbandonedRecovery("cart","1")"
+```
+
+and the HTML parser ends the attribute at that first inner `"`. The rest became
+stray attributes, and the truncated handler threw `Unexpected end of input` on
+click — which surfaced as a button that simply did nothing, with no toast and
+nothing obviously wrong on screen. This is why "the admin Send button is
+broken" was never an SMTP problem.
+
+`jsAttrArg()` in [src/js/admin/marketing.js](src/js/admin/marketing.js) is the
+fix: single-quote the JS string literal, escape for JS, then escape for HTML
+(`&` first, or it double-encodes the entities the later passes add). **Use it
+for every value interpolated into an inline handler.** `JSON.stringify` is fine
+for a `fetch` body and wrong for an HTML attribute.
+
+The same trap is why `setBtn()` in
+[src/js/storefront/checkout.js](src/js/storefront/checkout.js) now writes
+`innerHTML` rather than `textContent`: the Pay Now labels carry a Font Awesome
+`<i>`, and `textContent` would print the tag as visible text.
+
+## 32. Buttons use Font Awesome, not emoji
+
+"Add to Cart", "Buy Now", "Proceed to Checkout", "Pay Now" and the combo
+actions were labelled with emoji (`🛒`, `⚡`) while every other control on the
+site uses `<i class="fas …">`. Emoji render as a different typeface, at a
+different size, in a different colour, on every platform — so those buttons
+never matched the rest of the UI and could not be tinted with the button's own
+colour.
+
+Decorative emoji in **section headings** (`🔥 Best Selling`, `🎁 Combo Offers`)
+were left alone: they are part of that heading style and are not trying to look
+like an icon in a control.
+
+## 33. The admin Dashboard
+
+Sidebar → **Dashboard**, the landing panel after login.
+
+| Piece | File |
+|---|---|
+| Batched read | [api/admin/dashboard.php](api/admin/dashboard.php) |
+| Renderer | [src/js/admin/dashboard.js](src/js/admin/dashboard.js) |
+| Styles | [src/styles/admin/pages/dashboard.css](src/styles/admin/pages/dashboard.css) |
+| Markup | `#panel-overview` in [vlx-admin-2026.html](vlx-admin-2026.html) |
+
+**The panel id is `overview`, not `dashboard`.** `switchPanel('dashboard')` has
+always meant the *Inventory* products table, and renaming it would touch every
+caller for no user-visible gain. The sidebar item labelled "Inventory" still
+calls `'dashboard'`; the real dashboard is `'overview'`. Both nav links carry a
+`data-nav` attribute so one panel can link to another.
+
+**One round trip, not six.** The panel answers three questions — did we make
+money, is anything waiting on me, is anything broken — and every figure is a
+real `COUNT` or `SUM`. There is no growth percentage, no "vs last month" and no
+rating: §20's rule is enforced structurally here, in that `dashStat()` renders
+an em dash plus an honest sub-line whenever the value is `null`. A table that
+does not exist yet (`carts`, `subscribers` are created on first use) degrades to
+`null` rather than 500-ing the whole panel.
+
+**Store health is the part worth keeping.** Three things are otherwise invisible
+until a customer complains:
+
+- **Product image storage** — Hostinger's git deploy wipes
+  `public_html/uploads` (a symlink to `~/uploads`), every product photo 404s,
+  and nothing anywhere says so; the owner finds out from the storefront. A cron
+  restores it within a minute (§10), but until now there was no way to ask "is
+  it broken right now?". This is the panel that answers it.
+- **Transactional email** — whether `SMTP_*` is set at all.
+- **Payments** — whether Razorpay is keyed, and a standing banner while
+  `RAZORPAY_MODE` is `test`, because "we are taking real money" and "we are in
+  test mode" are the two states most worth never confusing.
+
+A failing row prints the fix next to the problem, so nobody has to go looking it
+up while the shop is down.

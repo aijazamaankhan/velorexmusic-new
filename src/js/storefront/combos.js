@@ -157,9 +157,9 @@
         + (c.inStock
             ? '<div class="combo-detail-actions">'
               + '<button type="button" class="btn btn-outline-primary btn-lg"'
-              + ' onclick="addComboToCart(' + c.id + ')">🛒 Add all to cart</button>'
+              + ' onclick="addComboToCart(' + c.id + ')"><i class="fas fa-cart-shopping"></i> Add all to cart</button>'
               + '<button type="button" class="btn btn-gold btn-lg"'
-              + ' onclick="buyComboNow(' + c.id + ')">⚡ Buy Now</button></div>'
+              + ' onclick="buyComboNow(' + c.id + ')"><i class="fas fa-bolt"></i> Buy Now</button></div>'
             : '<div class="combo-detail-actions"><span class="combo-card-oos">'
               + 'Some items in this combo are out of stock — you can still add the rest individually.'
               + '</span></div>')

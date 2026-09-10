@@ -28,6 +28,7 @@
       // above and against a second fetch racing the first.
       _state: 'idle',
       _rows: null,
+      _raf: null,
 
       async init() {
         if (this._state === 'loading') return;
@@ -70,7 +71,81 @@
         // '' rather than 'block' so the section falls back to whatever display
         // its CSS defines instead of being pinned forever.
         section.style.display = '';
-        row.innerHTML = rows.map(r => this._card(r)).join('');
+
+        const cards = rows.map(r => this._card(r)).join('');
+        // The list is rendered TWICE so the drift can loop seamlessly: when the
+        // scroll passes the first group, we jump back by exactly that group's
+        // width and the second copy is already sitting where the first was.
+        // The duplicate is aria-hidden — a screen reader must not read the same
+        // twelve sales twice — and it is skipped entirely under reduced motion,
+        // where there is no loop to hide the seam of.
+        if (this._reduced()) {
+          row.innerHTML = '<div class="recent-sales-group">' + cards + '</div>';
+          return;
+        }
+        row.innerHTML =
+            '<div class="recent-sales-group">' + cards + '</div>'
+          + '<div class="recent-sales-group" aria-hidden="true">' + cards + '</div>';
+        this._autoScroll(row);
+      },
+
+      _reduced() {
+        return typeof window.matchMedia === 'function'
+          && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      },
+
+      // Continuous drift, driven by NATIVE scrollLeft rather than a CSS
+      // transform on the track.
+      //
+      // A transform marquee cannot be scrolled, dragged or reached with the
+      // keyboard — the content would only ever be readable at the speed we
+      // chose. Moving the real scroll position instead means a drag, a
+      // trackpad swipe, a shift-wheel and Tab-to-next-card all keep working
+      // exactly as they did, and the drift simply yields while someone is
+      // using them.
+      _autoScroll(row) {
+        // init() is called twice per page load (cold cache, then post-sync), so
+        // a second rAF loop would double the speed and fight the first.
+        if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; }
+
+        const SPEED = 22; // px per second — slow enough to read a card in passing
+        let last = null;
+        // Set on any deliberate interaction; the drift resumes a beat later so
+        // it does not fight a finger still on the screen.
+        let resumeAt = 0;
+
+        if (!row.dataset.vlxAutoBound) {
+          row.dataset.vlxAutoBound = '1';
+          const hold = () => { resumeAt = Date.now() + 2500; };
+          ['pointerdown', 'wheel', 'touchstart', 'keydown'].forEach(function (ev) {
+            row.addEventListener(ev, hold, { passive: true });
+          });
+          this._hold = hold;
+        }
+
+        const step = (now) => {
+          const dt = last === null ? 0 : Math.min(80, now - last);
+          last = now;
+
+          const first = row.firstElementChild;
+          const loopWidth = first ? first.getBoundingClientRect().width : 0;
+
+          const paused = row.matches(':hover')
+            || row.contains(document.activeElement)
+            || document.hidden
+            || Date.now() < resumeAt
+            || loopWidth <= 0;
+
+          if (!paused) {
+            row.scrollLeft += (SPEED * dt) / 1000;
+            // Past the first copy: rewind by exactly one group. The second copy
+            // is pixel-identical and already in that position, so nothing
+            // visibly jumps.
+            if (row.scrollLeft >= loopWidth) row.scrollLeft -= loopWidth;
+          }
+          this._raf = requestAnimationFrame(step);
+        };
+        this._raf = requestAnimationFrame(step);
       },
 
       _card(r) {
@@ -86,14 +161,26 @@
         const priceNum = Number(r.price) || 0;
         const price    = '₹' + priceNum.toLocaleString('en-IN');
 
+        // alt="" — DECORATIVE, on purpose. The product name is the link text
+        // right beside it, so a descriptive alt would just be read twice. It
+        // also fixes a visible bug: these thumbs are lazy AND inside a
+        // horizontal scroller, so the browser defers the ones off to the right
+        // and paints their alt text into a 3rem box until they decode — the
+        // strip showed "Jab Harry", "Kaho", "Meltrac" instead of covers.
+        // onerror removes a genuinely broken image rather than leaving the
+        // browser's broken-image glyph in the card.
         const img = (typeof r.image === 'string' && r.image)
-          ? '<img src="' + Utils.escape(r.image) + '" alt="' + Utils.escape(title + ' — ' + artist) +
-            '" loading="lazy" decoding="async">'
+          ? '<img src="' + Utils.escape(r.image) + '" alt="" loading="lazy" decoding="async"' +
+            ' onerror="this.remove()">'
           : '';
 
-        const where = String(r.location || 'India');
+        // CITY only. The payload carries "Hyderabad, Telangana" but the card is
+        // ~15rem wide, and city + state + relative time overflowed every time —
+        // it truncated to "Hyderabad, Telangana …" and ate the one part that
+        // makes this a *recent*-sales strip. The state disambiguates nothing a
+        // shopper cares about here.
+        const where = String(r.location || 'India').split(',')[0].trim() || 'India';
         const when  = this._ago(r.at);
-        // "Mumbai, MH · 3 hours ago" — the two facts a sale ticker is for.
         const meta  = when ? (where + ' · ' + when) : where;
 
         return '' +
@@ -121,13 +208,13 @@
         const then = Date.parse(iso);
         if (isNaN(then)) return '';
         const mins = Math.floor((Date.now() - then) / 60000);
-        if (mins < 2)      return 'just now';
-        if (mins < 60)     return mins + ' minutes ago';
+        if (mins < 2)   return 'just now';
+        if (mins < 60)  return mins + 'm ago';
         const hours = Math.floor(mins / 60);
-        if (hours < 24)    return hours === 1 ? '1 hour ago' : hours + ' hours ago';
+        if (hours < 24) return hours + 'h ago';
         const days = Math.floor(hours / 24);
-        if (days < 30)     return days === 1 ? '1 day ago' : days + ' days ago';
+        if (days < 30)  return days + 'd ago';
         const months = Math.floor(days / 30);
-        return months === 1 ? '1 month ago' : months + ' months ago';
+        return months + 'mo ago';
       },
     };

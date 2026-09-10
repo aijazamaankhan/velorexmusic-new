@@ -43,6 +43,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 // refunded order as a recent sale is a straightforwardly false claim.
 const RECENT_SALES_DEAD_STATUSES = ['cancelled', 'canceled', 'refunded', 'returned', 'failed'];
 
+// How many cards a single order may contribute. See the comment at the use site.
+const RECENT_SALES_MAX_PER_ORDER = 2;
+
 // Cities used for FILLER rows ONLY — never for a real one, which carries the
 // city it actually shipped to. India-only, because checkout is India-only
 // (CLAUDE.md §12): a filler row reading "United Kingdom" would advertise a
@@ -103,8 +106,15 @@ try {
         $addr     = is_array($data['shippingAddress'] ?? null) ? $data['shippingAddress'] : [];
         $location = recent_sales_location($addr);
 
+        // At most two cards from any ONE order. A five-item order otherwise
+        // filled the whole strip with the same city and the same timestamp,
+        // which reads as one person shopping rather than as a shop with
+        // customers — the exact opposite of what a sales ticker is for.
+        $fromThisOrder = 0;
+
         foreach ($items as $line) {
             if (count($rows) >= $limit) { break; }
+            if ($fromThisOrder >= RECENT_SALES_MAX_PER_ORDER) { break; }
             if (!is_array($line)) { continue; }
             $pid = isset($line['id']) ? (int)$line['id'] : 0;
             if ($pid <= 0) { continue; }
@@ -112,6 +122,7 @@ try {
             // entry, not five identical cards filling the whole strip.
             if (isset($seenProducts[$pid])) { continue; }
             $seenProducts[$pid] = true;
+            $fromThisOrder++;
 
             $rows[] = [
                 'productId' => $pid,

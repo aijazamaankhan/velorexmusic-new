@@ -31,7 +31,8 @@
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
   <!-- Page-specific styles (sidebar, header, panels, tables, drawer, dashboard).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/admin/pages/admin.css?v=26a7be2c">
+  <link rel="stylesheet" href="src/styles/admin/pages/admin.css?v=0a92b95f">
+  <link rel="stylesheet" href="src/styles/admin/pages/dashboard.css?v=ef59ea1f">
   <!-- Admin JS modules extracted in PR 4. Plain scripts (not type="module") so
        the existing inline <script> + onclick= handlers resolve them via
        script-scope. Order: leaves first. -->
@@ -44,7 +45,7 @@
        script-scope. Load order: main first (defines shared helpers like
        adminAuthHeaders, switchPanel), then per-panel files, then toast last
        (the admin showToast — different shape from the storefront's). -->
-  <script src="src/js/admin/main.js?v=8824d3c0"></script>
+  <script src="src/js/admin/main.js?v=2f094c1a"></script>
   <script src="src/js/admin/customers.js?v=127735c1"></script>
   <script src="src/js/admin/orders.js?v=fef46ea8"></script>
   <script src="src/js/admin/image-cropper.js?v=0dfdbe4f"></script>
@@ -53,7 +54,8 @@
   <script src="src/js/admin/combos.js?v=de76275c"></script>
   <!-- Abandoned carts + newsletter subscribers. Loaded after main.js because
        both panels call adminAuthHeaders() at runtime. -->
-  <script src="src/js/admin/marketing.js?v=41a67266"></script>
+  <script src="src/js/admin/marketing.js?v=cf88524c"></script>
+  <script src="src/js/admin/dashboard.js?v=dfc7b3e8"></script>
   <script src="src/js/admin/toast.js?v=9a4bf3e8"></script>
 </head>
 
@@ -98,47 +100,57 @@
 
       <nav class="nav-menu">
         <li class="nav-item">
-          <a href="#" class="nav-link active" onclick="switchPanel('dashboard', this)">
+          <a href="#" class="nav-link active" data-nav="overview" onclick="switchPanel('overview', this)">
+            <i class="fas fa-gauge-high"></i> Dashboard
+          </a>
+        </li>
+        <!-- NOTE the panel id mismatch: this item is "Inventory" but its panel
+             is still called 'dashboard', because that is what the products
+             table has always been called in switchPanel(). Renaming it would
+             touch every caller for no user-visible gain; the real dashboard
+             above is 'overview'. -->
+        <li class="nav-item">
+          <a href="#" class="nav-link" data-nav="dashboard" onclick="switchPanel('dashboard', this)">
             <i class="fas fa-layer-group"></i> Inventory
           </a>
         </li>
         <li class="nav-item">
-          <a href="#" class="nav-link" onclick="switchPanel('orders', this)">
+          <a href="#" class="nav-link" data-nav="orders" onclick="switchPanel('orders', this)">
             <i class="fas fa-shopping-bag"></i> Orders
           </a>
         </li>
         <li class="nav-item">
-          <a href="#" class="nav-link" onclick="switchPanel('categories', this)">
+          <a href="#" class="nav-link" data-nav="categories" onclick="switchPanel('categories', this)">
             <i class="fas fa-chart-pie"></i> Categories
           </a>
         </li>
         <li class="nav-item">
-          <a href="#" class="nav-link" onclick="switchPanel('blog', this)">
+          <a href="#" class="nav-link" data-nav="blog" onclick="switchPanel('blog', this)">
             <i class="fas fa-pen-nib"></i> Blog
           </a>
         </li>
         <li class="nav-item">
-          <a href="#" class="nav-link" onclick="switchPanel('combos', this)">
+          <a href="#" class="nav-link" data-nav="combos" onclick="switchPanel('combos', this)">
             <i class="fas fa-layer-group"></i> Combos
           </a>
         </li>
         <li class="nav-item">
-          <a href="#" class="nav-link" onclick="switchPanel('users', this)">
+          <a href="#" class="nav-link" data-nav="users" onclick="switchPanel('users', this)">
             <i class="fas fa-users"></i> Customers
           </a>
         </li>
         <li class="nav-item">
-          <a href="#" class="nav-link" onclick="switchPanel('abandoned', this)">
+          <a href="#" class="nav-link" data-nav="abandoned" onclick="switchPanel('abandoned', this)">
             <i class="fas fa-cart-arrow-down"></i> Abandoned
           </a>
         </li>
         <li class="nav-item">
-          <a href="#" class="nav-link" onclick="switchPanel('subscribers', this)">
+          <a href="#" class="nav-link" data-nav="subscribers" onclick="switchPanel('subscribers', this)">
             <i class="fas fa-envelope-open-text"></i> Subscribers
           </a>
         </li>
         <li class="nav-item">
-          <a href="#" class="nav-link" onclick="switchPanel('settings', this)">
+          <a href="#" class="nav-link" data-nav="settings" onclick="switchPanel('settings', this)">
             <i class="fas fa-cog"></i> Settings
           </a>
         </li>
@@ -181,7 +193,16 @@
       </header>
 
       <!-- Dashboard Panel -->
-      <div id="panel-dashboard" class="panel active">
+      <!-- ==================== DASHBOARD ====================
+           Rendered by renderDashboard() in src/js/admin/dashboard.js from the
+           single batched read at /api/admin/dashboard.php. Every figure is a
+           real count or sum; anything we cannot derive prints as an em dash
+           rather than a plausible placeholder (CLAUDE.md §20). -->
+      <div id="panel-overview" class="panel active">
+        <div id="overview-body"></div>
+      </div>
+
+      <div id="panel-dashboard" class="panel">
         <!-- Every value and sub-line here is computed by renderDashboardStats()
              in src/js/admin/inventory.js from the products/orders caches.
              They used to be hardcoded: "12% vs last month", "5 Urgent",
