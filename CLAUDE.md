@@ -3271,3 +3271,80 @@ that jumps to or from zero clicks on every cue.
    went stale the first time the section grew.
 3. Attach it to an era's `articles` list so it is reachable from the timeline.
 4. Run `php tests/music-history.php`.
+
+## 42. Photographic page banners and the catalogue empty state
+
+Music (every format route and `/products`), Merchandise, Vinyl Care, Pre-owned,
+Combos and the Blog listing open with a photographic banner: an eyebrow with a
+rule after it, a two-colour heading, a description and a feature row.
+
+| Piece | File |
+|---|---|
+| Banner styles (owns `.page-banner*`) | [src/styles/components/page-banner.css](src/styles/components/page-banner.css) |
+| Empty state styles | [src/styles/components/catalog-empty.css](src/styles/components/catalog-empty.css) |
+| Images (1920w + 960w each) | [src/img/banners/](src/img/banners/) |
+| Banner, heading, stats, empty state | `renderProductsBanner()`, `heroTitleHtml()`, `catalogEmptyHtml()` in [src/js/storefront/pages.js](src/js/storefront/pages.js) |
+| Server mirrors | `velorex_banner_title_html()`, `velorex_banner_stats_html()`, `velorex_catalog_empty_html()`, `velorex_combo_mrp_total()` in [seo-render.php](seo-render.php) |
+
+**`#page-products` is ONE banner with three variants.** Every department's
+eyebrow, tagline and feature row is in `index.html`; `data-banner="music|merchandise|vinyl-care"`
+on `#products-banner` decides which shows. The SPA sets it in
+`renderProductsBanner()` and `seo-render.php` sets it with a single
+`str_replace`, so the copy has exactly one home. Add a department ⇒ add its
+variant blocks, its `data-banner` rules in `page-banner.css`, and its
+description in `DEPARTMENT_BANNER_DESC`.
+
+**The accented half of the heading is computed twice and must agree.**
+`heroTitleHtml()` (JS) and `velorex_banner_title_html()` (PHP): a language page
+accents the language, otherwise the last word, else after a hyphen, else the
+second half of a word of 8+ letters. Diverge and the heading re-colours itself
+as the SPA boots over a server render.
+
+**The description keeps the server's SEO intro on first boot.** The server puts
+the route's intro from `velorex_categories()` in `#page-banner-desc` with
+`data-ssr="1"`; `renderProductsBanner()` keeps it once and removes the flag.
+That intro used to be a `.seo-intro` paragraph after the `<h1>`, which the SPA
+never removed — it stayed on screen, describing the wrong category, after any
+client-side navigation.
+
+**Music stats are real counts** of the routed shelf (category + language), with
+artists counted through the §25 credit-list split. Never a rounded "50+" (§20).
+
+**The banner is dark in both themes** — it sits on a photograph — so its colours
+are literals, not tokens (§29). It is a CSS background, not an `<img>`: the
+products page switches between three images without re-rendering, and a
+background inside a `display:none` section is never downloaded.
+
+### Departments build their sidebar from their own stock
+
+On `/merchandise` and `/vinyl-care`, `initPageProducts()` renders the facets from
+`routeBaseProducts()` instead of the whole catalogue. Built from everything,
+`/merchandise` offered "Vinyl Records 112", "Hindi 104" and film composers —
+options that could only empty the grid. The single category box that results is
+hidden, and `applyFilters()` ignores a hidden Category section in favour of the
+routed category, so removing a tag can never widen a department page to the
+whole catalogue. The Language section hides itself below two live languages.
+
+### Two empty states, never one message
+
+`catalogEmptyHtml({variant})`: **filtered** ("No products found … matching your
+current filters", Adjust Filters + Clear All) only when the routed shelf has
+stock and the filters removed all of it; **unstocked** ("Nothing on this shelf
+yet") when the shelf itself is empty. Telling someone who touched no filter to
+adjust their filters reads as a broken page.
+
+### Product cards, pre-owned, combos
+
+- Cards carry **Add to Cart + a view button** in the footer. The hover-only quick
+  actions are gone — they duplicated both and never appeared on touch. Sold-out
+  cards show a disabled button rather than an add the stock guard would refuse.
+- **Pre-owned has its own small sidebar**: format is a route there, so Category
+  is a list of links; price, stock and sort narrow the grid in place
+  (`renderPreownedGrid()`). There is **no grading filter** (NM/VG/G) because the
+  catalogue stores no grade — add a product field first if one is wanted.
+- **Combo cards show "Save ₹X" against the items' summed MRP**
+  (`comboMrpTotal()` / `velorex_combo_mrp_total()`). That is the saving the same
+  items already show on their own cards, added up — not a combo discount, which
+  §17 rules out. Banner copy avoids "less cost" for the same reason.
+- Merchandise's banner says **Pan-India**, not Worldwide: checkout is India-only
+  (§12).

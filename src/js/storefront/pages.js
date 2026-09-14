@@ -106,16 +106,23 @@
       // Descriptive alt text: "<title> — <artist> <format>" reads naturally and
       // is what Google Images matches against for cover-art queries.
       const altText = Utils.escape(product.title + ' — ' + product.artist);
+      // Add to Cart is the primary action on the card now, with the detail page
+      // one tap away on the eye. The old hover-only quick actions duplicated
+      // both and never appeared at all on a touch screen, so they are gone.
+      //
+      // A sold-out card says so on a disabled button instead of offering an
+      // add that CartHelpers' stock guard would only refuse with a toast.
+      // "upcoming" with no stock is a pre-order in waiting, not a dead item.
+      const soldOut = Number(product.stock) < 1;
+      const cartBtn = soldOut
+        ? `<button type="button" class="btn btn-secondary btn-sm product-card-cart" disabled>${product.badge === 'upcoming' ? '<i class="fas fa-clock"></i> Coming Soon' : 'Out of Stock'}</button>`
+        : `<button type="button" class="btn btn-primary btn-sm product-card-cart" onclick="CartHelpers.addToCart(${product.id})"><i class="fas fa-cart-shopping"></i> Add<span class="product-card-cart-long"> to Cart</span></button>`;
       return `
       <div class="product-card" data-id="${product.id}">
         <div class="product-card-image">
           <a href="${href}" onclick="navigate('product',{id:${product.id}});return false;" aria-label="${altText}">${imageHtml}</a>
           ${badgeHtml}
           ${condHtml}
-          <div class="product-card-actions">
-            <button class="quick-action-btn" onclick="CartHelpers.addToCart(${product.id})" title="Add to Cart"><i class="fas fa-shopping-cart"></i></button>
-            <a href="${href}" onclick="return openProduct(${product.id})" class="quick-action-btn" title="Quick View"><i class="fas fa-eye"></i></a>
-          </div>
         </div>
         <div class="product-card-body">
           <div class="product-category-tag">${catLabel} · ${langLabel}</div>
@@ -124,13 +131,213 @@
           <div class="product-rating"><span class="stars">${stars}</span><span class="rating-count">(${product.reviews})</span></div>
           <div class="product-price-row">
             <div>${priceHtml}</div>
-            ${product.stock === 0 ? '<span style="color:var(--danger);font-size:0.75rem;font-weight:700;">Out of Stock</span>' : ''}
           </div>
         </div>
         <div class="product-card-footer">
-          <a href="${href}" onclick="navigate('product',{id:${product.id}});return false;" class="btn btn-primary btn-sm btn-block">View Details</a>
+          ${cartBtn}
+          <a href="${href}" onclick="navigate('product',{id:${product.id}});return false;" class="product-card-view" title="View details" aria-label="View details: ${altText}"><i class="fas fa-eye"></i></a>
         </div>
       </div>`;
+    }
+
+    // ---- Page banners ---------------------------------------------------------
+    // The accented half of a banner heading. MUST match
+    // velorex_banner_title_html() in seo-render.php, or a server-rendered page
+    // re-colours its own heading the instant the SPA boots.
+    //   "Hindi Vinyl Records" (language page) → the language: [Hindi] Vinyl Records
+    //   "Combo Offers"                        → the last word: Combo [Offers]
+    //   "Pre-owned", "T-Shirts"               → after the hyphen: Pre-[owned]
+    //   "Merchandise"                         → the second half: Merch[andise]
+    //   anything shorter than 8 letters       → no accent
+    // Only the colour changes — the spans add no characters, so the heading's
+    // text (what a screen reader and a crawler read) is untouched.
+    function heroTitleHtml(text, accentLead) {
+      var t = String(text == null ? '' : text).trim();
+      var e = Utils.escape;
+      var sp = t.indexOf(' ');
+      if (accentLead && sp > 0) return '<span>' + e(t.slice(0, sp)) + '</span>' + e(t.slice(sp));
+      var lastSp = t.lastIndexOf(' ');
+      if (lastSp > 0) return e(t.slice(0, lastSp + 1)) + '<span>' + e(t.slice(lastSp + 1)) + '</span>';
+      var hy = t.lastIndexOf('-');
+      if (hy > 0 && hy < t.length - 1) return e(t.slice(0, hy + 1)) + '<span>' + e(t.slice(hy + 1)) + '</span>';
+      if (t.length >= 8) {
+        var half = Math.floor(t.length / 2);
+        return e(t.slice(0, half)) + '<span>' + e(t.slice(half)) + '</span>';
+      }
+      return e(t);
+    }
+
+    // Copy for the Music variant's description, by format. The server render
+    // puts the longer SEO intro from seo-lib.php here instead, and that is kept
+    // on first boot (see renderProductsBanner) — this only runs on client-side
+    // navigation.
+    var MUSIC_BANNER_NOUNS = {
+      vinyl: 'vinyl records', cd: 'audio CDs', cassette: 'cassettes',
+      bluray: 'Blu-ray movies', dvd: 'DVD movies'
+    };
+    var DEPARTMENT_BANNER_DESC = {
+      merchandise: 'Explore exclusive merchandise inspired by legendary artists, iconic albums and timeless sounds.',
+      'vinyl-care': 'Everything you need to clean, protect and preserve your vinyl records — because great music deserves a longer life.'
+    };
+    var LANG_ADJECTIVES = { hindi: 'Hindi', english: 'English' };
+
+    function isDepartmentCat(cat) { return !!(cat && Seo.SUBCATS && Seo.SUBCATS[cat]); }
+
+    // The shelf a route stands for, before any sidebar filter: the routed
+    // category (and language). The banner's counts describe this, and on a
+    // department it is also what the sidebar's options are built from.
+    function routeBaseProducts(all, params) {
+      params = params || {};
+      return all.filter(function (p) {
+        if (params.cat && facetVal(p.category) !== facetVal(params.cat)) return false;
+        if (params.sub && facetVal(p.subcategory) !== facetVal(params.sub)) return false;
+        if (params.lang && facetVal(p.language) !== facetVal(params.lang)) return false;
+        return true;
+      });
+    }
+
+    // Heading = the product page's h1 and the banner around it. Also mirrored
+    // by the category route in seo-render.php (heading text, accent, data-banner,
+    // stats markup).
+    function renderProductsBanner(params, allProducts) {
+      params = params || {};
+      var banner = document.getElementById('products-banner');
+      var dept = isDepartmentCat(params.cat);
+      if (banner) banner.setAttribute('data-banner', dept ? params.cat : 'music');
+
+      var subLabel = dept ? (Seo.SUBCATS[params.cat] || {})[params.sub] : null;
+      var lang = !dept && params.cat ? LANG_ADJECTIVES[params.lang] : null;
+      var heading = subLabel
+        || (params.cat ? (lang ? lang + ' ' : '') + catLabel(params.cat) : 'All Products');
+      var pt = document.getElementById('page-title');
+      if (pt) pt.innerHTML = heroTitleHtml(heading, !!lang);
+
+      var desc = document.getElementById('page-banner-desc');
+      if (desc) {
+        if (desc.hasAttribute('data-ssr')) {
+          // The server wrote this route's unique SEO intro. Keep it for the
+          // first paint; any later navigation writes its own.
+          desc.removeAttribute('data-ssr');
+        } else if (dept) {
+          desc.textContent = DEPARTMENT_BANNER_DESC[params.cat];
+        } else {
+          var noun = MUSIC_BANNER_NOUNS[params.cat] || 'records, CDs, cassettes and films';
+          desc.textContent = 'Rediscover timeless melodies. Explore our curated collection of '
+            + (lang ? lang + ' ' : '') + noun + ' from legendary artists and iconic films.';
+        }
+      }
+
+      var stats = document.getElementById('page-banner-stats');
+      if (stats && !dept) {
+        if (!allProducts || !allProducts.length) { stats.innerHTML = ''; return; }
+        var base = routeBaseProducts(allProducts, params);
+        var artists = {};
+        base.forEach(function (p) { artistKeys(p).forEach(function (k) { artists[k] = true; }); });
+        var film = params.cat === 'bluray' || params.cat === 'dvd' || !params.cat;
+        stats.innerHTML = bannerStatsHtml(base.length, Object.keys(artists).length, film ? 'Titles' : 'Albums');
+      }
+    }
+
+    // Mirrors velorex_banner_stats_html() in seo-render.php.
+    function bannerStatsHtml(titles, artists, titleNoun) {
+      var item = function (icon, strong, small) {
+        return '<li class="page-banner-feature"><i class="fas ' + icon + '" aria-hidden="true"></i>'
+          + '<div><strong>' + strong + '</strong><small>' + small + '</small></div></li>';
+      };
+      return item('fa-compact-disc', titles.toLocaleString('en-IN'), titles === 1 ? titleNoun.replace(/s$/, '') : titleNoun)
+        + item('fa-users', artists.toLocaleString('en-IN'), artists === 1 ? 'Artist' : 'Artists')
+        + item('fa-star', 'Vintage', 'Sound, Forever');
+    }
+
+    // ---- Catalogue empty state -------------------------------------------------
+    // Mirrors velorex_catalog_empty_html() in seo-render.php (the "unstocked"
+    // variant — a server render never has filters applied). Styles in
+    // src/styles/components/catalog-empty.css, which explains why the two
+    // variants must never share a message.
+    function catalogEmptyArt() {
+      return '<svg class="catalog-empty-art" viewBox="0 0 240 190" aria-hidden="true" focusable="false">'
+        + '<defs>'
+        + '<radialGradient id="ceGlow" cx="50%" cy="58%" r="52%"><stop offset="0" stop-color="#ff6b35" stop-opacity="0.32"/><stop offset="1" stop-color="#ff6b35" stop-opacity="0"/></radialGradient>'
+        + '<linearGradient id="ceBoxL" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#57506f"/><stop offset="1" stop-color="#2c2939"/></linearGradient>'
+        + '<linearGradient id="ceBoxR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#433d58"/><stop offset="1" stop-color="#211f2b"/></linearGradient>'
+        + '</defs>'
+        + '<ellipse cx="120" cy="104" rx="112" ry="84" fill="url(#ceGlow)"/>'
+        + '<path d="M60 110 42 90 102 74 120 92Z" fill="#3b3650"/>'
+        + '<path d="M180 110 198 90 138 74 120 92Z" fill="#332f45"/>'
+        + '<path d="M60 110 120 92 180 110 120 128Z" fill="#14121b"/>'
+        + '<g class="ce-disc">'
+        + '<circle cx="120" cy="80" r="44" fill="#0f0e14" stroke="#2e2b39" stroke-width="1.5"/>'
+        + '<circle cx="120" cy="80" r="36" fill="none" stroke="#ffffff" stroke-opacity="0.07"/>'
+        + '<circle cx="120" cy="80" r="29" fill="none" stroke="#ffffff" stroke-opacity="0.06"/>'
+        + '<circle cx="120" cy="80" r="16" fill="#ff6b35"/>'
+        + '<circle cx="120" cy="80" r="3" fill="#0f0e14"/>'
+        + '<path d="M91 56a38 38 0 0 1 22-13" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="2.5" stroke-linecap="round"/>'
+        + '</g>'
+        + '<path d="M60 110 120 128 120 180 60 160Z" fill="url(#ceBoxL)"/>'
+        + '<path d="M180 110 120 128 120 180 180 160Z" fill="url(#ceBoxR)"/>'
+        + '<path d="M60 110 120 128 101 147 39 127Z" fill="#625b7c"/>'
+        + '<path d="M180 110 120 128 139 147 201 127Z" fill="#4d4764"/>'
+        + '<path d="M60 110 120 128 180 110" fill="none" stroke="#ff6b35" stroke-opacity="0.55" stroke-width="1.5"/>'
+        + '<g fill="#ff8a4c">'
+        + '<g class="ce-note"><ellipse cx="46" cy="58" rx="5" ry="4"/><rect x="49.2" y="38" width="1.8" height="20"/><path d="M51 38c5 2 8 5 6 10-1-3-3-5-6-5z"/></g>'
+        + '<g class="ce-note"><ellipse cx="190" cy="50" rx="5" ry="4"/><rect x="193.2" y="30" width="1.8" height="20"/><path d="M195 30c5 2 8 5 6 10-1-3-3-5-6-5z"/></g>'
+        + '<g class="ce-note"><ellipse cx="170" cy="22" rx="4" ry="3.2"/><rect x="172.6" y="6" width="1.5" height="16"/><path d="M174 6c4 1.6 6.5 4 5 8-.8-2.4-2.4-4-5-4z"/></g>'
+        + '</g>'
+        + '<path d="M72 30l1.6 4 4 1.6-4 1.6-1.6 4-1.6-4-4-1.6 4-1.6z" fill="#ffb020" fill-opacity="0.8"/>'
+        + '<path d="M212 88l1.2 3 3 1.2-3 1.2-1.2 3-1.2-3-3-1.2 3-1.2z" fill="#ffb020" fill-opacity="0.7"/>'
+        + '</svg>';
+    }
+
+    // opts: { variant: 'filtered'|'unstocked', noun, onClear, onAdjust }
+    // noun is plural lower-case ("merchandise", "pre-owned items").
+    function catalogEmptyHtml(opts) {
+      opts = opts || {};
+      var noun = Utils.escape(opts.noun || 'products');
+      var browse = '<a href="/products" class="btn btn-secondary" onclick="navigate(\'products\');return false;">'
+        + '<i class="fas fa-compact-disc" aria-hidden="true"></i> Browse All Products</a>';
+      var body = opts.variant === 'filtered'
+        ? '<h3 class="catalog-empty-title">No products found</h3>'
+          + '<p class="catalog-empty-text">We couldn\'t find any ' + noun + ' matching your current filters.</p>'
+          + '<div class="catalog-empty-actions">'
+          + '<button type="button" class="btn btn-primary" onclick="' + (opts.onAdjust || 'adjustProductFilters()') + '"><i class="fas fa-sliders" aria-hidden="true"></i> Adjust Filters</button>'
+          + '<button type="button" class="btn btn-secondary" onclick="' + (opts.onClear || 'clearAllFilters()') + '"><i class="fas fa-rotate" aria-hidden="true"></i> Clear All</button>'
+          + '</div>'
+        : '<h3 class="catalog-empty-title">Nothing on this shelf yet</h3>'
+          + '<p class="catalog-empty-text">We don\'t have any ' + noun + ' listed right now — new stock is on its way. In the meantime, explore the rest of the collection.</p>'
+          + '<div class="catalog-empty-actions">' + browse + '</div>';
+      return '<div class="catalog-empty" role="status">' + catalogEmptyArt() + body
+        + '<div class="catalog-empty-help"><i class="far fa-lightbulb" aria-hidden="true"></i>'
+        + '<div><strong>Looking for something specific?</strong>'
+        + '<span>Try different filters or explore our other categories.</span></div>'
+        + '<a href="/#shop-categories" class="btn btn-secondary btn-sm" onclick="goToHomeCategories();return false;">Browse All Categories <i class="fas fa-arrow-right" aria-hidden="true"></i></a>'
+        + '</div></div>';
+    }
+
+    // The homepage's Shop by Category grid is the one place every department
+    // is listed with a picture, so "Browse All Categories" goes there.
+    function goToHomeCategories() {
+      navigate('index');
+      setTimeout(function () {
+        var el = document.getElementById('shop-categories');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 60);
+    }
+
+    // "Adjust Filters": on desktop the sidebar is right there, so bring it into
+    // view and flash it; below 1024px there is no sidebar, so open the first
+    // chip's popover instead.
+    function adjustProductFilters() {
+      var sidebar = document.getElementById('filtersSidebar');
+      var visible = sidebar && sidebar.offsetParent !== null;
+      if (!visible) {
+        var chip = document.querySelector('#filterChipsStrip .filter-chip.active') || document.querySelector('#filterChipsStrip .filter-chip');
+        if (chip) chip.click();
+        return;
+      }
+      sidebar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      sidebar.classList.remove('is-flash');
+      void sidebar.offsetWidth;
+      sidebar.classList.add('is-flash');
     }
     function initPageLogin() {
       const err = document.getElementById('login-error');
@@ -312,6 +519,11 @@
       // Cold cache: paint skeleton cards in the grid + skip count updates.
       // The DOMContentLoaded bootstrap's post-sync re-invocation will run
       // initPageProducts again with real data.
+      // The banner and heading are known from the route alone, so they are
+      // painted before the cold-cache return — only the counts wait for data.
+      renderProductsBanner(params, allProducts);
+      restoreView('products-grid');
+      _artistExpanded = false;
       if (!allProducts.length) {
         var sg = document.getElementById('products-grid');
         if (sg) sg.innerHTML = Skeleton.productGrid(8);
@@ -319,24 +531,29 @@
         if (sc) sc.innerHTML = Skeleton.inlineLine('10rem');
         return;
       }
+      // A department (Merchandise, Vinyl Care) builds its sidebar from its OWN
+      // stock. Built from the whole catalogue, /merchandise offered "Vinyl
+      // Records 112", "Hindi 104" and a list of film composers — options that
+      // could only ever return an empty grid on a T-shirt page. The music
+      // formats keep the whole catalogue, where ticking a second format
+      // alongside the routed one is a real choice.
+      var facetSource = isDepartmentCat(params && params.cat)
+        ? routeBaseProducts(allProducts, { cat: params.cat, sub: params.sub })
+        : allProducts;
       // Rebuild the data-driven sections first — the pre-tick below queries
       // the inputs this creates.
-      renderCategoryFilterOptions(allProducts);
-      document.querySelectorAll('#page-products input[name="cat"]').forEach(cb => cb.checked = false);
-      document.querySelectorAll('#page-products input[name="cond"]').forEach(cb => cb.checked = false);
-      document.querySelectorAll('#page-products input[name="artist"]').forEach(cb => cb.checked = false);
-      document.querySelectorAll('#page-products input[name="lang"]').forEach(cb => cb.checked = false);
-      document.querySelectorAll('#page-products input[name="people"]').forEach(cb => cb.checked = false);
-      if (params && params.cat) {
+      renderCategoryFilterOptions(facetSource);
+      ['cat', 'cond', 'artist', 'lang', 'people', 'price', 'avail'].forEach(function (name) {
+        document.querySelectorAll('#page-products input[name="' + name + '"]').forEach(cb => cb.checked = false);
+      });
+      // Not on a department: its single category box is hidden (see the
+      // category fallback in applyFilters), and a ticked box nobody can see
+      // would count as an active filter everywhere else that asks.
+      if (params && params.cat && !isDepartmentCat(params.cat)) {
         document.querySelectorAll('#page-products input[name="cat"]').forEach(cb => cb.checked = facetVal(cb.value) === facetVal(params.cat));
-        // A subcategory is the specific thing being sold, so it becomes the
-        // heading rather than the department it sits under.
-        var subLabel = (Seo.SUBCATS[params.cat] || {})[params.sub];
-        var pt = document.getElementById('page-title');
-        if (pt) pt.textContent = subLabel || catLabel(params.cat) || 'Products';
-      } else { var pt2 = document.getElementById('page-title'); if (pt2) pt2.textContent = 'All Products'; }
+      }
       if (params && params.lang) document.querySelectorAll('#page-products input[name="lang"]').forEach(cb => cb.checked = cb.value === params.lang);
-      updateCountsProducts(allProducts);
+      updateCountsProducts(facetSource);
       applyFilters(params ? params.search : null);
     }
 
@@ -347,21 +564,25 @@
     // CAT_LABELS — these scripts share one script scope, so two top-level
     // declarations of the same name is a hard SyntaxError that takes the whole
     // storefront down, not a shadowed variable.
+    // icon is a Font Awesome class, not an emoji — emoji render in a different
+    // face, size and colour on every platform and cannot take the row's colour
+    // (the same reason buttons moved off them, CLAUDE.md §32).
     var FILTER_CAT_LABELS = {
-      vinyl:        { icon: '💿', long: 'Vinyl Records',  short: 'Vinyl' },
-      cd:           { icon: '💽', long: 'Audio CDs',      short: 'CD' },
-      cassette:     { icon: '📼', long: 'Cassettes',      short: 'Cassette' },
-      bluray:       { icon: '🎬', long: 'Blu-ray Movies', short: 'Blu-ray' },
-      dvd:          { icon: '🎞️', long: 'DVD Movies',     short: 'DVD' },
-      merchandise:  { icon: '👕', long: 'Merchandise',    short: 'Merch' },
-      'vinyl-care': { icon: '🧴', long: 'Vinyl Care',     short: 'Vinyl Care' }
+      vinyl:        { icon: 'fa-record-vinyl',          long: 'Vinyl Records',  short: 'Vinyl' },
+      cd:           { icon: 'fa-compact-disc',          long: 'Audio CDs',      short: 'CD' },
+      cassette:     { icon: 'fa-tape',                  long: 'Cassettes',      short: 'Cassette' },
+      bluray:       { icon: 'fa-film',                  long: 'Blu-ray Movies', short: 'Blu-ray' },
+      dvd:          { icon: 'fa-video',                 long: 'DVD Movies',     short: 'DVD' },
+      merchandise:  { icon: 'fa-shirt',                 long: 'Merchandise',    short: 'Merch' },
+      'vinyl-care': { icon: 'fa-spray-can-sparkles',    long: 'Vinyl Care',     short: 'Vinyl Care' }
     };
     function catLabel(cat, key) {
       var e = FILTER_CAT_LABELS[cat];
       return e ? e[key || 'long'] : String(cat || '');
     }
+    function faIcon(cls) { return '<i class="fas ' + cls + '" aria-hidden="true"></i>'; }
 
-    var COND_LABELS = { 'new': { icon: '✨', long: 'New / Sealed' }, 'pre-owned': { icon: '♻️', long: 'Pre-owned' } };
+    var COND_LABELS = { 'new': { icon: 'fa-certificate', long: 'New / Sealed' }, 'pre-owned': { icon: 'fa-recycle', long: 'Pre-owned' } };
 
     // Build the Category and Condition options from the catalogue rather than
     // from a hand-written list, so the sidebar can never disagree with what is
@@ -391,7 +612,7 @@
 
       host.innerHTML = keys.map(function (k) {
         var meta = labels[k];
-        var text = meta ? (meta.icon + ' ' + Utils.escape(meta.long)) : Utils.escape(k);
+        var text = meta ? (faIcon(meta.icon) + ' ' + Utils.escape(meta.long)) : Utils.escape(k);
         return '<label class="filter-option"><input type="checkbox" name="' + opts.inputName + '" value="' + Utils.escape(k) + '"'
              + (wasChecked.indexOf(k) !== -1 ? ' checked' : '')
              + ' onchange="applyFilters()">' + text
@@ -459,10 +680,22 @@
         'count-hindi': p => facetVal(p.language) === 'hindi',
         'count-english': p => facetVal(p.language) === 'english'
       };
+      var langsWithStock = 0;
       Object.keys(countMap).forEach(id => {
         var el = document.getElementById(id);
-        if (el) el.textContent = products.filter(countMap[id]).length;
+        var n = products.filter(countMap[id]).length;
+        if (n) langsWithStock++;
+        if (el) el.textContent = n;
       });
+      // Same rule as renderFacetOptions: fewer than two live values is not a
+      // choice. Merchandise has no language at all, and a "Hindi 0 / English 0"
+      // block there only suggested the page was broken. A box ticked by the URL
+      // (/vinyl-records/hindi) keeps the section, so it can still be unticked.
+      var langSection = document.getElementById('fsec-lang');
+      if (langSection) {
+        var langTicked = document.querySelector('#page-products input[name="lang"]:checked');
+        langSection.hidden = langsWithStock < 2 && !langTicked;
+      }
       // Update people counts, and mark the ones no product carries.
       //
       // The People list is 33 hand-written names covering a catalogue that may
@@ -511,7 +744,16 @@
       // that category. Firing it whenever nothing is ticked meant unticking
       // Vinyl on /vinyl-records re-applied Vinyl from the URL — the box moved,
       // the grid did not, and the filter looked broken.
-      var catBoxes = Array.from(document.querySelectorAll('#page-products input[name="cat"]'));
+      //
+      // A hidden Category section (a department, whose sidebar is built from
+      // its own stock and so holds a single category) is not a control the
+      // shopper can see — its lone checkbox must not decide anything, or
+      // removing its active-filter tag would widen /merchandise to the whole
+      // catalogue under a Merchandise heading.
+      var catSection = document.getElementById('fsec-cat');
+      var catBoxes = (catSection && catSection.hidden)
+        ? []
+        : Array.from(document.querySelectorAll('#page-products input[name="cat"]'));
       var selCats = catBoxes.filter(i => i.checked).map(i => facetVal(i.value));
       var routedCat = currentParams && currentParams.cat ? facetVal(currentParams.cat) : '';
       if (selCats.length) {
@@ -593,15 +835,33 @@
       else if (sort === 'newest') filtered.sort((a, b) => b.id - a.id);
       else if (sort === 'name-asc') filtered.sort((a, b) => a.title.localeCompare(b.title));
 
+      // "Of how many" is the shelf the route stands for on a department page —
+      // "Showing 0 of 116 products" on /merchandise counted records that were
+      // never going to be on it.
+      var dept = isDepartmentCat(currentParams && currentParams.cat);
+      var shelf = dept ? routeBaseProducts(allProds, { cat: currentParams.cat, sub: currentParams.sub }) : allProds;
+
       var grid = document.getElementById('products-grid');
       if (grid) {
-        grid.innerHTML = !filtered.length
-          ? '<div class="no-products" style="grid-column:1/-1;"><div class="no-products-icon">🔍</div><h3>No products found</h3><p>Try adjusting your filters</p></div>'
-          : filtered.map(createProductCard).join('');
+        if (!filtered.length) {
+          var routed = currentParams && currentParams.cat;
+          var noun = !routed ? 'products'
+            : (MUSIC_BANNER_NOUNS[routed] || catLabel(routed).toLowerCase());
+          // If the routed shelf itself (category + sub + language, before any
+          // sidebar choice) is empty, nothing the shopper did emptied it — say
+          // so. Only a non-empty shelf filtered down to nothing is "filtered".
+          var routeShelf = routeBaseProducts(allProds, currentParams || {});
+          grid.innerHTML = catalogEmptyHtml({
+            variant: routeShelf.length ? 'filtered' : 'unstocked',
+            noun: noun
+          });
+        } else {
+          grid.innerHTML = filtered.map(createProductCard).join('');
+        }
         fixProductLinks('page-products');
       }
       var countEl = document.getElementById('products-count');
-      if (countEl) countEl.textContent = 'Showing ' + filtered.length + ' of ' + allProds.length + ' products';
+      if (countEl) countEl.textContent = 'Showing ' + filtered.length + ' of ' + shelf.length + ' ' + (shelf.length === 1 ? 'product' : 'products');
       renderActiveFiltersProducts();
 
       // view_item_list — what the visitor was actually shown after filtering,
@@ -619,23 +879,56 @@
     function clearAllFilters() {
       document.querySelectorAll('#page-products .filter-option input').forEach(i => i.checked = false);
       var sortEl = document.getElementById('sortSelect'); if (sortEl) sortEl.value = '';
-      var pt = document.getElementById('page-title'); if (pt) pt.textContent = 'All Products';
       var ps = document.getElementById('peopleSearch'); if (ps) { ps.value = ''; filterPeopleOptions(''); }
       var as = document.getElementById('artistSearch'); if (as) { as.value = ''; filterArtistOptions(''); }
       // "Clear All" has to include the routed category/subcategory and the
       // search, or it unticks every box and leaves the grid exactly as narrow
       // as it was — the fallbacks in applyFilters() re-apply them from the URL.
+      var wasDept = isDepartmentCat(currentParams && currentParams.cat);
       if (currentParams) { delete currentParams.cat; delete currentParams.sub; delete currentParams.lang; }
+      // Now on "All Products": banner, heading and — if we were on a
+      // department, whose sidebar held only its own stock — the facets.
+      var all = Storage.getProducts();
+      renderProductsBanner(currentParams || {}, all);
+      if (wasDept && all.length) { renderCategoryFilterOptions(all); updateCountsProducts(all); }
+      if (typeof updateBreadcrumbs === 'function') updateBreadcrumbs('products', currentParams || {});
       clearProductSearch();
     }
 
-    function setView(view) { var g = document.getElementById('products-grid'); if (g) g.style.gridTemplateColumns = view === 'list' ? '1fr' : ''; }
+    // Grid or list, for any product grid with a .view-toggle beside it. The
+    // choice is remembered per browser — someone who prefers a list prefers it
+    // on every shelf.
+    function setView(view, gridId) {
+      var g = document.getElementById(gridId || 'products-grid');
+      if (!g) return;
+      var list = view === 'list';
+      g.classList.toggle('is-list', list);
+      g.style.gridTemplateColumns = '';
+      var main = g.closest('.products-main') || document;
+      main.querySelectorAll('.view-btn').forEach(function (b) {
+        var on = b.getAttribute('data-view') === (list ? 'list' : 'grid');
+        b.classList.toggle('is-active', on);
+        b.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
+      try { localStorage.setItem('vv_grid_view', list ? 'list' : 'grid'); } catch (e) {}
+    }
+    function restoreView(gridId) {
+      var v = 'grid';
+      try { v = localStorage.getItem('vv_grid_view') || 'grid'; } catch (e) {}
+      setView(v, gridId);
+    }
 
     // ---- Search boxes inside the Artist and People filters ----
     function filterPeopleOptions(query) { setOptionQuery('people-filter-options', query); }
     function filterArtistOptions(query) { setOptionQuery('artist-filter-options', query); }
 
     var _optionQueries = {};
+    var ARTIST_PREVIEW = 5;
+    var _artistExpanded = false;
+    function toggleArtistShowMore() {
+      _artistExpanded = !_artistExpanded;
+      applyOptionVisibility('artist-filter-options');
+    }
     function setOptionQuery(hostId, query) {
       _optionQueries[hostId] = String(query || '').toLowerCase().trim();
       applyOptionVisibility(hostId);
@@ -649,11 +942,32 @@
       var host = document.getElementById(hostId);
       if (!host) return;
       var q = _optionQueries[hostId] || '';
+      // Artist shows its top ARTIST_PREVIEW rows until "Show more" — unless a
+      // search is typed (then every match), or a row further down is ticked
+      // (a selected filter is never hidden from the person who selected it).
+      var capped = hostId === 'artist-filter-options' && !q && !_artistExpanded;
+      var shown = 0, overflow = 0;
       host.querySelectorAll('.people-option').forEach(label => {
         var isEmpty = label.dataset.empty === '1';
         var matches = !q || label.textContent.toLowerCase().indexOf(q) !== -1;
-        label.style.display = (!isEmpty && matches) ? '' : 'none';
+        var visible = !isEmpty && matches;
+        if (visible && hostId === 'artist-filter-options') {
+          var ticked = label.querySelector('input:checked');
+          if (shown >= ARTIST_PREVIEW && !ticked) {
+            overflow++;
+            if (capped) visible = false;
+          }
+          if (visible) shown++;
+        }
+        label.style.display = visible ? '' : 'none';
       });
+      if (hostId === 'artist-filter-options') {
+        var more = document.getElementById('artistShowMore');
+        if (more) {
+          more.hidden = !!q || overflow === 0;
+          more.textContent = _artistExpanded ? 'Show less' : 'Show ' + overflow + ' more';
+        }
+      }
       // Show/hide group labels based on visible siblings (People only — the
       // artist list is flat, so this finds nothing and no-ops).
       host.querySelectorAll('.people-group-label').forEach(header => {
@@ -670,25 +984,34 @@
     function renderActiveFiltersProducts() {
       var container = document.getElementById('activeFilters'); if (!container) return;
       var tags = [];
-      Array.from(document.querySelectorAll('#page-products input[name="cat"]:checked')).forEach(i => {
+      var catHidden = (document.getElementById('fsec-cat') || {}).hidden;
+      if (!catHidden) Array.from(document.querySelectorAll('#page-products input[name="cat"]:checked')).forEach(i => {
         var meta = FILTER_CAT_LABELS[i.value];
-        tags.push({ label: meta ? meta.icon + ' ' + meta.short : Utils.escape(i.value), input: i });
+        tags.push({ label: meta ? faIcon(meta.icon) + ' ' + meta.short : Utils.escape(i.value), input: i });
       });
       Array.from(document.querySelectorAll('#page-products input[name="cond"]:checked')).forEach(i => {
         var meta = COND_LABELS[i.value];
-        tags.push({ label: meta ? meta.icon + ' ' + meta.long : Utils.escape(i.value), input: i });
+        tags.push({ label: meta ? faIcon(meta.icon) + ' ' + meta.long : Utils.escape(i.value), input: i });
       });
       Array.from(document.querySelectorAll('#page-products input[name="lang"]:checked')).forEach(i => {
-        tags.push({ label: i.value === 'hindi' ? '🇮🇳 Hindi' : '🌍 English', input: i });
+        tags.push({ label: faIcon('fa-globe') + ' ' + (i.value === 'hindi' ? 'Hindi' : 'English'), input: i });
       });
       Array.from(document.querySelectorAll('#page-products input[name="artist"]:checked')).forEach(i => {
         // The checkbox value is the case-folded key; the label text alongside
         // it is the artist as the catalogue spells them.
         var shown = i.parentElement ? i.parentElement.textContent.replace(/\s*\d+\s*$/, '').trim() : i.value;
-        tags.push({ label: '🎙 ' + Utils.escape(shown), input: i });
+        tags.push({ label: faIcon('fa-microphone-lines') + ' ' + Utils.escape(shown), input: i });
       });
       Array.from(document.querySelectorAll('#page-products input[name="people"]:checked')).forEach(i => {
-        tags.push({ label: '🎬 ' + (PEOPLE_LABELS[i.value] || i.value), input: i });
+        tags.push({ label: faIcon('fa-film') + ' ' + Utils.escape(PEOPLE_LABELS[i.value] || i.value), input: i });
+      });
+      // Price and stock narrow the grid as much as any other box, and a stale
+      // tick carried in from a previous visit had no visible trace at all.
+      ['price', 'avail'].forEach(function (name) {
+        Array.from(document.querySelectorAll('#page-products input[name="' + name + '"]:checked')).forEach(i => {
+          var text = i.parentElement ? i.parentElement.textContent.trim() : i.value;
+          tags.push({ label: faIcon(name === 'price' ? 'fa-indian-rupee-sign' : 'fa-box') + ' ' + Utils.escape(text), input: i });
+        });
       });
       // The search term narrows the grid exactly like a checkbox does, and now
       // that it survives a filter change it has to be visible and removable —
@@ -697,7 +1020,7 @@
       if (currentParams && currentParams.search) {
         tags.push({ label: '🔍 ' + Utils.escape(currentParams.search), search: true });
       }
-      container.innerHTML = tags.map((tag, idx) => `<span class="filter-tag">${tag.label}<span class="filter-tag-remove" onclick="removeFilterProduct(${idx})">✕</span></span>`).join('');
+      container.innerHTML = tags.map((tag, idx) => `<span class="filter-tag">${tag.label}<button type="button" class="filter-tag-remove" onclick="removeFilterProduct(${idx})" aria-label="Remove filter"><i class="fas fa-xmark" aria-hidden="true"></i></button></span>`).join('');
       window._filterTags = tags;
       // Refresh the mobile/tablet chip strip too — count bubbles flip as
       // filters are toggled. Cheap to re-render the strip on every change.
@@ -723,13 +1046,13 @@
     // name used to count active selections. Add a new filter section?
     // Add a row here too.
     var FILTER_CHIP_SECTIONS = [
-      { id: 'fsec-cat',    label: '📁 Category',  inputName: 'cat' },
-      { id: 'fsec-artist', label: '🎙 Artist',    inputName: 'artist' },
-      { id: 'fsec-lang',   label: '🌐 Language',  inputName: 'lang' },
-      { id: 'fsec-price',  label: '💰 Price',     inputName: 'price' },
-      { id: 'fsec-cond',   label: '🏷 Condition', inputName: 'cond' },
-      { id: 'fsec-avail',  label: '📦 Stock',     inputName: 'avail' },
-      { id: 'fsec-people', label: '🎬 People',    inputName: 'people' },
+      { id: 'fsec-cat',    icon: 'fa-folder',             label: 'Category',  inputName: 'cat' },
+      { id: 'fsec-artist', icon: 'fa-microphone-lines',   label: 'Artist',    inputName: 'artist' },
+      { id: 'fsec-lang',   icon: 'fa-globe',              label: 'Language',  inputName: 'lang' },
+      { id: 'fsec-price',  icon: 'fa-indian-rupee-sign',  label: 'Price',     inputName: 'price' },
+      { id: 'fsec-cond',   icon: 'fa-tag',                label: 'Condition', inputName: 'cond' },
+      { id: 'fsec-avail',  icon: 'fa-box',                label: 'Stock',     inputName: 'avail' },
+      { id: 'fsec-people', icon: 'fa-film',               label: 'People',    inputName: 'people' },
     ];
 
     function renderFilterChips() {
@@ -751,7 +1074,7 @@
         totalActive += checked;
         var activeCls = checked > 0 ? ' active' : '';
         var countBubble = checked > 0 ? '<span class="chip-count">' + checked + '</span>' : '';
-        return '<button type="button" class="filter-chip' + activeCls + '" data-fsec="' + s.id + '" onclick="openFilterPopover(\'' + s.id + '\')">' + s.label + countBubble + ' <span class="chip-arrow">⏷</span></button>';
+        return '<button type="button" class="filter-chip' + activeCls + '" data-fsec="' + s.id + '" onclick="openFilterPopover(\'' + s.id + '\')">' + faIcon(s.icon) + ' ' + s.label + countBubble + ' <span class="chip-arrow">⏷</span></button>';
       }).join('');
       // Clear-all chip — shown only when at least one filter is active.
       if (totalActive > 0) {
@@ -1495,13 +1818,24 @@
       bluray: 'Blu-ray Movies', dvd: 'DVD Movies'
     };
 
+    var _preownedParams = {};
+
     function initPagePreowned(params) {
       params = params || {};
+      _preownedParams = params;
       var grid = document.getElementById('preowned-grid');
       var countEl = document.getElementById('preowned-count');
       var titleEl = document.getElementById('preowned-title');
       var chips = document.getElementById('preowned-chips');
+      var catHost = document.getElementById('preowned-cat-options');
       if (!grid) return;
+      restoreView('preowned-grid');
+
+      if (titleEl) {
+        titleEl.innerHTML = heroTitleHtml(params.cat
+          ? 'Pre-owned ' + (PREOWNED_LABELS[params.cat] || 'Products')
+          : 'Pre-owned');
+      }
 
       var all = Storage.getProducts();
       if (!all.length) {
@@ -1511,44 +1845,90 @@
       }
 
       var preowned = all.filter(function (p) { return p.condition === 'pre-owned'; });
-      var shown = params.cat
+      var counts = {};
+      preowned.forEach(function (p) { counts[p.category] = (counts[p.category] || 0) + 1; });
+
+      // Format chips and the sidebar's Category list are the same links in two
+      // places (the chips are what a phone gets). Built only for formats that
+      // actually have pre-owned stock — a link to an empty grid is worse than
+      // no link.
+      var links = [{ cat: '', label: 'All', n: preowned.length }];
+      Object.keys(PREOWNED_LABELS).forEach(function (cat) {
+        if (counts[cat]) links.push({ cat: cat, label: PREOWNED_LABELS[cat], n: counts[cat] });
+      });
+      var linkAttrs = function (l) {
+        return ' href="' + (l.cat ? Seo.buildPath('preowned', { cat: l.cat }) : '/pre-owned') + '"'
+          + ' onclick="navigate(\'preowned\'' + (l.cat ? ',{cat:\'' + l.cat + '\'}' : '') + ');return false;"';
+      };
+      var isOn = function (l) { return (params.cat || '') === l.cat; };
+      if (chips) {
+        chips.innerHTML = preowned.length ? links.map(function (l) {
+          return '<a' + linkAttrs(l) + ' class="preowned-chip' + (isOn(l) ? ' active' : '') + '"'
+            + (isOn(l) ? ' aria-current="page"' : '') + '>'
+            + Utils.escape(l.label) + ' (' + l.n + ')</a>';
+        }).join('') : '';
+      }
+      if (catHost) {
+        catHost.innerHTML = links.map(function (l) {
+          return '<a' + linkAttrs(l) + ' class="filter-option filter-link' + (isOn(l) ? ' is-active' : '') + '"'
+            + (isOn(l) ? ' aria-current="page"' : '') + '>'
+            + '<span class="filter-link-box" aria-hidden="true"></span>' + Utils.escape(l.label)
+            + '<span class="filter-count">' + l.n + '</span></a>';
+        }).join('');
+      }
+
+      renderPreownedGrid();
+    }
+
+    // Price, stock and sort narrow the grid in place; the format is the route.
+    function renderPreownedGrid() {
+      var params = _preownedParams || {};
+      var grid = document.getElementById('preowned-grid');
+      var countEl = document.getElementById('preowned-count');
+      if (!grid) return;
+      var preowned = Storage.getProducts().filter(function (p) { return p.condition === 'pre-owned'; });
+      var shelf = params.cat
         ? preowned.filter(function (p) { return p.category === params.cat; })
         : preowned;
 
-      if (titleEl) {
-        titleEl.textContent = params.cat
-          ? 'Pre-owned ' + (PREOWNED_LABELS[params.cat] || 'Products')
-          : 'Pre-owned';
-      }
+      var prices = Array.from(document.querySelectorAll('#page-preowned input[name="po-price"]:checked')).map(function (i) { return i.value; });
+      var avail = Array.from(document.querySelectorAll('#page-preowned input[name="po-avail"]:checked')).map(function (i) { return i.value; });
+      var shown = shelf.filter(function (p) {
+        if (prices.length && !prices.some(function (range) {
+          var parts = String(range).split('-');
+          var min = Number(parts[0]) || 0;
+          var max = parts[1] ? Number(parts[1]) : Infinity;
+          return p.price >= min && p.price <= max;
+        })) return false;
+        if (avail.length && !((avail.indexOf('instock') !== -1 && p.stock > 0) || (avail.indexOf('outofstock') !== -1 && p.stock < 1))) return false;
+        return true;
+      });
 
-      // Format chips, built only for formats that actually have pre-owned stock —
-      // a chip leading to an empty grid is worse than no chip.
-      if (chips) {
-        var counts = {};
-        preowned.forEach(function (p) { counts[p.category] = (counts[p.category] || 0) + 1; });
-        var html = '<a href="/pre-owned" onclick="navigate(\'preowned\');return false;" class="preowned-chip'
-          + (params.cat ? '' : ' active') + '">All (' + preowned.length + ')</a>';
-        Object.keys(PREOWNED_LABELS).forEach(function (cat) {
-          if (!counts[cat]) return;
-          html += '<a href="' + Seo.buildPath('preowned', { cat: cat }) + '"'
-            + ' onclick="navigate(\'preowned\',{cat:\'' + cat + '\'});return false;"'
-            + ' class="preowned-chip' + (params.cat === cat ? ' active' : '') + '">'
-            + Utils.escape(PREOWNED_LABELS[cat]) + ' (' + counts[cat] + ')</a>';
-        });
-        chips.innerHTML = preowned.length ? html : '';
-      }
+      var sort = (document.getElementById('preownedSort') || { value: '' }).value;
+      if (sort === 'price-asc') shown.sort(function (a, b) { return a.price - b.price; });
+      else if (sort === 'price-desc') shown.sort(function (a, b) { return b.price - a.price; });
+      else if (sort === 'rating') shown.sort(function (a, b) { return b.rating - a.rating; });
+      else if (sort === 'newest') shown.sort(function (a, b) { return b.id - a.id; });
+      else if (sort === 'name-asc') shown.sort(function (a, b) { return a.title.localeCompare(b.title); });
 
       if (countEl) {
         countEl.textContent = shown.length
           ? 'Showing ' + shown.length + ' pre-owned ' + (shown.length === 1 ? 'item' : 'items')
           : '';
       }
-
       grid.innerHTML = shown.length
         ? shown.map(createProductCard).join('')
-        : '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:3rem 1rem;">'
-          + '<div style="font-size:2rem;margin-bottom:0.75rem;">💿</div>'
-          + '<p>No pre-owned stock in this format right now.</p>'
-          + '<p style="margin-top:0.75rem;"><a href="/products" onclick="navigate(\'products\');return false;" class="btn btn-primary">Browse all products</a></p>'
-          + '</div>';
+        : catalogEmptyHtml({
+            variant: shelf.length ? 'filtered' : 'unstocked',
+            noun: params.cat ? 'pre-owned ' + (MUSIC_BANNER_NOUNS[params.cat] || 'items') : 'pre-owned items',
+            onClear: 'clearPreownedFilters()',
+            onAdjust: "document.getElementById('preownedSidebar').scrollIntoView({behavior:'smooth',block:'start'})"
+          });
+    }
+
+    function clearPreownedFilters() {
+      document.querySelectorAll('#page-preowned .filters-sidebar input').forEach(function (i) { i.checked = false; });
+      var s = document.getElementById('preownedSort'); if (s) s.value = '';
+      if (_preownedParams && _preownedParams.cat) { navigate('preowned'); return; }
+      renderPreownedGrid();
     }

@@ -164,7 +164,7 @@
        end up in script-scope; the inline <script> at the bottom of <body>
        just bootstraps DOMContentLoaded. -->
   <script src="src/js/storefront/carriers.js?v=488bf189"></script>
-  <script src="src/js/storefront/pages.js?v=26d3c6db"></script>
+  <script src="src/js/storefront/pages.js?v=58a255ff"></script>
   <!-- Blog views. Must load before router.js, whose initPage dispatcher calls
        initPageBlog / initPageBlogPost. -->
   <!-- Homepage hero carousel. Must load before router.js: its initPage
@@ -173,7 +173,7 @@
   <!-- Global search. Must load before router.js, whose injectNavbar calls
        VelorexSearch.bindNavbar(). -->
   <script src="src/js/storefront/search.js?v=b7fbf620"></script>
-  <script src="src/js/storefront/combos.js?v=32d788b8"></script>
+  <script src="src/js/storefront/combos.js?v=09dfb705"></script>
   <script src="src/js/storefront/ads.js?v=cbb5cd9c"></script>
   <script src="src/js/storefront/blog.js?v=1cd0941e"></script>
   <script src="src/js/storefront/music-history.js?v=45f7aa17"></script>
@@ -207,9 +207,11 @@
   <link rel="stylesheet" href="src/styles/components/music-history.css?v=6e18fb90">
   <link rel="stylesheet" href="src/styles/components/recent-sales.css?v=066910e1">
   <link rel="stylesheet" href="src/styles/components/label-band.css?v=58b6bd4e">
+  <link rel="stylesheet" href="src/styles/components/page-banner.css?v=db852962">
+  <link rel="stylesheet" href="src/styles/components/catalog-empty.css?v=8c30b8f4">
   <!-- Page-specific styles (hero, products, cart, profile, footer, etc.).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=d15643bd">
+  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=df01a429">
 </head>
 
 <body>
@@ -629,18 +631,46 @@
 
     <!-- PRODUCTS PAGE -->
     <div id="page-products" class="page-section">
-      <div class="page-hero">
-        <div class="container">
-          <h1 class="page-hero-title" id="page-title">All Products</h1>
+      <!-- One banner for Music, Merchandise and Vinyl Care. data-banner picks
+           the photograph and which tagline / feature row shows; it is set by
+           renderProductsBanner() in pages.js and, for a server render, by
+           seo-render.php. Every variant's copy lives here and only here. See
+           src/styles/components/page-banner.css. -->
+      <div class="page-banner" id="products-banner" data-banner="music">
+        <div class="page-banner-bg" aria-hidden="true"></div>
+        <div class="container page-banner-inner">
+          <div class="page-banner-copy">
+            <span class="page-banner-eyebrow page-banner-eyebrow-variant" data-for="music">Feel the music</span>
+            <span class="page-banner-eyebrow page-banner-eyebrow-variant" data-for="merchandise">More than music</span>
+            <span class="page-banner-eyebrow page-banner-eyebrow-variant" data-for="vinyl-care">Care &middot; Preserve &middot; Play</span>
+            <h1 class="page-hero-title" id="page-title">All <span>Products</span></h1>
+            <p class="page-banner-tagline page-banner-variant" data-for="merchandise">Wear the music. Live the vibe.</p>
+            <p class="page-banner-tagline page-banner-variant" data-for="vinyl-care">Keep the music alive. Care for what you love.</p>
+            <p class="page-banner-desc" id="page-banner-desc">Rediscover timeless melodies. Explore our curated collection of records, CDs, cassettes and films from legendary artists and iconic films.</p>
+            <!-- Music: real counts of the shelf being viewed, filled by
+                 renderProductsBanner(). Never a rounded-up "50+" — §20. -->
+            <ul class="page-banner-features page-banner-stats page-banner-variant" data-for="music" id="page-banner-stats"></ul>
+            <!-- "Pan-India", not "Worldwide": checkout is India-only (§12). -->
+            <ul class="page-banner-features page-banner-variant" data-for="merchandise">
+              <li class="page-banner-feature"><i class="fas fa-truck-fast" aria-hidden="true"></i><div><strong>Pan-India</strong><small>Shipping</small></div></li>
+              <li class="page-banner-feature"><i class="fas fa-shield-halved" aria-hidden="true"></i><div><strong>Original</strong><small>&amp; Official</small></div></li>
+              <li class="page-banner-feature"><i class="fas fa-gift" aria-hidden="true"></i><div><strong>Music Inspired</strong><small>Lifestyle</small></div></li>
+            </ul>
+            <ul class="page-banner-features page-banner-variant" data-for="vinyl-care">
+              <li class="page-banner-feature"><i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i><div><strong>Cleaner Sound</strong><small>Remove dust &amp; dirt</small></div></li>
+              <li class="page-banner-feature"><i class="fas fa-shield-halved" aria-hidden="true"></i><div><strong>Longer Life</strong><small>Protect your collection</small></div></li>
+              <li class="page-banner-feature"><i class="fas fa-record-vinyl" aria-hidden="true"></i><div><strong>Better Experience</strong><small>Music as it should be</small></div></li>
+            </ul>
+          </div>
         </div>
       </div>
       <section class="section" style="padding-top:0;">
         <div class="container">
           <div class="products-layout">
             <aside class="filters-sidebar" id="filtersSidebar">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
-                <h3 style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;">🎛 Filters</h3>
-                <button class="btn btn-sm btn-secondary" onclick="clearAllFilters()">Clear All</button>
+              <div class="filters-head">
+                <h3 class="filters-heading"><i class="fas fa-filter" aria-hidden="true"></i> Filters</h3>
+                <button type="button" class="filters-clear" onclick="clearAllFilters()"><i class="fas fa-rotate-left" aria-hidden="true"></i> Clear All</button>
               </div>
 
               <!-- Category Filter — options are rendered by
@@ -650,8 +680,8 @@
                    departments had no checkbox at all, and formats the shop
                    does not currently stock were offered as filters that could
                    only ever return "No products found". -->
-              <div class="filter-section" id="fsec-cat" data-section="cat" data-label="📁 Category">
-                <p class="filter-title">📁 Category</p>
+              <div class="filter-section" id="fsec-cat" data-section="cat" data-label="Category">
+                <p class="filter-title"><i class="fas fa-folder" aria-hidden="true"></i> Category</p>
                 <div class="filter-options" id="category-filter-options"></div>
               </div>
 
@@ -660,8 +690,8 @@
                    artist, which makes it the one high-cardinality facet the
                    shop can actually filter on; the People section below only
                    works once products are tagged. -->
-              <div class="filter-section filter-section-collapsible" id="fsec-artist" data-section="artist" data-label="🎙 Artist" hidden>
-                <p class="filter-title">🎙 Artist</p>
+              <div class="filter-section" id="fsec-artist" data-section="artist" data-label="Artist" hidden>
+                <p class="filter-title"><i class="fas fa-microphone-lines" aria-hidden="true"></i> Artist</p>
                 <input
                   type="text"
                   class="people-search-input"
@@ -670,20 +700,26 @@
                   oninput="filterArtistOptions(this.value)"
                 />
                 <div class="filter-options" id="artist-filter-options"></div>
+                <!-- Top five by stock depth, then this. Replaced a 220px
+                     scroll box whose scrollbar was the most prominent thing
+                     in the sidebar. applyOptionVisibility() owns it. -->
+                <button type="button" class="filter-show-more" id="artistShowMore" onclick="toggleArtistShowMore()" hidden>Show more</button>
               </div>
 
-              <!-- Language Filter -->
-              <div class="filter-section" id="fsec-lang" data-section="lang" data-label="🌐 Language">
-                <p class="filter-title">🌐 Language</p>
+              <!-- Language Filter — hidden by updateCountsProducts() when the
+                   shelf being viewed has fewer than two languages in it
+                   (Merchandise has none). -->
+              <div class="filter-section" id="fsec-lang" data-section="lang" data-label="Language">
+                <p class="filter-title"><i class="fas fa-globe" aria-hidden="true"></i> Language</p>
                 <div class="filter-options">
-                  <label class="filter-option"><input type="checkbox" name="lang" value="hindi" onchange="applyFilters()">🇮🇳 Hindi<span class="filter-count" id="count-hindi">0</span></label>
-                  <label class="filter-option"><input type="checkbox" name="lang" value="english" onchange="applyFilters()">🌍 English<span class="filter-count" id="count-english">0</span></label>
+                  <label class="filter-option"><input type="checkbox" name="lang" value="hindi" onchange="applyFilters()">Hindi<span class="filter-count" id="count-hindi">0</span></label>
+                  <label class="filter-option"><input type="checkbox" name="lang" value="english" onchange="applyFilters()">English<span class="filter-count" id="count-english">0</span></label>
                 </div>
               </div>
 
               <!-- Price Range Filter -->
-              <div class="filter-section" id="fsec-price" data-section="price" data-label="💰 Price">
-                <p class="filter-title">💰 Price Range</p>
+              <div class="filter-section" id="fsec-price" data-section="price" data-label="Price">
+                <p class="filter-title"><i class="fas fa-indian-rupee-sign" aria-hidden="true"></i> Price Range</p>
                 <div class="filter-options">
                   <label class="filter-option"><input type="checkbox" name="price" value="0-499" onchange="applyFilters()">Under ₹500</label>
                   <label class="filter-option"><input type="checkbox" name="price" value="500-999" onchange="applyFilters()">₹500 – ₹999</label>
@@ -696,14 +732,14 @@
                    products.item_condition already drives the Pre-owned badge
                    and the /pre-owned route; the sidebar was the one place a
                    shopper could not act on it. -->
-              <div class="filter-section" id="fsec-cond" data-section="cond" data-label="🏷 Condition" hidden>
-                <p class="filter-title">🏷 Condition</p>
+              <div class="filter-section" id="fsec-cond" data-section="cond" data-label="Condition" hidden>
+                <p class="filter-title"><i class="fas fa-tag" aria-hidden="true"></i> Condition</p>
                 <div class="filter-options" id="condition-filter-options"></div>
               </div>
 
               <!-- Availability -->
-              <div class="filter-section" id="fsec-avail" data-section="avail" data-label="📦 Stock">
-                <p class="filter-title">📦 Availability</p>
+              <div class="filter-section" id="fsec-avail" data-section="avail" data-label="Stock">
+                <p class="filter-title"><i class="fas fa-box" aria-hidden="true"></i> Availability</p>
                 <div class="filter-options">
                   <label class="filter-option"><input type="checkbox" name="avail" value="instock" onchange="applyFilters()">In Stock</label>
                   <label class="filter-option"><input type="checkbox" name="avail" value="outofstock" onchange="applyFilters()">Out of Stock</label>
@@ -714,8 +750,8 @@
                    PEOPLE FILTER — Music Directors, Artists,
                    Actors & Actresses
                    ============================================= -->
-              <div class="filter-section filter-section-collapsible" id="fsec-people" data-section="people" data-label="🎬 People">
-                <p class="filter-title">🎬 People</p>
+              <div class="filter-section filter-section-collapsible" id="fsec-people" data-section="people" data-label="People">
+                <p class="filter-title"><i class="fas fa-film" aria-hidden="true"></i> People</p>
                 <input
                   type="text"
                   class="people-search-input"
@@ -797,12 +833,14 @@
               <div class="filter-popover-body" id="filterPopoverBody"></div>
             </div>
 
-            <div>
-              <div class="active-filters" id="activeFilters"></div>
+            <div class="products-main">
               <div class="products-toolbar">
-                <p class="products-count" id="products-count">Showing all products</p>
-                <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
-                  <select class="sort-select" id="sortSelect" onchange="applyFilters()">
+                <div class="products-toolbar-lead">
+                  <div class="active-filters" id="activeFilters"></div>
+                  <p class="products-count" id="products-count">Showing all products</p>
+                </div>
+                <div class="products-toolbar-tools">
+                  <select class="sort-select" id="sortSelect" onchange="applyFilters()" aria-label="Sort products">
                     <option value="">Sort: Default</option>
                     <option value="price-asc">Price: Low to High</option>
                     <option value="price-desc">Price: High to Low</option>
@@ -810,9 +848,9 @@
                     <option value="newest">Newest First</option>
                     <option value="name-asc">Name: A–Z</option>
                   </select>
-                  <div style="display:flex;gap:0.25rem;">
-                    <button class="btn btn-sm btn-secondary" id="gridViewBtn" onclick="setView('grid')" title="Grid View">⊞</button>
-                    <button class="btn btn-sm btn-secondary" id="listViewBtn" onclick="setView('list')" title="List View">☰</button>
+                  <div class="view-toggle" role="group" aria-label="Layout">
+                    <button type="button" class="view-btn is-active" data-view="grid" onclick="setView('grid','products-grid')" title="Grid view" aria-label="Grid view" aria-pressed="true"><i class="fas fa-table-cells-large"></i></button>
+                    <button type="button" class="view-btn" data-view="list" onclick="setView('list','products-grid')" title="List view" aria-label="List view" aria-pressed="false"><i class="fas fa-list"></i></button>
                   </div>
                 </div>
               </div>
@@ -845,13 +883,24 @@
 
     <!-- COMBO OFFERS -->
     <div id="page-combos" class="page-section">
-      <div class="page-hero">
-        <div class="container">
-          <h1 class="page-hero-title">Combo Offers</h1>
-          <p style="color:var(--text-muted);margin-top:0.5rem;max-width:64ch;">
-            Bundles we put together because they belong together — a record and the
-            kit to keep it clean, or two pressings from the same era.
-          </p>
+      <div class="page-banner" data-banner="combos">
+        <div class="page-banner-bg" aria-hidden="true"></div>
+        <div class="container page-banner-inner">
+          <div class="page-banner-copy">
+            <span class="page-banner-eyebrow">Better together</span>
+            <h1 class="page-hero-title">Combo <span>Offers</span></h1>
+            <p class="page-banner-desc">
+              Bundles we put together because they belong together — a record and the
+              kit to keep it clean, or two timeless favourites from the same era.
+            </p>
+            <!-- No "less cost" promise: a combo does not discount anything —
+                 the total is the items' own prices (CLAUDE.md §17). -->
+            <ul class="page-banner-features">
+              <li class="page-banner-feature"><i class="fas fa-coins" aria-hidden="true"></i><div><strong>Great Value</strong><small>One click, whole set</small></div></li>
+              <li class="page-banner-feature"><i class="fas fa-gift" aria-hidden="true"></i><div><strong>Curated Sets</strong><small>Handpicked combinations</small></div></li>
+              <li class="page-banner-feature"><i class="fas fa-shield-halved" aria-hidden="true"></i><div><strong>Authentic &amp; Genuine</strong><small>Quality you can trust</small></div></li>
+            </ul>
+          </div>
         </div>
       </div>
       <section class="section" style="padding-top:0;">
@@ -870,138 +919,89 @@
 
     <!-- PRE-OWNED -->
     <div id="page-preowned" class="page-section">
-      <div class="page-hero">
-        <div class="container">
-          <h1 class="page-hero-title" id="preowned-title">Pre-owned</h1>
-          <p style="color:var(--text-muted);margin-top:0.5rem;max-width:64ch;">
-            Second-hand vinyl, CDs, cassettes, Blu-rays and DVDs — every copy
-            checked and graded before it ships.
-          </p>
+      <div class="page-banner" data-banner="preowned">
+        <div class="page-banner-bg" aria-hidden="true"></div>
+        <div class="container page-banner-inner">
+          <div class="page-banner-copy">
+            <span class="page-banner-eyebrow">Great music lives on</span>
+            <h1 class="page-hero-title" id="preowned-title">Pre-<span>owned</span></h1>
+            <p class="page-banner-desc">
+              Second-hand vinyl, CDs, cassettes, Blu-rays and DVDs — every copy
+              checked and graded before it ships.
+            </p>
+            <ul class="page-banner-features">
+              <li class="page-banner-feature"><i class="fas fa-shield-halved" aria-hidden="true"></i><div><strong>Quality Checked</strong><small>Every item inspected</small></div></li>
+              <li class="page-banner-feature"><i class="fas fa-truck-fast" aria-hidden="true"></i><div><strong>Safe Packaging</strong><small>Ships with care</small></div></li>
+              <li class="page-banner-feature"><i class="fas fa-leaf" aria-hidden="true"></i><div><strong>Sustainable Choice</strong><small>More music, less waste</small></div></li>
+            </ul>
+          </div>
         </div>
       </div>
       <section class="section" style="padding-top:0;">
         <div class="container">
-          <div class="preowned-chips" id="preowned-chips"></div>
-          <p class="products-count" id="preowned-count"></p>
-          <div class="products-grid" id="preowned-grid"><div class="loading-spinner"></div></div>
+          <div class="products-layout">
+            <!-- Its own small sidebar rather than the products page's: the
+                 format is a ROUTE here (/pre-owned/vinyl-records, its own
+                 canonical URL), so it is a list of links, not checkboxes.
+                 Price and availability narrow the grid in place.
+                 There is deliberately no grading filter (NM / VG / G) — the
+                 catalogue records "pre-owned" but not a grade, and a filter
+                 whose options no product carries is a dead end. -->
+            <aside class="filters-sidebar preowned-sidebar" id="preownedSidebar">
+              <div class="filters-head">
+                <h3 class="filters-heading"><i class="fas fa-filter" aria-hidden="true"></i> Filters</h3>
+                <button type="button" class="filters-clear" onclick="clearPreownedFilters()"><i class="fas fa-rotate-left" aria-hidden="true"></i> Clear All</button>
+              </div>
+              <div class="filter-section preowned-cat-section">
+                <p class="filter-title"><i class="fas fa-folder" aria-hidden="true"></i> Category</p>
+                <div class="filter-options" id="preowned-cat-options"></div>
+              </div>
+              <div class="filter-section">
+                <p class="filter-title"><i class="fas fa-indian-rupee-sign" aria-hidden="true"></i> Price Range</p>
+                <div class="filter-options">
+                  <label class="filter-option"><input type="checkbox" name="po-price" value="0-499" onchange="renderPreownedGrid()">Under ₹500</label>
+                  <label class="filter-option"><input type="checkbox" name="po-price" value="500-999" onchange="renderPreownedGrid()">₹500 – ₹999</label>
+                  <label class="filter-option"><input type="checkbox" name="po-price" value="1000-1999" onchange="renderPreownedGrid()">₹1,000 – ₹1,999</label>
+                  <label class="filter-option"><input type="checkbox" name="po-price" value="2000-" onchange="renderPreownedGrid()">₹2,000+</label>
+                </div>
+              </div>
+              <div class="filter-section">
+                <p class="filter-title"><i class="fas fa-box" aria-hidden="true"></i> Availability</p>
+                <div class="filter-options">
+                  <label class="filter-option"><input type="checkbox" name="po-avail" value="instock" onchange="renderPreownedGrid()">In Stock</label>
+                  <label class="filter-option"><input type="checkbox" name="po-avail" value="outofstock" onchange="renderPreownedGrid()">Out of Stock</label>
+                </div>
+              </div>
+            </aside>
+            <div class="products-main">
+              <div class="products-toolbar">
+                <div class="products-toolbar-lead">
+                  <div class="preowned-chips" id="preowned-chips"></div>
+                  <p class="products-count" id="preowned-count"></p>
+                </div>
+                <div class="products-toolbar-tools">
+                  <select class="sort-select" id="preownedSort" onchange="renderPreownedGrid()" aria-label="Sort pre-owned items">
+                    <option value="">Sort: Default</option>
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                    <option value="rating">Top Rated</option>
+                    <option value="newest">Newest First</option>
+                    <option value="name-asc">Name: A–Z</option>
+                  </select>
+                  <div class="view-toggle" role="group" aria-label="Layout">
+                    <button type="button" class="view-btn is-active" data-view="grid" onclick="setView('grid','preowned-grid')" title="Grid view" aria-label="Grid view" aria-pressed="true"><i class="fas fa-table-cells-large"></i></button>
+                    <button type="button" class="view-btn" data-view="list" onclick="setView('list','preowned-grid')" title="List view" aria-label="List view" aria-pressed="false"><i class="fas fa-list"></i></button>
+                  </div>
+                </div>
+              </div>
+              <div class="products-grid" id="preowned-grid"><div class="loading-spinner"></div></div>
+            </div>
+          </div>
         </div>
       </section>
     </div>
 
     <!-- BLOG LISTING -->
-    <div id="page-blog" class="page-section">
-      <div class="page-hero">
-        <div class="container">
-          <h1 class="page-hero-title">Velorex Journal</h1>
-          <p style="color:var(--text-muted);margin-top:0.5rem;max-width:60ch;">
-            Notes on vinyl, Hindi film music and the records worth collecting.
-          </p>
-        </div>
-      </div>
-      <section class="section" style="padding-top:0;">
-        <div class="container">
-          <div class="blog-grid" id="blog-grid"><div class="loading-spinner"></div></div>
-        </div>
-      </section>
-    </div>
-
-    <!-- BLOG POST -->
-    <div id="page-blog-post" class="page-section">
-      <div class="page-hero">
-        <div class="container">
-          <h1 class="page-hero-title" id="blog-post-title">Article</h1>
-        </div>
-      </div>
-      <section class="section" style="padding-top:0;">
-        <div class="container">
-          <div id="blog-post-container"><div class="loading-spinner"></div></div>
-        </div>
-      </section>
-    </div>
-
-    <!-- CART PAGE -->
-    <div id="page-cart" class="page-section">
-      <div class="page-hero"><div class="container"><h1 class="page-hero-title">🛒 Shopping Cart</h1></div></div>
-      <section class="section" style="padding-top:0;"><div class="container"><div id="cart-main"></div></div></section>
-    </div>
-
-    <!-- PROFILE PAGE -->
-    <div id="page-profile" class="page-section">
-      <div class="page-hero"><div class="container"><h1 class="page-hero-title">👤 My Profile</h1></div></div>
-      <section class="section" style="padding-top:0;">
-        <div class="container">
-          <div class="profile-layout">
-            <aside>
-              <div class="profile-sidebar-card">
-                <div class="profile-avatar">🎵</div>
-                <h3 class="profile-name" id="profile-name">Rahul Sharma</h3>
-                <p class="profile-email" id="profile-email">rahul@musiclover.com</p>
-                <div style="display:inline-flex;align-items:center;gap:0.4rem;background:rgba(0,212,170,0.1);border:1px solid rgba(0,212,170,0.3);color:var(--success);padding:0.25rem 0.75rem;border-radius:50px;font-size:0.75rem;margin-bottom:1.5rem;">✅ Verified Member</div>
-                <div class="profile-stats">
-                  <div class="p-stat"><div class="p-stat-value">12</div><div class="p-stat-label">Orders</div></div>
-                  <div class="p-stat"><div class="p-stat-value">₹8.2K</div><div class="p-stat-label">Spent</div></div>
-                  <div class="p-stat"><div class="p-stat-value">3</div><div class="p-stat-label">Wishlist</div></div>
-                  <div class="p-stat"><div class="p-stat-value">⭐4.9</div><div class="p-stat-label">Rating</div></div>
-                </div>
-                <nav class="profile-nav">
-                  <div class="profile-nav-item active" onclick="showTab('orders', this)">📦 Order History</div>
-                  <div class="profile-nav-item" onclick="showTab('account', this)">👤 Account Details</div>
-                  <div class="profile-nav-item" onclick="showTab('wishlist', this)">❤️ Wishlist</div>
-                  <div class="profile-nav-item" onclick="showTab('addresses', this)">📍 Addresses</div>
-                </nav>
-              </div>
-            </aside>
-            <div>
-              <div id="tab-orders" class="profile-tab">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
-                  <h2 style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;">Order History</h2>
-                  <select class="sort-select" onchange="filterOrders(this.value)">
-                    <option value="all">All Orders</option>
-                    <option value="delivered">Delivered</option>
-                    <option value="processing">Processing</option>
-                    <option value="shipped">Shipped</option>
-                  </select>
-                </div>
-                <div id="orders-list"></div>
-              </div>
-              <div id="tab-account" class="profile-tab" style="display:none;">
-                <h2 style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;margin-bottom:1.5rem;">Account Details</h2>
-                <div class="admin-form-card">
-                  <div class="form-grid">
-                    <div class="form-group"><label class="form-label">First Name</label><input class="form-control" type="text" value="Rahul" id="firstName"></div>
-                    <div class="form-group"><label class="form-label">Last Name</label><input class="form-control" type="text" value="Sharma" id="lastName"></div>
-                    <div class="form-group full-width"><label class="form-label">Email Address</label><input class="form-control" type="email" value="rahul@musiclover.com" id="userEmail"></div>
-                    <div class="form-group"><label class="form-label">Phone</label><input class="form-control" type="tel" value="+91 98765 43210"></div>
-                    <div class="form-group"><label class="form-label">Date of Birth</label><input class="form-control" type="date" value="1995-06-15"></div>
-                    <div class="form-group full-width"><label class="form-label">Music Preferences</label><input class="form-control" type="text" value="Classic Rock, Bollywood, Jazz" placeholder="E.g. Rock, Bollywood, Jazz"></div>
-                  </div>
-                  <div style="margin-top:1.5rem;display:flex;gap:0.75rem;">
-                    <button class="btn btn-primary" onclick="saveProfile()">💾 Save Changes</button>
-                    <button class="btn btn-secondary">Cancel</button>
-                  </div>
-                </div>
-                <div class="admin-form-card" style="margin-top:1.5rem;">
-                  <h3 style="font-family:var(--font-display);font-size:1.1rem;margin-bottom:1.25rem;">🔐 Change Password</h3>
-                  <div class="form-grid">
-                    <div class="form-group full-width"><label class="form-label">Current Password</label><input class="form-control" type="password" placeholder="Enter current password"></div>
-                    <div class="form-group"><label class="form-label">New Password</label><input class="form-control" type="password" placeholder="New password"></div>
-                    <div class="form-group"><label class="form-label">Confirm Password</label><input class="form-control" type="password" placeholder="Confirm password"></div>
-                  </div>
-                  <button class="btn btn-primary" style="margin-top:1.25rem;" onclick="handleChangePassword(this)">Update Password</button>
-                </div>
-              </div>
-              <div id="tab-wishlist" class="profile-tab" style="display:none;">
-                <h2 style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;margin-bottom:1.5rem;">❤️ Wishlist</h2>
-                <div class="products-grid" id="wishlist-grid"></div>
-              </div>
-              <div id="tab-addresses" class="profile-tab" style="display:none;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
-                  <h2 style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;">📍 Saved Addresses</h2>
-                  <button class="btn btn-primary btn-sm" onclick="openAddressModal()">+ Add Address</button>
-                </div>
-                <div id="addresses-list" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;"></div>
-              </div>
-            </div>
 
     <!-- ==================== THE EVOLUTION OF MUSIC & AUDIO ====================
          An INDEPENDENT educational section. Nothing described in it was made by
@@ -1184,6 +1184,126 @@
       </div>
     </div>
 
+    <div id="page-blog" class="page-section">
+      <!-- No feature row: there is no mockup for this page, and a row of
+           claims about what the journal covers goes stale the moment the
+           posts drift from it. -->
+      <div class="page-banner" data-banner="blog">
+        <div class="page-banner-bg" aria-hidden="true"></div>
+        <div class="container page-banner-inner">
+          <div class="page-banner-copy">
+            <span class="page-banner-eyebrow">From the record room</span>
+            <h1 class="page-hero-title">Velorex <span>Journal</span></h1>
+            <p class="page-banner-desc">
+              Notes on vinyl, Hindi film music and the records worth collecting.
+            </p>
+          </div>
+        </div>
+      </div>
+      <section class="section" style="padding-top:0;">
+        <div class="container">
+          <div class="blog-grid" id="blog-grid"><div class="loading-spinner"></div></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- BLOG POST -->
+    <div id="page-blog-post" class="page-section">
+      <div class="page-hero">
+        <div class="container">
+          <h1 class="page-hero-title" id="blog-post-title">Article</h1>
+        </div>
+      </div>
+      <section class="section" style="padding-top:0;">
+        <div class="container">
+          <div id="blog-post-container"><div class="loading-spinner"></div></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- CART PAGE -->
+    <div id="page-cart" class="page-section">
+      <div class="page-hero"><div class="container"><h1 class="page-hero-title">🛒 Shopping Cart</h1></div></div>
+      <section class="section" style="padding-top:0;"><div class="container"><div id="cart-main"></div></div></section>
+    </div>
+
+    <!-- PROFILE PAGE -->
+    <div id="page-profile" class="page-section">
+      <div class="page-hero"><div class="container"><h1 class="page-hero-title">👤 My Profile</h1></div></div>
+      <section class="section" style="padding-top:0;">
+        <div class="container">
+          <div class="profile-layout">
+            <aside>
+              <div class="profile-sidebar-card">
+                <div class="profile-avatar">🎵</div>
+                <h3 class="profile-name" id="profile-name">Rahul Sharma</h3>
+                <p class="profile-email" id="profile-email">rahul@musiclover.com</p>
+                <div style="display:inline-flex;align-items:center;gap:0.4rem;background:rgba(0,212,170,0.1);border:1px solid rgba(0,212,170,0.3);color:var(--success);padding:0.25rem 0.75rem;border-radius:50px;font-size:0.75rem;margin-bottom:1.5rem;">✅ Verified Member</div>
+                <div class="profile-stats">
+                  <div class="p-stat"><div class="p-stat-value">12</div><div class="p-stat-label">Orders</div></div>
+                  <div class="p-stat"><div class="p-stat-value">₹8.2K</div><div class="p-stat-label">Spent</div></div>
+                  <div class="p-stat"><div class="p-stat-value">3</div><div class="p-stat-label">Wishlist</div></div>
+                  <div class="p-stat"><div class="p-stat-value">⭐4.9</div><div class="p-stat-label">Rating</div></div>
+                </div>
+                <nav class="profile-nav">
+                  <div class="profile-nav-item active" onclick="showTab('orders', this)">📦 Order History</div>
+                  <div class="profile-nav-item" onclick="showTab('account', this)">👤 Account Details</div>
+                  <div class="profile-nav-item" onclick="showTab('wishlist', this)">❤️ Wishlist</div>
+                  <div class="profile-nav-item" onclick="showTab('addresses', this)">📍 Addresses</div>
+                </nav>
+              </div>
+            </aside>
+            <div>
+              <div id="tab-orders" class="profile-tab">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+                  <h2 style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;">Order History</h2>
+                  <select class="sort-select" onchange="filterOrders(this.value)">
+                    <option value="all">All Orders</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="processing">Processing</option>
+                    <option value="shipped">Shipped</option>
+                  </select>
+                </div>
+                <div id="orders-list"></div>
+              </div>
+              <div id="tab-account" class="profile-tab" style="display:none;">
+                <h2 style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;margin-bottom:1.5rem;">Account Details</h2>
+                <div class="admin-form-card">
+                  <div class="form-grid">
+                    <div class="form-group"><label class="form-label">First Name</label><input class="form-control" type="text" value="Rahul" id="firstName"></div>
+                    <div class="form-group"><label class="form-label">Last Name</label><input class="form-control" type="text" value="Sharma" id="lastName"></div>
+                    <div class="form-group full-width"><label class="form-label">Email Address</label><input class="form-control" type="email" value="rahul@musiclover.com" id="userEmail"></div>
+                    <div class="form-group"><label class="form-label">Phone</label><input class="form-control" type="tel" value="+91 98765 43210"></div>
+                    <div class="form-group"><label class="form-label">Date of Birth</label><input class="form-control" type="date" value="1995-06-15"></div>
+                    <div class="form-group full-width"><label class="form-label">Music Preferences</label><input class="form-control" type="text" value="Classic Rock, Bollywood, Jazz" placeholder="E.g. Rock, Bollywood, Jazz"></div>
+                  </div>
+                  <div style="margin-top:1.5rem;display:flex;gap:0.75rem;">
+                    <button class="btn btn-primary" onclick="saveProfile()">💾 Save Changes</button>
+                    <button class="btn btn-secondary">Cancel</button>
+                  </div>
+                </div>
+                <div class="admin-form-card" style="margin-top:1.5rem;">
+                  <h3 style="font-family:var(--font-display);font-size:1.1rem;margin-bottom:1.25rem;">🔐 Change Password</h3>
+                  <div class="form-grid">
+                    <div class="form-group full-width"><label class="form-label">Current Password</label><input class="form-control" type="password" placeholder="Enter current password"></div>
+                    <div class="form-group"><label class="form-label">New Password</label><input class="form-control" type="password" placeholder="New password"></div>
+                    <div class="form-group"><label class="form-label">Confirm Password</label><input class="form-control" type="password" placeholder="Confirm password"></div>
+                  </div>
+                  <button class="btn btn-primary" style="margin-top:1.25rem;" onclick="handleChangePassword(this)">Update Password</button>
+                </div>
+              </div>
+              <div id="tab-wishlist" class="profile-tab" style="display:none;">
+                <h2 style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;margin-bottom:1.5rem;">❤️ Wishlist</h2>
+                <div class="products-grid" id="wishlist-grid"></div>
+              </div>
+              <div id="tab-addresses" class="profile-tab" style="display:none;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+                  <h2 style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;">📍 Saved Addresses</h2>
+                  <button class="btn btn-primary btn-sm" onclick="openAddressModal()">+ Add Address</button>
+                </div>
+                <div id="addresses-list" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;"></div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
