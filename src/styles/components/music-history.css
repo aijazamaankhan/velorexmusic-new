@@ -1,0 +1,963 @@
+/* =============================================================================
+   Velorex Music — The Evolution of Music & Audio
+   Used by: index.html (#page-music-history, #page-music-history-article),
+            rendered by src/js/storefront/music-history.js and seo-render.php
+
+   Owns every .mh-* class and nothing else uses them, so this file cannot reach
+   the shop. It reuses the storefront's tokens rather than defining colours, so
+   a change to the brand palette carries here automatically.
+
+   READING FIRST. This is a long-form editorial section, so the measure is
+   capped, the line height is generous, and decoration is kept out of the
+   reading column. The rule of thumb applied throughout: if an effect competes
+   with the sentence, it goes.
+   ============================================================================= */
+
+.mh-wrap { max-width: 1180px; margin: 0 auto; padding: 0 1.5rem; }
+
+/* ---- Hero ---------------------------------------------------------------- */
+.mh-hero {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(3.25rem, 7vw, 6rem) 0 clamp(2.5rem, 5vw, 4rem);
+  background:
+    radial-gradient(ellipse 70% 60% at 12% -10%, rgba(255, 107, 53, 0.20), transparent 60%),
+    radial-gradient(ellipse 65% 70% at 88% 10%, rgba(83, 52, 131, 0.34), transparent 62%),
+    radial-gradient(ellipse 90% 60% at 50% 110%, rgba(255, 107, 53, 0.07), transparent 70%),
+    var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+/* A hairline grid, very faint. It gives the empty right-hand side something to
+   sit on without drawing any attention of its own. */
+.mh-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, #000 30%, transparent 75%);
+  pointer-events: none;
+}
+[data-theme="light"] .mh-hero {
+  background:
+    radial-gradient(ellipse 70% 60% at 12% -10%, rgba(255, 107, 53, 0.13), transparent 60%),
+    radial-gradient(ellipse 65% 70% at 88% 10%, rgba(83, 52, 131, 0.12), transparent 62%),
+    linear-gradient(180deg, #fbf7fb, #f4f1f8);
+}
+[data-theme="light"] .mh-hero::before {
+  background-image:
+    linear-gradient(rgba(26, 10, 46, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(26, 10, 46, 0.045) 1px, transparent 1px);
+}
+.mh-hero-inner, .mh-hero > * { position: relative; z-index: 1; }
+
+/* ---- The record playing behind the hero ---------------------------------
+   Decoration only: aria-hidden in the markup, pointer-events:none here, and
+   masked so it fades out before it reaches the headline. If any of this ever
+   competes with the sentence, it goes. */
+.mh-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.mh-deck {
+  position: absolute;
+  top: 50%;
+  right: -8%;
+  width: min(46rem, 62vw);
+  aspect-ratio: 1;
+  transform: translateY(-50%);
+  opacity: 0.5;
+  /* Fades towards the copy, so the left-hand column never has a groove
+     running through it. */
+  mask-image: radial-gradient(circle at 62% 50%, #000 42%, transparent 72%);
+}
+[data-theme="light"] .mh-deck { opacity: 0.22; }
+
+.mh-disc {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 50%;
+  /* A real LP turns at 33 rpm — about 1.8s a revolution, which at this size
+     is a blur. 24s is slow enough to read as motion rather than spin. */
+  animation: mhSpin 24s linear infinite;
+  filter: drop-shadow(0 30px 70px rgba(0, 0, 0, 0.55));
+}
+[data-theme="light"] .mh-disc { filter: drop-shadow(0 24px 50px rgba(26, 10, 46, 0.18)); }
+
+.mh-arm {
+  position: absolute;
+  top: 1%;
+  right: 3%;
+  width: 54%;
+  height: 54%;
+  color: var(--secondary);
+  opacity: 0.75;
+  transform-origin: 88% 13%;
+  animation: mhCue 14s ease-in-out infinite;
+}
+
+@keyframes mhSpin { to { transform: rotate(360deg); } }
+/* Two degrees. The arm on a real turntable tracks inward across a side, and
+   anything more than a suggestion of that reads as a wobble. */
+@keyframes mhCue {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(2.2deg); }
+}
+
+.mh-eq {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 7rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: clamp(0.45rem, 1.4vw, 1.05rem);
+  opacity: 0.4;
+  /* Faded at both ends AND at the top, so the bars emerge from the ground
+     rather than being sliced off by the hero's bottom edge — which is what
+     made them read as boxes instead of levels. */
+  mask-image:
+    linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent),
+    linear-gradient(180deg, transparent, #000 55%);
+  -webkit-mask-composite: source-in;
+          mask-composite: intersect;
+}
+.mh-eq i {
+  display: block;
+  width: clamp(0.4rem, 1vw, 0.8rem);
+  height: 100%;
+  border-radius: 999px 999px 0 0;
+  background: linear-gradient(180deg, var(--secondary), rgba(255, 107, 53, 0.05));
+  transform-origin: bottom;
+  transform: scaleY(0.18);
+  animation: mhLevel 2.6s ease-in-out infinite;
+}
+/* Prime numbers of tenths, so the bars take a long time to line up and the
+   row never pulses in unison the way an evenly staggered one does. */
+.mh-eq i:nth-child(1)  { animation-duration: 2.3s; animation-delay: -0.7s; }
+.mh-eq i:nth-child(2)  { animation-duration: 3.1s; animation-delay: -1.9s; }
+.mh-eq i:nth-child(3)  { animation-duration: 2.6s; animation-delay: -0.3s; }
+.mh-eq i:nth-child(4)  { animation-duration: 3.7s; animation-delay: -2.4s; }
+.mh-eq i:nth-child(5)  { animation-duration: 2.9s; animation-delay: -1.1s; }
+.mh-eq i:nth-child(6)  { animation-duration: 3.3s; animation-delay: -2.8s; }
+.mh-eq i:nth-child(7)  { animation-duration: 2.2s; animation-delay: -1.5s; }
+.mh-eq i:nth-child(8)  { animation-duration: 3.4s; animation-delay: -0.9s; }
+.mh-eq i:nth-child(9)  { animation-duration: 2.7s; animation-delay: -2.1s; }
+.mh-eq i:nth-child(10) { animation-duration: 3.9s; animation-delay: -1.3s; }
+.mh-eq i:nth-child(11) { animation-duration: 2.4s; animation-delay: -3.1s; }
+.mh-eq i:nth-child(12) { animation-duration: 3.6s; animation-delay: -0.5s; }
+.mh-eq i:nth-child(13) { animation-duration: 2.8s; animation-delay: -2.6s; }
+
+@keyframes mhLevel {
+  0%, 100% { transform: scaleY(0.16); }
+  35%      { transform: scaleY(0.62); }
+  60%      { transform: scaleY(0.34); }
+  80%      { transform: scaleY(0.78); }
+}
+
+.mh-hero-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: center;
+}
+
+.mh-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--secondary);
+  margin-bottom: 1.1rem;
+}
+.mh-eyebrow::before {
+  content: "";
+  width: 1.75rem;
+  height: 1px;
+  background: var(--secondary);
+}
+
+.mh-hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2.1rem, 5.2vw, 3.6rem);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 0 0 1rem;
+}
+.mh-hero h1 span {
+  background: var(--orange-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+          background-clip: text;
+  /* The gradient text sits on a dark ground, so a soft bloom behind it reads
+     as lit rather than as a flat fill. */
+  filter: drop-shadow(0 6px 26px rgba(255, 107, 53, 0.28));
+}
+
+.mh-hero-sub {
+  font-size: clamp(0.95rem, 1.5vw, 1.08rem);
+  line-height: 1.7;
+  color: var(--text-muted);
+  max-width: 46ch;
+  margin: 0 0 1.85rem;
+}
+
+.mh-hero-cta { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+
+/* Three facts about the section itself, under the buttons. No counts — those
+   go stale every time an article is added; a span of years does not. */
+.mh-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin-top: 1.75rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--border);
+  max-width: 46ch;
+}
+.mh-hero-meta div { display: flex; flex-direction: column; gap: 0.1rem; }
+.mh-hero-meta strong {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.mh-hero-meta span {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* The hero collage: a row of drawn motifs standing for the whole span of the
+   section, oldest to newest. Illustration, not photography — see the note in
+   music-history.js about why. */
+.mh-collage {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+.mh-collage-item {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.015));
+  color: var(--secondary);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 30px rgba(0, 0, 0, 0.22);
+  /* Each tile drifts on its own clock, so the group never pulses in unison —
+     that is what would make it read as a loading state. */
+  animation: mhDrift 9s ease-in-out infinite;
+}
+.mh-collage-item:nth-child(3n+2) { animation-delay: -3s; }
+.mh-collage-item:nth-child(3n+3) { animation-delay: -6s; }
+[data-theme="light"] .mh-collage-item {
+  background: linear-gradient(160deg, #ffffff, #f6f3fa);
+  box-shadow: 0 8px 24px rgba(26, 10, 46, 0.07);
+}
+.mh-collage-item:nth-child(2n) { color: var(--text-muted); }
+.mh-collage-item .mh-motif { width: 54%; height: 54%; transition: var(--transition); }
+/* The tiles sit over the spinning disc, so they get a sheen that makes them
+   read as glass rather than as flat cut-outs. */
+.mh-collage-item::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.16), transparent 45%);
+  opacity: 0.75;
+  pointer-events: none;
+}
+.mh-collage-item {
+  position: relative;
+  transition: var(--transition);
+  backdrop-filter: blur(2px);
+}
+.mh-collage-item:hover {
+  border-color: rgba(255, 107, 53, 0.5);
+  color: var(--secondary);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 16px 40px rgba(255, 107, 53, 0.20);
+}
+.mh-collage-item:hover .mh-motif { transform: scale(1.12); }
+
+@keyframes mhDrift {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -7px, 0); }
+}
+
+/* ---- Shared section chrome ---------------------------------------------- */
+.mh-section { padding: clamp(2.75rem, 6vw, 4.5rem) 0; }
+.mh-section-alt { background: var(--surface); }
+[data-theme="light"] .mh-section-alt { background: #f8fafc; }
+
+.mh-section-head { margin-bottom: 2rem; }
+/* The heading keeps its own measure; the toggle sits opposite it and drops
+   below on narrow screens rather than squeezing the sub-heading. */
+.mh-section-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  flex-wrap: wrap;
+}
+
+.mh-sound-toggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1rem;
+  border-radius: 50px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.mh-sound-toggle:hover { border-color: var(--secondary); color: var(--text); }
+.mh-sound-toggle.is-on {
+  border-color: rgba(255, 107, 53, 0.5);
+  background: rgba(255, 107, 53, 0.12);
+  color: var(--secondary);
+}
+.mh-sound-toggle i { font-size: 0.9em; }
+/* The button ships with the hidden attribute and JS reveals it only where
+   hover and Web Audio both exist. [hidden] loses to a class rule that sets a
+   display, so it is restated here — the same trap as the intro splash. */
+.mh-sound-toggle[hidden] { display: none !important; }
+.mh-h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3.2vw, 2.4rem);
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 0.5rem;
+}
+.mh-h2 span {
+  background: var(--orange-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+          background-clip: text;
+}
+.mh-sub { color: var(--text-muted); font-size: 0.95rem; line-height: 1.7; max-width: 62ch; margin: 0; }
+
+/* ---- Motifs -------------------------------------------------------------- */
+.mh-motif { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2.4; }
+.mh-motif .mh-line { opacity: 0.55; }
+.mh-motif .mh-hole { fill: currentColor; stroke: none; opacity: 0.85; }
+
+/* ---- Timeline ------------------------------------------------------------ */
+/* ONE horizontally scrollable rail at every width. On a phone that is simply a
+   swipe — which keeps a single implementation rather than a desktop timeline
+   and a separate mobile list that would drift apart. */
+/* The rail sits on a drawn line so it reads as a timeline rather than as a row
+   of tabs. The line is a pseudo-element on the scrolling track, so it scrolls
+   with the buttons instead of floating over a fixed background. */
+.mh-rail-wrap { position: relative; margin-bottom: 1.75rem; }
+/* Gutters for the arrows, reserved only when the rail actually overflows.
+   The track never extends into them, so an era button can never end up
+   underneath an arrow — which is exactly what made the selected era
+   unreadable before. */
+.mh-rail-wrap.has-overflow { padding-inline: 3.1rem; }
+
+/* Edge fades. A button that simply stops at the container edge reads as a
+   layout bug; one that fades out reads as "there is more this way". Both are
+   switched off at the end they point at, so a fully scrolled rail does not
+   look like it is still hiding something. */
+.mh-rail-wrap::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 1.4rem;
+  width: 3.5rem;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  right: 3.1rem;
+  background: linear-gradient(90deg, transparent, var(--bg) 85%);
+}
+.mh-rail-wrap.has-overflow:not(.at-end)::before { opacity: 1; }
+
+.mh-rail-nav {
+  position: absolute;
+  top: calc(50% - 0.7rem);
+  transform: translateY(-50%);
+  z-index: 3;
+  display: none;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  transition: var(--transition);
+}
+[data-theme="light"] .mh-rail-nav { box-shadow: 0 6px 18px rgba(26, 10, 46, 0.12); }
+.mh-rail-wrap.has-overflow .mh-rail-nav { display: grid; }
+.mh-rail-wrap.at-start .mh-rail-prev,
+.mh-rail-wrap.at-end   .mh-rail-next { display: none; }
+.mh-rail-nav:hover { border-color: var(--secondary); color: var(--secondary); }
+.mh-rail-prev { left: 0; }
+.mh-rail-next { right: 0; }
+
+.mh-rail-wrap::after {
+  content: "";
+  position: absolute;
+  left: 3.1rem;
+  right: 3.1rem;
+  bottom: 0.9rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border) 8%, var(--border) 92%, transparent);
+  pointer-events: none;
+}
+.mh-rail {
+  display: flex;
+  gap: 0.6rem;
+  overflow-x: auto;
+  /* The bottom padding has to clear the node each button draws below
+     itself: overflow-x makes overflow-y a scroll box too, so anything
+     outside this padding is clipped rather than overflowing. */
+  padding: 0.25rem 0.25rem 1.9rem;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-snap-type: x proximity;
+}
+.mh-rail::-webkit-scrollbar { display: none; }
+
+.mh-era-btn {
+  scroll-snap-align: start;
+  flex: 0 0 auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  text-align: left;
+  padding: 0.75rem 1.1rem 0.8rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition);
+  /* The rail is the spine of the section, so the active state needs to be
+     unmistakable at a glance rather than a subtle tint. */
+  border-bottom-width: 3px;
+}
+/* The node on the line. It is on the button, not the track, so it lands under
+   whichever era you are looking at and moves when the rail scrolls. */
+.mh-era-btn::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -1.15rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-left: -0.25rem;
+  border-radius: 50%;
+  background: var(--border);
+  border: 2px solid var(--bg);
+  transition: var(--transition);
+}
+.mh-era-btn:hover {
+  border-color: var(--secondary);
+  color: var(--text);
+  transform: translateY(-2px);
+}
+.mh-era-btn:hover::after { background: var(--secondary); }
+.mh-era-btn.is-active {
+  border-color: transparent;
+  background: var(--orange-gradient);
+  color: #1a0a2e;
+  box-shadow: 0 8px 24px rgba(255, 107, 53, 0.30);
+}
+/* The active pill is a light surface in BOTH themes, so its ink is a literal
+   dark, never var(--text) — that token flips and would vanish here (CLAUDE.md 29). */
+.mh-era-btn.is-active .mh-era-years { color: rgba(26, 10, 46, 0.72); }
+.mh-era-btn.is-active .mh-era-label { color: #1a0a2e; }
+.mh-era-btn.is-active::after {
+  background: var(--secondary);
+  box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.22);
+}
+.mh-era-years { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--secondary); }
+.mh-era-label { font-family: var(--font-display); font-size: 0.98rem; font-weight: 700; white-space: nowrap; }
+
+.mh-era-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+  gap: clamp(1.25rem, 3vw, 2.5rem);
+  align-items: start;
+  padding: clamp(1.4rem, 3vw, 2.25rem);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(ellipse 70% 90% at 0% 0%, rgba(255, 107, 53, 0.07), transparent 60%),
+    var(--card-bg);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+}
+[data-theme="light"] .mh-era-panel { box-shadow: 0 12px 34px rgba(26, 10, 46, 0.07); }
+.mh-era-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 50% 45%, rgba(255, 107, 53, 0.20), transparent 62%),
+    rgba(255, 107, 53, 0.05);
+  border: 1px solid rgba(255, 107, 53, 0.18);
+  color: var(--secondary);
+}
+[data-theme="light"] .mh-era-art {
+  background:
+    radial-gradient(circle at 50% 45%, rgba(255, 107, 53, 0.16), transparent 62%),
+    rgba(255, 107, 53, 0.06);
+}
+.mh-era-art .mh-motif { width: 52%; height: 52%; }
+
+.mh-era-kicker { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--secondary); }
+.mh-era-title { font-family: var(--font-display); font-size: clamp(1.35rem, 2.6vw, 1.9rem); font-weight: 700; color: var(--text); margin: 0.35rem 0 0.6rem; }
+.mh-era-blurb { font-size: 1.02rem; color: var(--text); line-height: 1.65; margin: 0 0 0.75rem; }
+.mh-era-detail { font-size: 0.94rem; color: var(--text-muted); line-height: 1.75; margin: 0 0 1rem; max-width: 62ch; }
+
+.mh-era-points { margin: 0 0 1.25rem; padding-left: 1.15rem; }
+.mh-era-points li { font-size: 0.9rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 0.4rem; }
+.mh-era-points li::marker { color: var(--secondary); }
+
+.mh-era-links { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.mh-era-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.95rem;
+  border-radius: 50px;
+  border: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: none;
+  transition: var(--transition);
+}
+.mh-era-link:hover { border-color: var(--secondary); color: var(--secondary); }
+.mh-era-link i { font-size: 0.75em; }
+
+/* ---- Topic cards --------------------------------------------------------- */
+.mh-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(255px, 1fr));
+  gap: 1rem;
+}
+.mh-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1.45rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: inherit;
+  text-decoration: none;
+  transition: var(--transition);
+}
+/* A rule across the top that fills in on hover. It replaces a border-colour
+   change, which at this card size was too small a signal to notice. */
+.mh-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 2px;
+  background: var(--orange-gradient);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.32s ease;
+}
+.mh-card:hover::before { transform: scaleX(1); }
+/* A single diagonal pass of light on hover. It is on a pseudo-element with no
+   text in it, so it can never wash out a word. */
+.mh-card::after {
+  content: "";
+  position: absolute;
+  top: -60%;
+  left: -120%;
+  width: 60%;
+  height: 220%;
+  transform: rotate(18deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.07), transparent);
+  transition: left 0.65s ease;
+  pointer-events: none;
+}
+.mh-card:hover::after { left: 130%; }
+.mh-card:hover, .mh-card:focus-visible {
+  border-color: rgba(255, 107, 53, 0.45);
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+}
+
+.mh-card-art {
+  display: grid;
+  place-items: center;
+  width: 3.4rem;
+  height: 3.4rem;
+  margin-bottom: 0.7rem;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(255, 107, 53, 0.26), transparent 65%),
+    rgba(255, 107, 53, 0.08);
+  border: 1px solid rgba(255, 107, 53, 0.16);
+  color: var(--secondary);
+  transition: var(--transition);
+}
+.mh-card:hover .mh-card-art { transform: scale(1.06) rotate(-3deg); }
+.mh-card-art .mh-motif { width: 62%; height: 62%; }
+
+.mh-card-kicker { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--secondary); }
+.mh-card-title { font-family: var(--font-display); font-size: 1.16rem; font-weight: 700; color: var(--text); line-height: 1.25; }
+.mh-card-years { font-size: 0.75rem; color: var(--text-muted); }
+.mh-card-blurb { font-size: 0.87rem; color: var(--text-muted); line-height: 1.65; margin-top: 0.35rem; flex: 1; }
+.mh-card-go { margin-top: 0.9rem; font-size: 0.8rem; font-weight: 700; color: var(--secondary); }
+.mh-card-go i { font-size: 0.8em; transition: transform 0.2s ease; }
+.mh-card:hover .mh-card-go i { transform: translateX(3px); }
+
+/* ---- Nostalgia ----------------------------------------------------------- */
+.mh-nostalgia {
+  padding: clamp(2.75rem, 6vw, 4.5rem) 0;
+  background:
+    radial-gradient(ellipse 60% 80% at 80% 20%, rgba(83, 52, 131, 0.22), transparent 60%),
+    var(--surface);
+  border-block: 1px solid var(--border);
+}
+[data-theme="light"] .mh-nostalgia {
+  background: radial-gradient(ellipse 60% 80% at 80% 20%, rgba(83, 52, 131, 0.07), transparent 60%), #f8fafc;
+}
+.mh-nostalgia-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr);
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: center;
+}
+/* Short lines on purpose. The list reads as a sequence of remembered actions,
+   and a wide measure would flatten it into a paragraph. */
+.mh-steps { margin: 1.25rem 0 0; padding: 0; list-style: none; }
+.mh-steps li {
+  font-size: 1.02rem;
+  line-height: 1.55;
+  color: var(--text);
+  padding: 0.4rem 0 0.4rem 1.4rem;
+  position: relative;
+}
+.mh-steps li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 1.05rem;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--secondary);
+}
+.mh-nostalgia-close { margin-top: 1.4rem; font-size: 1.02rem; line-height: 1.7; color: var(--text-muted); max-width: 52ch; }
+
+.mh-mosaic { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.7rem; }
+.mh-mosaic-item {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+}
+[data-theme="light"] .mh-mosaic-item { background: #ffffff; }
+.mh-mosaic-item:nth-child(3n+1) { color: var(--secondary); }
+.mh-mosaic-item .mh-motif { width: 50%; height: 50%; transition: var(--transition); }
+.mh-mosaic-item { transition: var(--transition); }
+.mh-mosaic-item:hover {
+  color: var(--secondary);
+  border-color: rgba(255, 107, 53, 0.45);
+  transform: translateY(-4px);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
+}
+[data-theme="light"] .mh-mosaic-item:hover { box-shadow: 0 12px 26px rgba(26, 10, 46, 0.10); }
+.mh-mosaic-item:hover .mh-motif { transform: scale(1.1); }
+
+/* ---- Article ------------------------------------------------------------- */
+.mh-article { max-width: 780px; margin: 0 auto; padding: clamp(2rem, 5vw, 3.5rem) 0 1rem; }
+
+.mh-art-hero {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+  padding-bottom: 1.75rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+.mh-art-hero-art {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+  background: rgba(255, 107, 53, 0.10);
+  color: var(--secondary);
+}
+.mh-art-hero-art .mh-motif { width: 60%; height: 60%; }
+
+.mh-art-kicker { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: var(--secondary); }
+.mh-art-title { font-family: var(--font-display); font-size: clamp(1.9rem, 4.5vw, 2.9rem); font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; color: var(--text); margin: 0.4rem 0 0.35rem; }
+.mh-art-years { font-size: 0.85rem; color: var(--text-muted); }
+.mh-art-intro { font-size: 1.1rem; line-height: 1.78; color: var(--text); margin: 1rem 0 0; }
+/* One drop cap, on the standfirst only. It marks where the article starts;
+   repeating it per section would be decoration competing with the prose. */
+.mh-art-intro::first-letter {
+  float: left;
+  font-family: var(--font-display);
+  font-size: 3.3rem;
+  line-height: 0.82;
+  font-weight: 800;
+  padding: 0.18rem 0.6rem 0 0;
+  color: var(--secondary);
+}
+
+.mh-art-section { margin: 2.25rem 0; }
+.mh-art-h2 {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: clamp(1.28rem, 2.4vw, 1.65rem);
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 0.9rem;
+  padding-left: 0.95rem;
+}
+.mh-art-h2::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.15em;
+  bottom: 0.15em;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--orange-gradient);
+}
+/* 66ch, and the line height that goes with it. This is the whole reason the
+   article column is narrower than the hub. */
+.mh-art-section p { font-size: 1rem; line-height: 1.85; color: var(--text-muted); margin: 0 0 1rem; max-width: 66ch; }
+.mh-art-section p em { color: var(--text); font-style: italic; }
+.mh-art-note { font-size: 0.85rem !important; color: var(--text-muted); font-style: italic; }
+
+.mh-brands { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 0.75rem; }
+.mh-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.9rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+}
+.mh-brand strong { font-size: 0.92rem; color: var(--text); }
+.mh-brand span { font-size: 0.82rem; color: var(--text-muted); line-height: 1.6; }
+
+.mh-facts { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.6rem; }
+.mh-facts li {
+  position: relative;
+  padding: 0.9rem 1rem 0.9rem 2.7rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.05), transparent 55%);
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--text-muted);
+  transition: var(--transition);
+}
+.mh-facts li:hover { border-color: rgba(255, 107, 53, 0.35); }
+.mh-facts li::before {
+  content: "?";
+  position: absolute;
+  left: 0.95rem;
+  top: 0.8rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  background: rgba(255, 107, 53, 0.15);
+  color: var(--secondary);
+  font-size: 0.75rem;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+}
+
+/* Pulled out of the flow of the argument on purpose: this is the one place an
+   article stops explaining and simply remembers something. */
+.mh-nostalgia-block {
+  position: relative;
+  margin: 2.5rem 0;
+  padding: 1.6rem 1.6rem 1.6rem 3.2rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--secondary);
+  background:
+    radial-gradient(ellipse 70% 100% at 0% 0%, rgba(255, 107, 53, 0.08), transparent 60%),
+    rgba(83, 52, 131, 0.14);
+}
+.mh-nostalgia-block::before {
+  content: "\201C";
+  position: absolute;
+  left: 1.05rem;
+  top: 0.55rem;
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  line-height: 1;
+  color: var(--secondary);
+  opacity: 0.5;
+}
+[data-theme="light"] .mh-nostalgia-block { background: rgba(83, 52, 131, 0.05); }
+.mh-nostalgia-block p { font-size: 1rem; line-height: 1.8; color: var(--text); margin: 0; max-width: 62ch; }
+
+/* Sources are deliberately quiet — present and checkable, never competing with
+   the article. */
+.mh-sources { margin: 2.5rem 0 1rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+.mh-sources h2 { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 0.75rem; }
+.mh-sources ul { margin: 0; padding-left: 1.15rem; }
+.mh-sources li { font-size: 0.84rem; line-height: 1.75; margin-bottom: 0.3rem; }
+.mh-sources a { color: var(--text-muted); text-decoration: underline; text-underline-offset: 2px; }
+.mh-sources a:hover { color: var(--secondary); }
+.mh-sources-note { font-size: 0.76rem; color: var(--text-muted); margin: 0.75rem 0 0; font-style: italic; }
+
+.mh-art-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin: 2rem 0 1rem;
+}
+.mh-nav-prev, .mh-nav-next {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.9rem 1.1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: var(--transition);
+}
+.mh-nav-next { justify-content: flex-end; text-align: right; }
+.mh-nav-prev:hover, .mh-nav-next:hover { border-color: var(--secondary); }
+.mh-nav-prev small, .mh-nav-next small { display: block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--secondary); }
+.mh-nav-prev i, .mh-nav-next i { color: var(--secondary); }
+
+.mh-back { text-align: center; padding: 1rem 0 0; }
+.mh-back a { font-size: 0.88rem; font-weight: 600; color: var(--text-muted); text-decoration: none; }
+.mh-back a:hover { color: var(--secondary); }
+
+.mh-missing { text-align: center; padding: 4rem 1rem; }
+.mh-missing h2 { font-family: var(--font-display); margin-bottom: 1.25rem; color: var(--text); }
+
+/* ---- Closing ------------------------------------------------------------- */
+.mh-closing {
+  padding: clamp(3rem, 7vw, 5rem) 0;
+  text-align: center;
+  background:
+    radial-gradient(ellipse 60% 80% at 50% 0%, rgba(255, 107, 53, 0.14), transparent 62%),
+    var(--bg);
+  border-top: 1px solid var(--border);
+}
+.mh-closing h2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 4.5vw, 2.9rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin: 0 0 1rem;
+}
+.mh-closing h2 span {
+  background: var(--orange-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+          background-clip: text;
+}
+.mh-closing p { font-size: 1rem; line-height: 1.8; color: var(--text-muted); max-width: 58ch; margin: 0 auto 1.75rem; }
+
+/* ---- Responsive ---------------------------------------------------------- */
+@media (max-width: 900px) {
+  .mh-hero-inner { grid-template-columns: 1fr; }
+  /* One column, so there is no empty right-hand side for the deck to live in
+     and it would end up behind the headline. The meter stays: it sits along
+     the bottom edge, where there is nothing to compete with. */
+  .mh-deck { display: none; }
+  .mh-eq { height: 4rem; opacity: 0.35; }
+  /* The collage is decoration; below the copy is where decoration belongs. */
+  .mh-collage { order: 2; grid-template-columns: repeat(4, 1fr); }
+  .mh-era-panel { grid-template-columns: 1fr; }
+  .mh-era-art { max-width: 190px; }
+  .mh-nostalgia-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 620px) {
+  .mh-wrap, .mh-hero-inner { padding: 0 1rem; }
+  /* Touch already has a gesture for this, and at this width the arrows would
+     sit on top of the buttons they are meant to reveal. No arrows, no gutter
+     — the rail gets the full width back. */
+  .mh-rail-wrap .mh-rail-nav { display: none !important; }
+  .mh-rail-wrap.has-overflow { padding-inline: 0; }
+  .mh-rail-wrap::before { right: 0; }
+  .mh-rail-wrap::after { left: 0; right: 0; }
+  .mh-hero-meta { gap: 0.5rem 1.1rem; }
+  .mh-hero-meta strong { font-size: 1rem; }
+  .mh-hero-cta .btn { flex: 1 1 auto; justify-content: center; }
+  .mh-collage { grid-template-columns: repeat(3, 1fr); }
+  .mh-art-hero { grid-template-columns: 1fr; gap: 1rem; }
+  .mh-art-hero-art { width: 4.5rem; }
+  /* Stacked, because two half-width cards each holding a title is unreadable
+     at this size. */
+  .mh-art-nav { grid-template-columns: 1fr; }
+  .mh-nav-next { justify-content: flex-start; text-align: left; flex-direction: row-reverse; }
+  .mh-mosaic { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mh-card, .mh-card-go i, .mh-card-art, .mh-era-btn { transition: none; }
+  .mh-card:hover, .mh-era-btn:hover { transform: none; }
+  .mh-card:hover .mh-card-art { transform: none; }
+  /* The drifting tiles are the only continuous animation here, and continuous
+     motion is exactly what this setting is about. */
+  .mh-collage-item { animation: none; }
+  .mh-rail { scroll-behavior: auto; }
+  /* The record stops turning, the arm stops tracking, the meter holds a
+     level. The scene stays; only the movement goes. */
+  .mh-disc, .mh-arm, .mh-eq i { animation: none; }
+  .mh-eq i { transform: scaleY(0.4); }
+  .mh-collage-item:hover, .mh-mosaic-item:hover { transform: none; }
+  .mh-collage-item:hover .mh-motif, .mh-mosaic-item:hover .mh-motif { transform: none; }
+  .mh-card::after { display: none; }
+}

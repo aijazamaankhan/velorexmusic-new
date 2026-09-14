@@ -137,7 +137,7 @@
   <script src="src/js/analytics.js?v=85ee1923"></script>
   <!-- URL vocabulary + live metadata. Must load before router.js and pages.js,
        both of which call Seo.buildPath()/Seo.productPath() to render hrefs. -->
-  <script src="src/js/seo.js?v=76572bc9"></script>
+  <script src="src/js/seo.js?v=67f54f88"></script>
   <script src="src/js/constants.js?v=b0f974a1"></script>
   <script src="src/js/storage.js?v=7d4b11c3"></script>
   <script src="src/js/auth.js?v=b09358ad"></script>
@@ -164,7 +164,7 @@
        end up in script-scope; the inline <script> at the bottom of <body>
        just bootstraps DOMContentLoaded. -->
   <script src="src/js/storefront/carriers.js?v=488bf189"></script>
-  <script src="src/js/storefront/pages.js?v=26d3c6db"></script>
+  <script src="src/js/storefront/pages.js?v=58a255ff"></script>
   <!-- Blog views. Must load before router.js, whose initPage dispatcher calls
        initPageBlog / initPageBlogPost. -->
   <!-- Homepage hero carousel. Must load before router.js: its initPage
@@ -173,16 +173,18 @@
   <!-- Global search. Must load before router.js, whose injectNavbar calls
        VelorexSearch.bindNavbar(). -->
   <script src="src/js/storefront/search.js?v=b7fbf620"></script>
-  <script src="src/js/storefront/combos.js?v=32d788b8"></script>
+  <script src="src/js/storefront/combos.js?v=09dfb705"></script>
   <script src="src/js/storefront/ads.js?v=cbb5cd9c"></script>
   <script src="src/js/storefront/blog.js?v=1cd0941e"></script>
+  <script src="src/js/storefront/music-history.js?v=45f7aa17"></script>
+    <script src="src/js/storefront/music-history-audio.js?v=7b77bb14"></script>
   <script src="src/js/storefront/recent-sales.js?v=956fc5e9"></script>
   <script src="src/js/storefront/site-settings.js?v=159a6208"></script>
   <script src="src/js/storefront/coupon.js?v=bcf00ad5"></script>
   <!-- Newsletter signup. Bound from router.js's boot and from the inline
        onclick on the homepage form. -->
   <script src="src/js/storefront/newsletter.js?v=ee512e2d"></script>
-  <script src="src/js/storefront/router.js?v=5562d861"></script>
+  <script src="src/js/storefront/router.js?v=03298b6f"></script>
   <script src="src/js/storefront/checkout.js?v=f539fe43"></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
        they can be shared between the storefront pages without duplication.
@@ -202,11 +204,14 @@
   <link rel="stylesheet" href="src/styles/components/announcement.css?v=7b03a99d">
   <link rel="stylesheet" href="src/styles/components/coupon.css?v=bce683e9">
   <link rel="stylesheet" href="src/styles/components/ads.css?v=e52c803f">
+  <link rel="stylesheet" href="src/styles/components/music-history.css?v=6e18fb90">
   <link rel="stylesheet" href="src/styles/components/recent-sales.css?v=066910e1">
   <link rel="stylesheet" href="src/styles/components/label-band.css?v=58b6bd4e">
+  <link rel="stylesheet" href="src/styles/components/page-banner.css?v=db852962">
+  <link rel="stylesheet" href="src/styles/components/catalog-empty.css?v=8c30b8f4">
   <!-- Page-specific styles (hero, products, cart, profile, footer, etc.).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=d15643bd">
+  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=df01a429">
 </head>
 
 <body>
@@ -626,18 +631,46 @@
 
     <!-- PRODUCTS PAGE -->
     <div id="page-products" class="page-section">
-      <div class="page-hero">
-        <div class="container">
-          <h1 class="page-hero-title" id="page-title">All Products</h1>
+      <!-- One banner for Music, Merchandise and Vinyl Care. data-banner picks
+           the photograph and which tagline / feature row shows; it is set by
+           renderProductsBanner() in pages.js and, for a server render, by
+           seo-render.php. Every variant's copy lives here and only here. See
+           src/styles/components/page-banner.css. -->
+      <div class="page-banner" id="products-banner" data-banner="music">
+        <div class="page-banner-bg" aria-hidden="true"></div>
+        <div class="container page-banner-inner">
+          <div class="page-banner-copy">
+            <span class="page-banner-eyebrow page-banner-eyebrow-variant" data-for="music">Feel the music</span>
+            <span class="page-banner-eyebrow page-banner-eyebrow-variant" data-for="merchandise">More than music</span>
+            <span class="page-banner-eyebrow page-banner-eyebrow-variant" data-for="vinyl-care">Care &middot; Preserve &middot; Play</span>
+            <h1 class="page-hero-title" id="page-title">All <span>Products</span></h1>
+            <p class="page-banner-tagline page-banner-variant" data-for="merchandise">Wear the music. Live the vibe.</p>
+            <p class="page-banner-tagline page-banner-variant" data-for="vinyl-care">Keep the music alive. Care for what you love.</p>
+            <p class="page-banner-desc" id="page-banner-desc">Rediscover timeless melodies. Explore our curated collection of records, CDs, cassettes and films from legendary artists and iconic films.</p>
+            <!-- Music: real counts of the shelf being viewed, filled by
+                 renderProductsBanner(). Never a rounded-up "50+" — §20. -->
+            <ul class="page-banner-features page-banner-stats page-banner-variant" data-for="music" id="page-banner-stats"></ul>
+            <!-- "Pan-India", not "Worldwide": checkout is India-only (§12). -->
+            <ul class="page-banner-features page-banner-variant" data-for="merchandise">
+              <li class="page-banner-feature"><i class="fas fa-truck-fast" aria-hidden="true"></i><div><strong>Pan-India</strong><small>Shipping</small></div></li>
+              <li class="page-banner-feature"><i class="fas fa-shield-halved" aria-hidden="true"></i><div><strong>Original</strong><small>&amp; Official</small></div></li>
+              <li class="page-banner-feature"><i class="fas fa-gift" aria-hidden="true"></i><div><strong>Music Inspired</strong><small>Lifestyle</small></div></li>
+            </ul>
+            <ul class="page-banner-features page-banner-variant" data-for="vinyl-care">
+              <li class="page-banner-feature"><i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i><div><strong>Cleaner Sound</strong><small>Remove dust &amp; dirt</small></div></li>
+              <li class="page-banner-feature"><i class="fas fa-shield-halved" aria-hidden="true"></i><div><strong>Longer Life</strong><small>Protect your collection</small></div></li>
+              <li class="page-banner-feature"><i class="fas fa-record-vinyl" aria-hidden="true"></i><div><strong>Better Experience</strong><small>Music as it should be</small></div></li>
+            </ul>
+          </div>
         </div>
       </div>
       <section class="section" style="padding-top:0;">
         <div class="container">
           <div class="products-layout">
             <aside class="filters-sidebar" id="filtersSidebar">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
-                <h3 style="font-family:var(--font-display);font-size:1.1rem;font-weight:700;">🎛 Filters</h3>
-                <button class="btn btn-sm btn-secondary" onclick="clearAllFilters()">Clear All</button>
+              <div class="filters-head">
+                <h3 class="filters-heading"><i class="fas fa-filter" aria-hidden="true"></i> Filters</h3>
+                <button type="button" class="filters-clear" onclick="clearAllFilters()"><i class="fas fa-rotate-left" aria-hidden="true"></i> Clear All</button>
               </div>
 
               <!-- Category Filter — options are rendered by
@@ -647,8 +680,8 @@
                    departments had no checkbox at all, and formats the shop
                    does not currently stock were offered as filters that could
                    only ever return "No products found". -->
-              <div class="filter-section" id="fsec-cat" data-section="cat" data-label="📁 Category">
-                <p class="filter-title">📁 Category</p>
+              <div class="filter-section" id="fsec-cat" data-section="cat" data-label="Category">
+                <p class="filter-title"><i class="fas fa-folder" aria-hidden="true"></i> Category</p>
                 <div class="filter-options" id="category-filter-options"></div>
               </div>
 
@@ -657,8 +690,8 @@
                    artist, which makes it the one high-cardinality facet the
                    shop can actually filter on; the People section below only
                    works once products are tagged. -->
-              <div class="filter-section filter-section-collapsible" id="fsec-artist" data-section="artist" data-label="🎙 Artist" hidden>
-                <p class="filter-title">🎙 Artist</p>
+              <div class="filter-section" id="fsec-artist" data-section="artist" data-label="Artist" hidden>
+                <p class="filter-title"><i class="fas fa-microphone-lines" aria-hidden="true"></i> Artist</p>
                 <input
                   type="text"
                   class="people-search-input"
@@ -667,20 +700,26 @@
                   oninput="filterArtistOptions(this.value)"
                 />
                 <div class="filter-options" id="artist-filter-options"></div>
+                <!-- Top five by stock depth, then this. Replaced a 220px
+                     scroll box whose scrollbar was the most prominent thing
+                     in the sidebar. applyOptionVisibility() owns it. -->
+                <button type="button" class="filter-show-more" id="artistShowMore" onclick="toggleArtistShowMore()" hidden>Show more</button>
               </div>
 
-              <!-- Language Filter -->
-              <div class="filter-section" id="fsec-lang" data-section="lang" data-label="🌐 Language">
-                <p class="filter-title">🌐 Language</p>
+              <!-- Language Filter — hidden by updateCountsProducts() when the
+                   shelf being viewed has fewer than two languages in it
+                   (Merchandise has none). -->
+              <div class="filter-section" id="fsec-lang" data-section="lang" data-label="Language">
+                <p class="filter-title"><i class="fas fa-globe" aria-hidden="true"></i> Language</p>
                 <div class="filter-options">
-                  <label class="filter-option"><input type="checkbox" name="lang" value="hindi" onchange="applyFilters()">🇮🇳 Hindi<span class="filter-count" id="count-hindi">0</span></label>
-                  <label class="filter-option"><input type="checkbox" name="lang" value="english" onchange="applyFilters()">🌍 English<span class="filter-count" id="count-english">0</span></label>
+                  <label class="filter-option"><input type="checkbox" name="lang" value="hindi" onchange="applyFilters()">Hindi<span class="filter-count" id="count-hindi">0</span></label>
+                  <label class="filter-option"><input type="checkbox" name="lang" value="english" onchange="applyFilters()">English<span class="filter-count" id="count-english">0</span></label>
                 </div>
               </div>
 
               <!-- Price Range Filter -->
-              <div class="filter-section" id="fsec-price" data-section="price" data-label="💰 Price">
-                <p class="filter-title">💰 Price Range</p>
+              <div class="filter-section" id="fsec-price" data-section="price" data-label="Price">
+                <p class="filter-title"><i class="fas fa-indian-rupee-sign" aria-hidden="true"></i> Price Range</p>
                 <div class="filter-options">
                   <label class="filter-option"><input type="checkbox" name="price" value="0-499" onchange="applyFilters()">Under ₹500</label>
                   <label class="filter-option"><input type="checkbox" name="price" value="500-999" onchange="applyFilters()">₹500 – ₹999</label>
@@ -693,14 +732,14 @@
                    products.item_condition already drives the Pre-owned badge
                    and the /pre-owned route; the sidebar was the one place a
                    shopper could not act on it. -->
-              <div class="filter-section" id="fsec-cond" data-section="cond" data-label="🏷 Condition" hidden>
-                <p class="filter-title">🏷 Condition</p>
+              <div class="filter-section" id="fsec-cond" data-section="cond" data-label="Condition" hidden>
+                <p class="filter-title"><i class="fas fa-tag" aria-hidden="true"></i> Condition</p>
                 <div class="filter-options" id="condition-filter-options"></div>
               </div>
 
               <!-- Availability -->
-              <div class="filter-section" id="fsec-avail" data-section="avail" data-label="📦 Stock">
-                <p class="filter-title">📦 Availability</p>
+              <div class="filter-section" id="fsec-avail" data-section="avail" data-label="Stock">
+                <p class="filter-title"><i class="fas fa-box" aria-hidden="true"></i> Availability</p>
                 <div class="filter-options">
                   <label class="filter-option"><input type="checkbox" name="avail" value="instock" onchange="applyFilters()">In Stock</label>
                   <label class="filter-option"><input type="checkbox" name="avail" value="outofstock" onchange="applyFilters()">Out of Stock</label>
@@ -711,8 +750,8 @@
                    PEOPLE FILTER — Music Directors, Artists,
                    Actors & Actresses
                    ============================================= -->
-              <div class="filter-section filter-section-collapsible" id="fsec-people" data-section="people" data-label="🎬 People">
-                <p class="filter-title">🎬 People</p>
+              <div class="filter-section filter-section-collapsible" id="fsec-people" data-section="people" data-label="People">
+                <p class="filter-title"><i class="fas fa-film" aria-hidden="true"></i> People</p>
                 <input
                   type="text"
                   class="people-search-input"
@@ -794,12 +833,14 @@
               <div class="filter-popover-body" id="filterPopoverBody"></div>
             </div>
 
-            <div>
-              <div class="active-filters" id="activeFilters"></div>
+            <div class="products-main">
               <div class="products-toolbar">
-                <p class="products-count" id="products-count">Showing all products</p>
-                <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
-                  <select class="sort-select" id="sortSelect" onchange="applyFilters()">
+                <div class="products-toolbar-lead">
+                  <div class="active-filters" id="activeFilters"></div>
+                  <p class="products-count" id="products-count">Showing all products</p>
+                </div>
+                <div class="products-toolbar-tools">
+                  <select class="sort-select" id="sortSelect" onchange="applyFilters()" aria-label="Sort products">
                     <option value="">Sort: Default</option>
                     <option value="price-asc">Price: Low to High</option>
                     <option value="price-desc">Price: High to Low</option>
@@ -807,9 +848,9 @@
                     <option value="newest">Newest First</option>
                     <option value="name-asc">Name: A–Z</option>
                   </select>
-                  <div style="display:flex;gap:0.25rem;">
-                    <button class="btn btn-sm btn-secondary" id="gridViewBtn" onclick="setView('grid')" title="Grid View">⊞</button>
-                    <button class="btn btn-sm btn-secondary" id="listViewBtn" onclick="setView('list')" title="List View">☰</button>
+                  <div class="view-toggle" role="group" aria-label="Layout">
+                    <button type="button" class="view-btn is-active" data-view="grid" onclick="setView('grid','products-grid')" title="Grid view" aria-label="Grid view" aria-pressed="true"><i class="fas fa-table-cells-large"></i></button>
+                    <button type="button" class="view-btn" data-view="list" onclick="setView('list','products-grid')" title="List view" aria-label="List view" aria-pressed="false"><i class="fas fa-list"></i></button>
                   </div>
                 </div>
               </div>
@@ -842,13 +883,24 @@
 
     <!-- COMBO OFFERS -->
     <div id="page-combos" class="page-section">
-      <div class="page-hero">
-        <div class="container">
-          <h1 class="page-hero-title">Combo Offers</h1>
-          <p style="color:var(--text-muted);margin-top:0.5rem;max-width:64ch;">
-            Bundles we put together because they belong together — a record and the
-            kit to keep it clean, or two pressings from the same era.
-          </p>
+      <div class="page-banner" data-banner="combos">
+        <div class="page-banner-bg" aria-hidden="true"></div>
+        <div class="container page-banner-inner">
+          <div class="page-banner-copy">
+            <span class="page-banner-eyebrow">Better together</span>
+            <h1 class="page-hero-title">Combo <span>Offers</span></h1>
+            <p class="page-banner-desc">
+              Bundles we put together because they belong together — a record and the
+              kit to keep it clean, or two timeless favourites from the same era.
+            </p>
+            <!-- No "less cost" promise: a combo does not discount anything —
+                 the total is the items' own prices (CLAUDE.md §17). -->
+            <ul class="page-banner-features">
+              <li class="page-banner-feature"><i class="fas fa-coins" aria-hidden="true"></i><div><strong>Great Value</strong><small>One click, whole set</small></div></li>
+              <li class="page-banner-feature"><i class="fas fa-gift" aria-hidden="true"></i><div><strong>Curated Sets</strong><small>Handpicked combinations</small></div></li>
+              <li class="page-banner-feature"><i class="fas fa-shield-halved" aria-hidden="true"></i><div><strong>Authentic &amp; Genuine</strong><small>Quality you can trust</small></div></li>
+            </ul>
+          </div>
         </div>
       </div>
       <section class="section" style="padding-top:0;">
@@ -867,32 +919,285 @@
 
     <!-- PRE-OWNED -->
     <div id="page-preowned" class="page-section">
-      <div class="page-hero">
-        <div class="container">
-          <h1 class="page-hero-title" id="preowned-title">Pre-owned</h1>
-          <p style="color:var(--text-muted);margin-top:0.5rem;max-width:64ch;">
-            Second-hand vinyl, CDs, cassettes, Blu-rays and DVDs — every copy
-            checked and graded before it ships.
-          </p>
+      <div class="page-banner" data-banner="preowned">
+        <div class="page-banner-bg" aria-hidden="true"></div>
+        <div class="container page-banner-inner">
+          <div class="page-banner-copy">
+            <span class="page-banner-eyebrow">Great music lives on</span>
+            <h1 class="page-hero-title" id="preowned-title">Pre-<span>owned</span></h1>
+            <p class="page-banner-desc">
+              Second-hand vinyl, CDs, cassettes, Blu-rays and DVDs — every copy
+              checked and graded before it ships.
+            </p>
+            <ul class="page-banner-features">
+              <li class="page-banner-feature"><i class="fas fa-shield-halved" aria-hidden="true"></i><div><strong>Quality Checked</strong><small>Every item inspected</small></div></li>
+              <li class="page-banner-feature"><i class="fas fa-truck-fast" aria-hidden="true"></i><div><strong>Safe Packaging</strong><small>Ships with care</small></div></li>
+              <li class="page-banner-feature"><i class="fas fa-leaf" aria-hidden="true"></i><div><strong>Sustainable Choice</strong><small>More music, less waste</small></div></li>
+            </ul>
+          </div>
         </div>
       </div>
       <section class="section" style="padding-top:0;">
         <div class="container">
-          <div class="preowned-chips" id="preowned-chips"></div>
-          <p class="products-count" id="preowned-count"></p>
-          <div class="products-grid" id="preowned-grid"><div class="loading-spinner"></div></div>
+          <div class="products-layout">
+            <!-- Its own small sidebar rather than the products page's: the
+                 format is a ROUTE here (/pre-owned/vinyl-records, its own
+                 canonical URL), so it is a list of links, not checkboxes.
+                 Price and availability narrow the grid in place.
+                 There is deliberately no grading filter (NM / VG / G) — the
+                 catalogue records "pre-owned" but not a grade, and a filter
+                 whose options no product carries is a dead end. -->
+            <aside class="filters-sidebar preowned-sidebar" id="preownedSidebar">
+              <div class="filters-head">
+                <h3 class="filters-heading"><i class="fas fa-filter" aria-hidden="true"></i> Filters</h3>
+                <button type="button" class="filters-clear" onclick="clearPreownedFilters()"><i class="fas fa-rotate-left" aria-hidden="true"></i> Clear All</button>
+              </div>
+              <div class="filter-section preowned-cat-section">
+                <p class="filter-title"><i class="fas fa-folder" aria-hidden="true"></i> Category</p>
+                <div class="filter-options" id="preowned-cat-options"></div>
+              </div>
+              <div class="filter-section">
+                <p class="filter-title"><i class="fas fa-indian-rupee-sign" aria-hidden="true"></i> Price Range</p>
+                <div class="filter-options">
+                  <label class="filter-option"><input type="checkbox" name="po-price" value="0-499" onchange="renderPreownedGrid()">Under ₹500</label>
+                  <label class="filter-option"><input type="checkbox" name="po-price" value="500-999" onchange="renderPreownedGrid()">₹500 – ₹999</label>
+                  <label class="filter-option"><input type="checkbox" name="po-price" value="1000-1999" onchange="renderPreownedGrid()">₹1,000 – ₹1,999</label>
+                  <label class="filter-option"><input type="checkbox" name="po-price" value="2000-" onchange="renderPreownedGrid()">₹2,000+</label>
+                </div>
+              </div>
+              <div class="filter-section">
+                <p class="filter-title"><i class="fas fa-box" aria-hidden="true"></i> Availability</p>
+                <div class="filter-options">
+                  <label class="filter-option"><input type="checkbox" name="po-avail" value="instock" onchange="renderPreownedGrid()">In Stock</label>
+                  <label class="filter-option"><input type="checkbox" name="po-avail" value="outofstock" onchange="renderPreownedGrid()">Out of Stock</label>
+                </div>
+              </div>
+            </aside>
+            <div class="products-main">
+              <div class="products-toolbar">
+                <div class="products-toolbar-lead">
+                  <div class="preowned-chips" id="preowned-chips"></div>
+                  <p class="products-count" id="preowned-count"></p>
+                </div>
+                <div class="products-toolbar-tools">
+                  <select class="sort-select" id="preownedSort" onchange="renderPreownedGrid()" aria-label="Sort pre-owned items">
+                    <option value="">Sort: Default</option>
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                    <option value="rating">Top Rated</option>
+                    <option value="newest">Newest First</option>
+                    <option value="name-asc">Name: A–Z</option>
+                  </select>
+                  <div class="view-toggle" role="group" aria-label="Layout">
+                    <button type="button" class="view-btn is-active" data-view="grid" onclick="setView('grid','preowned-grid')" title="Grid view" aria-label="Grid view" aria-pressed="true"><i class="fas fa-table-cells-large"></i></button>
+                    <button type="button" class="view-btn" data-view="list" onclick="setView('list','preowned-grid')" title="List view" aria-label="List view" aria-pressed="false"><i class="fas fa-list"></i></button>
+                  </div>
+                </div>
+              </div>
+              <div class="products-grid" id="preowned-grid"><div class="loading-spinner"></div></div>
+            </div>
+          </div>
         </div>
       </section>
     </div>
 
     <!-- BLOG LISTING -->
+
+    <!-- ==================== THE EVOLUTION OF MUSIC & AUDIO ====================
+         An INDEPENDENT educational section. Nothing described in it was made by
+         Velorex Music, and no copy here may imply otherwise — the guard note
+         lives in src/history/history-lib.php and applies to this markup too.
+
+         The hero, nostalgia and closing blocks are STATIC in this file for the
+         same reason the homepage hero's brand slide is (CLAUDE.md §15): these
+         two routes are server-rendered by seo-render.php, which injects the
+         head and reveals the section, but the prose a crawler reads has to
+         exist somewhere. The timeline and the topic cards are built by
+         src/js/storefront/music-history.js from the same PHP library the
+         server renders from, so the two can never disagree. -->
+    <div id="page-music-history" class="page-section">
+      <header class="mh-hero">
+        <!-- A record playing, behind everything. Drawn, not photographed, for
+             the same reason the motifs are (see history-lib.php): a photograph
+             of a turntable is someone else's copyright. Decorative and
+             aria-hidden — it says nothing a reader needs. -->
+        <div class="mh-stage" aria-hidden="true">
+          <div class="mh-deck">
+            <svg class="mh-disc" viewBox="0 0 400 400" focusable="false">
+              <defs>
+                <radialGradient id="mhDiscFace" cx="50%" cy="42%" r="62%">
+                  <stop offset="0%"  stop-color="#2a2140"/>
+                  <stop offset="55%" stop-color="#161226"/>
+                  <stop offset="100%" stop-color="#0d0a16"/>
+                </radialGradient>
+                <linearGradient id="mhDiscSheen" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%"   stop-color="#ff6b35" stop-opacity="0"/>
+                  <stop offset="42%"  stop-color="#ff6b35" stop-opacity="0.55"/>
+                  <stop offset="58%"  stop-color="#ffd7c2" stop-opacity="0.30"/>
+                  <stop offset="100%" stop-color="#ff6b35" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <circle cx="200" cy="200" r="196" fill="url(#mhDiscFace)"/>
+              <circle cx="200" cy="200" r="196" fill="url(#mhDiscSheen)" opacity="0.5"/>
+              <!-- Grooves. Spaced unevenly on purpose: evenly spaced rings
+                   read as a target, not as a record. -->
+              <g fill="none" stroke="#ffffff" stroke-opacity="0.07">
+                <circle cx="200" cy="200" r="186"/><circle cx="200" cy="200" r="176"/>
+                <circle cx="200" cy="200" r="169"/><circle cx="200" cy="200" r="158"/>
+                <circle cx="200" cy="200" r="150"/><circle cx="200" cy="200" r="139"/>
+                <circle cx="200" cy="200" r="131"/><circle cx="200" cy="200" r="118"/>
+                <circle cx="200" cy="200" r="109"/><circle cx="200" cy="200" r="97"/>
+              </g>
+              <circle cx="200" cy="200" r="70" fill="#ff6b35" fill-opacity="0.20"/>
+              <circle cx="200" cy="200" r="70" fill="none" stroke="#ff6b35" stroke-opacity="0.45"/>
+              <circle cx="200" cy="200" r="34" fill="#ff6b35" fill-opacity="0.30"/>
+              <circle cx="200" cy="200" r="7"  fill="#0d0a16"/>
+              <!-- One highlight that rotates with the disc, so the spin is
+                   legible even though the grooves are radially symmetric. -->
+              <path d="M200 12a188 188 0 0 1 133 55" fill="none"
+                    stroke="#ffffff" stroke-opacity="0.16" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+            <!-- The arm does not rotate; it rests on the disc and drifts in by
+                 a couple of degrees, which is what sells "playing". -->
+            <svg class="mh-arm" viewBox="0 0 200 200" focusable="false">
+              <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round">
+                <path d="M176 26 L120 104"/>
+                <path d="M120 104 l-10 16"/>
+              </g>
+              <circle cx="176" cy="26" r="12" fill="currentColor" fill-opacity="0.22"
+                      stroke="currentColor" stroke-width="3"/>
+              <circle cx="108" cy="124" r="5" fill="currentColor"/>
+            </svg>
+          </div>
+          <!-- Level meter. Seven bars is enough to read as sound and few
+               enough that the eye does not start counting them. -->
+          <div class="mh-eq">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+        </div>
+        <div class="mh-hero-inner">
+          <div>
+            <span class="mh-eyebrow">The story of music technology</span>
+            <h1>A Journey Through <span>Music &amp; Machines</span></h1>
+            <p class="mh-hero-sub">From the earliest recording devices to today's streaming world,
+              discover how the machines and formats we use to experience music have evolved.</p>
+            <div class="mh-hero-cta">
+              <a href="#mh-timeline" class="btn btn-primary btn-lg"
+                 onclick="document.getElementById('mh-timeline').scrollIntoView({behavior:'smooth'});return false;">
+                <i class="fas fa-timeline"></i> Explore the Timeline</a>
+              <a href="/music-history/gramophone" class="btn btn-secondary btn-lg"
+                 onclick="navigate('music-history-article',{slug:'gramophone'});return false;">
+                <i class="fas fa-play"></i> Start the Journey</a>
+            </div>
+            <!-- Static, like the rest of this hero, and deliberately free of
+                 counts: an era or article total goes stale the next time the
+                 section grows, and nobody notices until it is wrong. -->
+            <div class="mh-hero-meta">
+              <div><strong>1877 &ndash; today</strong><span>The span</span></div>
+              <div><strong>Cylinder to stream</strong><span>The journey</span></div>
+              <div><strong>Sourced &amp; cited</strong><span>Every claim</span></div>
+            </div>
+          </div>
+          <!-- Oldest to newest, left to right. Drawn motifs, not photographs —
+               historical product photography is almost always someone else's
+               copyright. -->
+          <div class="mh-collage" aria-hidden="true">
+            <div class="mh-collage-item" data-motif="cylinder"></div>
+            <div class="mh-collage-item" data-motif="radio"></div>
+            <div class="mh-collage-item" data-motif="reel"></div>
+            <div class="mh-collage-item" data-motif="turntable"></div>
+            <div class="mh-collage-item" data-motif="amp"></div>
+            <div class="mh-collage-item" data-motif="cassette"></div>
+            <div class="mh-collage-item" data-motif="cd"></div>
+            <div class="mh-collage-item" data-motif="ipod"></div>
+            <div class="mh-collage-item" data-motif="stream"></div>
+          </div>
+        </div>
+      </header>
+
+      <div class="mh-section">
+        <div class="mh-wrap">
+          <div id="music-history-body">
+            <!-- Timeline + topic cards are rendered here, by the SPA on a live
+                 visit and by seo-render.php for a crawler. -->
+            <div class="loading-spinner"></div>
+          </div>
+        </div>
+      </div>
+
+      <section class="mh-nostalgia">
+        <div class="mh-wrap">
+          <div class="mh-nostalgia-grid">
+            <div>
+              <span class="mh-eyebrow">Before the playlist</span>
+              <h2 class="mh-h2">Remember When Music <span>Felt Different?</span></h2>
+              <p class="mh-sub">Before streaming, listening was an activity rather than a background
+                condition. It had steps, and the steps were part of it.</p>
+              <ul class="mh-steps">
+                <li>You chose a record.</li>
+                <li>You cleaned it.</li>
+                <li>You placed the needle.</li>
+                <li>You adjusted the amplifier.</li>
+                <li>You pressed play on a cassette.</li>
+                <li>You waited for the radio.</li>
+                <li>You built a CD collection, one at a time.</li>
+              </ul>
+              <p class="mh-nostalgia-close">These machines didn't just play music. They sat in
+                particular rooms, in particular years, and they ended up carrying the memory of
+                whatever was happening while they played.</p>
+            </div>
+            <div class="mh-mosaic" aria-hidden="true">
+              <div class="mh-mosaic-item" data-motif="vinyl"></div>
+              <div class="mh-mosaic-item" data-motif="cassette"></div>
+              <div class="mh-mosaic-item" data-motif="stereo"></div>
+              <div class="mh-mosaic-item" data-motif="headphones"></div>
+              <div class="mh-mosaic-item" data-motif="radio"></div>
+              <div class="mh-mosaic-item" data-motif="turntable"></div>
+              <div class="mh-mosaic-item" data-motif="cd"></div>
+              <div class="mh-mosaic-item" data-motif="reel"></div>
+              <div class="mh-mosaic-item" data-motif="speaker"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="mh-closing">
+        <div class="mh-wrap">
+          <h2>Music Changes. <span>The Memories Stay.</span></h2>
+          <p>Every format on this page was once the newest thing there was, and every one of them was
+            replaced. What has not changed in a hundred and fifty years is the part underneath: the
+            wish to hear something again, to keep it, and to play it for somebody else.</p>
+          <a href="/products" class="btn btn-primary btn-lg"
+             onclick="navigate('products');return false;">
+            <i class="fas fa-compact-disc"></i> Explore Music at Velorex</a>
+        </div>
+      </section>
+    </div>
+
+    <!-- Article route: /music-history/<slug> -->
+    <div id="page-music-history-article" class="page-section">
+      <div class="mh-wrap">
+        <div id="music-history-article-body">
+          <div class="loading-spinner"></div>
+        </div>
+      </div>
+    </div>
+
     <div id="page-blog" class="page-section">
-      <div class="page-hero">
-        <div class="container">
-          <h1 class="page-hero-title">Velorex Journal</h1>
-          <p style="color:var(--text-muted);margin-top:0.5rem;max-width:60ch;">
-            Notes on vinyl, Hindi film music and the records worth collecting.
-          </p>
+      <!-- No feature row: there is no mockup for this page, and a row of
+           claims about what the journal covers goes stale the moment the
+           posts drift from it. -->
+      <div class="page-banner" data-banner="blog">
+        <div class="page-banner-bg" aria-hidden="true"></div>
+        <div class="container page-banner-inner">
+          <div class="page-banner-copy">
+            <span class="page-banner-eyebrow">From the record room</span>
+            <h1 class="page-hero-title">Velorex <span>Journal</span></h1>
+            <p class="page-banner-desc">
+              Notes on vinyl, Hindi film music and the records worth collecting.
+            </p>
+          </div>
         </div>
       </div>
       <section class="section" style="padding-top:0;">

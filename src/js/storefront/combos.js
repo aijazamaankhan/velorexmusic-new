@@ -55,23 +55,49 @@
         + Utils.escape(c.slug) + '\'});return false;"';
 
       var items = (c.products || []).map(function (p) {
-        return '<li><a href="' + Utils.escape(Seo.productPath(p)) + '"'
-          + ' onclick="navigate(\'product\',{id:' + p.id + '});return false;">'
-          + Utils.escape(p.title) + '</a>'
+        var open = ' href="' + Utils.escape(Seo.productPath(p)) + '"'
+          + ' onclick="navigate(\'product\',{id:' + p.id + '});return false;"';
+        var thumb = p.image
+          ? '<img src="' + Utils.escape(p.image) + '" alt="" loading="lazy" decoding="async">'
+          : '<i class="fas fa-music" aria-hidden="true"></i>';
+        return '<li><a class="combo-card-thumb"' + open + ' tabindex="-1" aria-hidden="true">' + thumb + '</a>'
+          + '<a class="combo-card-item-title"' + open + '>' + Utils.escape(p.title) + '</a>'
           + '<span>₹' + Number(p.price).toLocaleString('en-IN') + '</span></li>';
       }).join('');
 
+      var mrp = comboMrpTotal(c);
+      var save = mrp - Number(c.total);
+
       return '<article class="combo-card">'
-        + '<a class="combo-card-media"' + go + '>' + comboCoverHtml(c) + '</a>'
+        + '<a class="combo-card-media"' + go + ' tabindex="-1" aria-hidden="true">' + comboCoverHtml(c) + '</a>'
         + '<div class="combo-card-body">'
         + '<h3 class="combo-card-title"><a' + go + '>' + Utils.escape(c.title) + '</a></h3>'
         + (c.description ? '<p class="combo-card-desc">' + Utils.escape(c.description) + '</p>' : '')
         + '<ul class="combo-card-items">' + items + '</ul>'
         + '<div class="combo-card-foot">'
+        + '<div class="combo-card-sum"><i class="fas fa-gift" aria-hidden="true"></i>'
         + '<div class="combo-card-total"><span>' + c.itemCount + ' items together</span>'
-        + '<strong>₹' + Number(c.total).toLocaleString('en-IN') + '</strong></div>'
-        + '<a class="btn btn-primary btn-sm"' + go + '>View combo</a>'
+        + '<div class="combo-card-prices"><strong>₹' + Number(c.total).toLocaleString('en-IN') + '</strong>'
+        + (save > 0
+            ? '<s title="Sum of the items\' listed MRP">₹' + mrp.toLocaleString('en-IN') + '</s>'
+              + '<em class="combo-card-save">Save ₹' + save.toLocaleString('en-IN') + '</em>'
+            : '')
+        + '</div></div></div>'
+        + '<a class="btn btn-primary combo-card-cta"' + go + '><i class="fas fa-cart-shopping" aria-hidden="true"></i> View Combo <i class="fas fa-arrow-right" aria-hidden="true"></i></a>'
         + '</div></div></article>';
+    }
+
+    // The items' own MRPs added up — each product's originalPrice where it has
+    // one above its price, otherwise its price. This is NOT a combo discount
+    // (a combo has none, §17): "Save ₹X" is exactly the saving the same items
+    // already show on their own product cards, summed. Mirrors
+    // velorex_combo_mrp_total() in seo-render.php.
+    function comboMrpTotal(c) {
+      return (c.products || []).reduce(function (sum, p) {
+        var price = Number(p.price) || 0;
+        var orig = Number(p.originalPrice) || 0;
+        return sum + (orig > price ? orig : price);
+      }, 0);
     }
 
     // A combo may be reached three ways: through the feed (homepage strip,
@@ -201,9 +227,7 @@
     }
 
     function comboEmptyHtml() {
-      return '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:3rem 1rem;">'
-        + '<div style="font-size:2rem;margin-bottom:0.75rem;">🎁</div>'
-        + '<p>No combo offers right now. Check back soon.</p></div>';
+      return catalogEmptyHtml({ variant: 'unstocked', noun: 'combo offers' });
     }
 
     // ---- /combos page --------------------------------------------------------

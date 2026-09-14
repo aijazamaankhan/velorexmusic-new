@@ -115,6 +115,12 @@ DirectoryIndex index.html index.php
   RewriteRule ^blog/?$ seo-render.php?_route=blog [L,QSA]
   RewriteRule ^blog/([A-Za-z0-9-]+)/?$ seo-render.php?_route=blogpost&slug=$1 [L,QSA]
 
+  # The Evolution of Music & Audio. An independent educational section — the
+  # content lives in src/history/, not in the database, and none of it is about
+  # products Velorex made.
+  RewriteRule ^music-history/?$ seo-render.php?_route=musichistory [L,QSA]
+  RewriteRule ^music-history/([a-z0-9-]+)/?$ seo-render.php?_route=musichistoryarticle&slug=$1 [L,QSA]
+
   # Client-routed, non-indexable SPA views. These need to resolve to the shell
   # on a hard refresh or the user gets a 404 after, say, reloading /cart.
   # They are marked noindex by src/js/seo.js once the SPA boots.

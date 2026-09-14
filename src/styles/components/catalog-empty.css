@@ -1,0 +1,102 @@
+/* =============================================================================
+   Velorex Music — catalogue empty state
+   Used by: #products-grid and #preowned-grid (catalogEmptyHtml() in
+            src/js/storefront/pages.js) and the server-rendered empty listing
+            in seo-render.php (velorex_catalog_empty_html()).
+
+   Two situations share this block and must never share a message:
+     "filtered"  — the shelf has stock, the shopper's filters excluded all of
+                   it. Offers Adjust Filters + Clear All.
+     "unstocked" — nothing is listed here at all. Saying "matching your current
+                   filters" to someone who has not touched a filter reads as a
+                   broken page, so this one says the shelf is empty instead.
+   ============================================================================= */
+
+.catalog-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1.5rem 1rem 0.5rem;
+}
+
+.catalog-empty-art {
+  width: min(15rem, 70%);
+  height: auto;
+  margin-bottom: 0.75rem;
+  overflow: visible;
+}
+.catalog-empty-art .ce-disc {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ceDiscFloat 5.5s ease-in-out infinite;
+}
+.catalog-empty-art .ce-note { animation: ceNote 4s ease-in-out infinite; }
+.catalog-empty-art .ce-note:nth-of-type(2) { animation-delay: -1.3s; }
+.catalog-empty-art .ce-note:nth-of-type(3) { animation-delay: -2.6s; }
+@keyframes ceDiscFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-5px) rotate(12deg); }
+}
+@keyframes ceNote {
+  0%, 100% { opacity: 0.55; transform: translateY(0); }
+  50%      { opacity: 1;    transform: translateY(-4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .catalog-empty-art .ce-disc,
+  .catalog-empty-art .ce-note { animation: none; }
+}
+
+.catalog-empty-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 2.6vw, 2rem);
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 0.5rem;
+}
+.catalog-empty-text {
+  max-width: 26rem;
+  margin: 0 auto 1.5rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.catalog-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.85rem;
+}
+.catalog-empty-actions .btn { min-width: 11.5rem; justify-content: center; gap: 0.55rem; }
+
+/* "Looking for something specific?" — a way out that is not another filter. */
+.catalog-empty-help {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  width: 100%;
+  max-width: 57rem;
+  margin: 2.25rem auto 0;
+  padding: 1.1rem 1.4rem;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 16px);
+}
+.catalog-empty-help > i {
+  flex-shrink: 0;
+  font-size: 1.6rem;
+  color: #f59e0b;
+}
+.catalog-empty-help div { flex: 1; min-width: 0; }
+.catalog-empty-help strong { display: block; font-size: 0.95rem; color: var(--text); margin-bottom: 0.15rem; }
+.catalog-empty-help span { display: block; font-size: 0.85rem; color: var(--text-muted); }
+.catalog-empty-help .btn { flex-shrink: 0; gap: 0.5rem; }
+
+@media (max-width: 640px) {
+  .catalog-empty-actions .btn { min-width: 0; flex: 1 1 10rem; }
+  .catalog-empty-help { flex-direction: column; align-items: flex-start; }
+  .catalog-empty-help .btn { width: 100%; justify-content: center; }
+}

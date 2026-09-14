@@ -114,6 +114,7 @@
             <li class="nav-item"><a href="/combos" onclick="navigate('combos'); return false;" class="nav-link ${activePage === 'combos' ? 'active' : ''}">Combos</a></li>
             <li class="nav-item"><a href="/pre-owned" onclick="navigate('preowned'); return false;" class="nav-link ${activePage === 'preowned' ? 'active' : ''}">Pre-owned</a></li>
             <li class="nav-item"><a href="/blog" onclick="navigate('blog'); return false;" class="nav-link ${activePage === 'blog' || activePage === 'blog-post' ? 'active' : ''}">Blog</a></li>
+            <li class="nav-item"><a href="/music-history" onclick="navigate('music-history'); return false;" class="nav-link ${activePage === 'music-history' || activePage === 'music-history-article' ? 'active' : ''}">History</a></li>
           `}
         </ul>
         ${isAdmin ? '' : `<div class="navbar-search"><span class="search-icon"><i class="fas fa-magnifying-glass"></i></span><input type="search" id="globalSearch" placeholder="Search albums, artists..." autocomplete="off" autocorrect="off" spellcheck="false" role="combobox" aria-expanded="false" aria-autocomplete="list"><kbd class="search-kbd">/</kbd><button type="button" class="search-clear" aria-label="Clear search"><i class="fas fa-xmark"></i></button></div>`}
@@ -194,6 +195,7 @@
                 <a href="/combos" onclick="navigate('combos'); return false;" class="footer-link">Combo Offers</a>
                 <a href="${P('preowned', {})}" onclick="navigate('preowned'); return false;" class="footer-link">Pre-owned</a>
                 <a href="/blog" onclick="navigate('blog'); return false;" class="footer-link">Blog</a>
+                <a href="/music-history" onclick="navigate('music-history'); return false;" class="footer-link">Music History</a>
                 <a href="/shipping.html" class="footer-link">Shipping Policy</a>
                 <a href="/returns.html" class="footer-link">Returns &amp; Refunds</a>
                 <a href="/track-order.html" rel="nofollow" class="footer-link">Track Order</a>
@@ -461,6 +463,20 @@
         var bt = (document.getElementById('blog-post-title') || {}).textContent;
         items.push({ name: bt && bt !== 'Article' ? bt : 'Post', active: true });
       }
+      else if (page === 'music-history') items.push({ name: 'Music History', active: true });
+      else if (page === 'music-history-article') {
+        items.push({ name: 'Music History', page: 'music-history', params: {} });
+        // Three sources, in order of how much they can be trusted: the title
+        // the article renderer passes once it has the data; failing that the
+        // one seo-render.php already put on the page, which is why a
+        // server-rendered load does not flash a generic crumb the way it used
+        // to; and only then a placeholder. Same pattern as the blog above.
+        var mt = (document.querySelector('.mh-art-title') || {}).textContent;
+        items.push({
+          name: (params && params.title) || (mt && mt.trim()) || 'Article',
+          active: true
+        });
+      }
       else if (page === 'cart') items.push({ name: 'Shopping Cart', active: true });
       else if (page === 'profile') items.push({ name: 'My Profile', active: true });
       else items.push({ name: page.charAt(0).toUpperCase() + page.slice(1), active: true });
@@ -494,6 +510,8 @@
       else if (page === 'combo') initPageCombo(params.slug);
       else if (page === 'preowned') initPagePreowned(params);
       else if (page === 'blog') initPageBlog();
+      else if (page === 'music-history') initPageMusicHistory();
+      else if (page === 'music-history-article') initPageMusicHistoryArticle(params);
       else if (page === 'blog-post') initPageBlogPost(params);
       else if (page === 'forgot') { /* static page, nothing to init */ }
     }

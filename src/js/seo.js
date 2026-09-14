@@ -95,6 +95,13 @@ var Seo = (function () {
       title: 'Velorex Journal | Vinyl, Hindi Film Music & Collecting',
       description: 'Notes on vinyl records, Hindi film music and the pressings worth collecting — from the Velorex Music team in India.'
     },
+    // Must stay byte-identical to what seo-render.php's musichistory route
+    // injects, or the SPA rewrites the server's tags into different ones on
+    // the same URL the moment the page hydrates.
+    'music-history': {
+      title: 'The Evolution of Music & Audio | History of Recorded Sound',
+      description: 'How recorded music worked, from the phonograph and gramophone to vinyl, cassettes, CDs, MP3 and streaming — the dates, the machines and what replaced them.'
+    },
     cart:    { title: 'Your Cart | Velorex Music',            description: 'Review the items in your Velorex Music cart before checkout.', robots: 'noindex, follow' },
     profile: { title: 'My Account | Velorex Music',           description: 'Manage your Velorex Music orders, addresses and account details.', robots: 'noindex, nofollow' },
     login:   { title: 'Sign In | Velorex Music',              description: 'Sign in to your Velorex Music account to track orders and manage addresses.', robots: 'noindex, follow' },
@@ -187,6 +194,15 @@ var Seo = (function () {
     if (page === 'combo') return params.slug ? '/combos/' + params.slug : '/combos';
     if (page === 'blog') return '/blog';
     if (page === 'blog-post') return params.slug ? '/blog/' + params.slug : '/blog';
+    // The history section. `era` is a real query parameter rather than a path
+    // segment: it selects a panel on one page, it is not a page of its own, and
+    // giving it a path would create nine URLs for one document.
+    if (page === 'music-history') {
+      return params.era ? '/music-history?era=' + encodeURIComponent(params.era) : '/music-history';
+    }
+    if (page === 'music-history-article') {
+      return params.slug ? '/music-history/' + params.slug : '/music-history';
+    }
 
     if (page === 'index') return '/';
     return '/' + page;
@@ -219,6 +235,10 @@ var Seo = (function () {
     if (path === '/blog') return { page: 'blog', params: params };
     var bm = path.match(/^\/blog\/([A-Za-z0-9-]+)$/);
     if (bm) { params.slug = bm[1]; return { page: 'blog-post', params: params }; }
+
+    if (path === '/music-history') return { page: 'music-history', params: params };
+    var mh = path.match(/^\/music-history\/([a-z0-9-]+)$/);
+    if (mh) { params.slug = mh[1]; return { page: 'music-history-article', params: params }; }
 
     var parts = path.slice(1).split('/');
     if (SLUG_TO_CAT[parts[0]]) {
@@ -459,6 +479,32 @@ var Seo = (function () {
       } catch (e) { /* cold cache */ }
       if (p) { applyProduct(p, canonical); return; }
       applyTags({ title: 'Product | Velorex Music', canonical: canonical, type: 'product' });
+      return;
+    }
+
+    // A history article carries its own title and description in the content
+    // library, so PAGE_META cannot hold them — the same situation as a blog
+    // post. initPageMusicHistoryArticle() passes the loaded article through.
+    if (page === 'music-history-article') {
+      var a = params.article;
+      if (a && a.metaTitle) {
+        applyTags({
+          title: a.metaTitle,
+          description: a.metaDescription,
+          canonical: canonical,
+          type: 'article'
+        });
+        return;
+      }
+      // Called before the article has loaded. Anything invented here would be
+      // wrong for eleven of the twelve topics, so fall back to the hub's copy
+      // and let the real tags land when the content arrives.
+      applyTags({
+        title: PAGE_META['music-history'].title,
+        description: PAGE_META['music-history'].description,
+        canonical: canonical,
+        type: 'article'
+      });
       return;
     }
 

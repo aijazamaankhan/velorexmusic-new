@@ -7,5 +7,6 @@
         "NODE_OPTIONS": "--no-warnings"
       }
     }
-  }
+  },
+  "liveServer.settings.port": 5501
 }

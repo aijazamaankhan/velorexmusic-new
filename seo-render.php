@@ -186,6 +186,84 @@ function velorex_render_card(array $p): string {
         . '</div></div>';
 }
 
+// Banner heading with its accented half. MUST match heroTitleHtml() in
+// src/js/storefront/pages.js, or the heading re-colours itself the moment the
+// SPA boots over this render. Returns HTML (escaped).
+function velorex_banner_title_html(string $text, bool $accentLead = false): string {
+    $t  = trim($text);
+    $sp = mb_strpos($t, ' ');
+    if ($accentLead && $sp !== false && $sp > 0) {
+        return '<span>' . velorex_e(mb_substr($t, 0, $sp)) . '</span>' . velorex_e(mb_substr($t, $sp));
+    }
+    $lastSp = mb_strrpos($t, ' ');
+    if ($lastSp !== false && $lastSp > 0) {
+        return velorex_e(mb_substr($t, 0, $lastSp + 1)) . '<span>' . velorex_e(mb_substr($t, $lastSp + 1)) . '</span>';
+    }
+    $len = mb_strlen($t);
+    $hy  = mb_strrpos($t, '-');
+    if ($hy !== false && $hy > 0 && $hy < $len - 1) {
+        return velorex_e(mb_substr($t, 0, $hy + 1)) . '<span>' . velorex_e(mb_substr($t, $hy + 1)) . '</span>';
+    }
+    if ($len >= 8) {
+        $half = intdiv($len, 2);
+        return velorex_e(mb_substr($t, 0, $half)) . '<span>' . velorex_e(mb_substr($t, $half)) . '</span>';
+    }
+    return velorex_e($t);
+}
+
+// Music banner stats. Mirrors bannerStatsHtml() in pages.js; the artist count
+// uses the same credit-list split as splitArtists() there (CLAUDE.md §25).
+function velorex_banner_stats_html(array $products, bool $film): string {
+    $artists = [];
+    foreach ($products as $p) {
+        foreach (preg_split('/,|feat\.?|ft\.?|featuring/i', (string)($p['artist'] ?? '')) as $name) {
+            $k = mb_strtolower(trim($name));
+            if ($k !== '') $artists[$k] = true;
+        }
+    }
+    $titles = count($products);
+    $nArt   = count($artists);
+    $noun   = $film ? 'Titles' : 'Albums';
+    $item = static fn(string $icon, string $strong, string $small): string =>
+        '<li class="page-banner-feature"><i class="fas ' . $icon . '" aria-hidden="true"></i>'
+        . '<div><strong>' . $strong . '</strong><small>' . $small . '</small></div></li>';
+    return $item('fa-compact-disc', number_format($titles), $titles === 1 ? rtrim($noun, 's') : $noun)
+        . $item('fa-users', number_format($nArt), $nArt === 1 ? 'Artist' : 'Artists')
+        . $item('fa-star', 'Vintage', 'Sound, Forever');
+}
+
+// The "nothing listed here" empty state. Mirrors the 'unstocked' variant of
+// catalogEmptyHtml() in pages.js — a server render never has filters applied,
+// so it never needs the 'filtered' one. The illustration is left to the SPA,
+// which replaces this block on boot; the words and the links are what matter
+// to a crawler.
+function velorex_catalog_empty_html(string $noun): string {
+    return '<div class="catalog-empty" role="status">'
+        . '<h3 class="catalog-empty-title">Nothing on this shelf yet</h3>'
+        . '<p class="catalog-empty-text">We don\'t have any ' . velorex_e($noun)
+        . ' listed right now — new stock is on its way. In the meantime, explore the rest of the collection.</p>'
+        . '<div class="catalog-empty-actions"><a href="/products" class="btn btn-secondary">'
+        . '<i class="fas fa-compact-disc" aria-hidden="true"></i> Browse All Products</a></div>'
+        . '<div class="catalog-empty-help"><i class="far fa-lightbulb" aria-hidden="true"></i>'
+        . '<div><strong>Looking for something specific?</strong>'
+        . '<span>Try different filters or explore our other categories.</span></div>'
+        . '<a href="/#shop-categories" class="btn btn-secondary btn-sm">Browse All Categories <i class="fas fa-arrow-right" aria-hidden="true"></i></a>'
+        . '</div></div>';
+}
+
+// Sum of each item's MRP (originalPrice when above price). Mirrors
+// comboMrpTotal() in src/js/storefront/combos.js — see the note there on why
+// this is not a combo discount.
+function velorex_combo_mrp_total(array $c): int {
+    $sum = 0;
+    foreach ($c['products'] as $p) {
+        $price = (int)($p['price'] ?? 0);
+        $orig  = (int)($p['originalPrice'] ?? 0);
+        $sum  += $orig > $price ? $orig : $price;
+    }
+    return $sum;
+}
+
 // -----------------------------------------------------------------------------
 // Route: single product
 // -----------------------------------------------------------------------------
@@ -451,27 +529,50 @@ if ($route === 'category' || $route === 'products') {
     }
     $head .= velorex_jsonld_breadcrumbs($trail);
 
+    $isDept = !$isAll && !empty(velorex_subcategories($catSlug));
+    $emptyNoun = $isAll ? 'products' : strtolower($meta['label']);
+
     $cardsHtml = $count
         ? implode('', array_map('velorex_render_card', $products))
-        : '<p style="padding:2rem;color:var(--text-muted);">No products in this collection right now. '
-          . '<a href="/products">Browse everything</a>.</p>';
-
-    // Intro copy gives the category page unique indexable text. Without it a
-    // listing page is just a grid of links, which competes poorly.
-    $introHtml = '<p class="seo-intro" style="max-width:70ch;margin:0 auto 1.5rem;color:var(--text-muted);line-height:1.7;">'
-        . velorex_e($intro) . '</p>';
+        : velorex_catalog_empty_html($emptyNoun);
 
     $html = velorex_shell();
     $html = velorex_inject_head($html, $head);
     $html = velorex_show_section($html, 'page-products');
-    // Heading + the unique intro copy that follows it, in one pass.
+
+    // Banner: which photograph / tagline / feature row (one attribute — the
+    // copy for every variant is in index.html), the accented heading, and the
+    // route's unique intro copy as the description. data-ssr tells
+    // renderProductsBanner() to keep that intro on first boot instead of
+    // replacing it with its shorter client-side sentence.
+    $html = str_replace(
+        '<div class="page-banner" id="products-banner" data-banner="music">',
+        '<div class="page-banner" id="products-banner" data-banner="' . ($isDept ? velorex_e($catSlug) : 'music') . '">',
+        $html
+    );
     $html = velorex_set_text(
         $html,
         '<h1 class="page-hero-title" id="page-title">',
         'h1',
-        velorex_e($h1),
-        $introHtml
+        velorex_banner_title_html($h1, $langSlug !== null)
     );
+    // Intro copy gives the category page unique indexable text. Without it a
+    // listing page is just a grid of links, which competes poorly.
+    $html = velorex_set_text($html, '<p class="page-banner-desc" id="page-banner-desc">', 'p', velorex_e($intro));
+    $html = str_replace(
+        '<p class="page-banner-desc" id="page-banner-desc">',
+        '<p class="page-banner-desc" id="page-banner-desc" data-ssr="1">',
+        $html
+    );
+    if (!$isDept) {
+        $film = $isAll || in_array($meta['key'], ['bluray', 'dvd'], true);
+        $html = velorex_set_text(
+            $html,
+            '<ul class="page-banner-features page-banner-stats page-banner-variant" data-for="music" id="page-banner-stats">',
+            'ul',
+            velorex_banner_stats_html($products, $film)
+        );
+    }
     $html = velorex_set_text(
         $html,
         '<p class="products-count" id="products-count">',
@@ -551,13 +652,12 @@ if ($route === 'preowned') {
 
     $cards = $count
         ? implode('', array_map('velorex_render_card', $products))
-        : '<p style="grid-column:1/-1;padding:2.5rem 1rem;text-align:center;color:var(--text-muted);">'
-          . 'No pre-owned stock in this format right now. <a href="/products">Browse everything</a>.</p>';
+        : velorex_catalog_empty_html($label ? 'pre-owned ' . strtolower($label) : 'pre-owned items');
 
     $html = velorex_shell();
     $html = velorex_inject_head($html, $head);
     $html = velorex_show_section($html, 'page-preowned');
-    $html = velorex_set_text($html, '<h1 class="page-hero-title" id="preowned-title">', 'h1', velorex_e($h1));
+    $html = velorex_set_text($html, '<h1 class="page-hero-title" id="preowned-title">', 'h1', velorex_banner_title_html($h1));
     $html = velorex_set_text($html, '<p class="products-count" id="preowned-count">', 'p',
         $count ? 'Showing ' . $count . ' pre-owned ' . ($count === 1 ? 'item' : 'items') : '');
     $html = velorex_set_div_inner($html, '<div class="products-grid" id="preowned-grid">', $cards);
@@ -618,10 +718,16 @@ if ($route === 'combos') {
     foreach ($combos as $c) {
         $items = '';
         foreach ($c['products'] as $p) {
-            $items .= '<li><a href="' . velorex_e(velorex_product_path($p)) . '">'
+            $thumb = !empty($p['image'])
+                ? '<img src="' . velorex_e(velorex_absolute_image($p['image'])) . '" alt="" loading="lazy" decoding="async">'
+                : '<i class="fas fa-music" aria-hidden="true"></i>';
+            $items .= '<li><span class="combo-card-thumb" aria-hidden="true">' . $thumb . '</span>'
+                . '<a class="combo-card-item-title" href="' . velorex_e(velorex_product_path($p)) . '">'
                 . velorex_e($p['title']) . '</a><span>₹'
                 . number_format((int)$p['price']) . '</span></li>';
         }
+        $mrp  = velorex_combo_mrp_total($c);
+        $save = $mrp - (int)$c['total'];
 
         if (!empty($c['image'])) {
             $media = '<img src="' . velorex_e(velorex_absolute_image($c['image'])) . '" alt="'
@@ -645,14 +751,21 @@ if ($route === 'combos') {
             . '<h2 class="combo-card-title">' . velorex_e($c['title']) . '</h2>'
             . ($c['description'] ? '<p class="combo-card-desc">' . velorex_e($c['description']) . '</p>' : '')
             . '<ul class="combo-card-items">' . $items . '</ul>'
-            . '<div class="combo-card-foot"><div class="combo-card-total">'
+            . '<div class="combo-card-foot"><div class="combo-card-sum"><i class="fas fa-gift" aria-hidden="true"></i>'
+            . '<div class="combo-card-total">'
             . '<span>' . (int)$c['itemCount'] . ' items together</span>'
-            . '<strong>₹' . number_format((int)$c['total']) . '</strong>'
-            . '</div></div></div></article>';
+            . '<div class="combo-card-prices"><strong>₹' . number_format((int)$c['total']) . '</strong>'
+            . ($save > 0
+                ? '<s title="Sum of the items\' listed MRP">₹' . number_format($mrp) . '</s>'
+                  . '<em class="combo-card-save">Save ₹' . number_format($save) . '</em>'
+                : '')
+            . '</div></div></div>'
+            . '<a class="btn btn-primary combo-card-cta" href="/combos/' . velorex_e($c['slug']) . '">'
+            . '<i class="fas fa-cart-shopping" aria-hidden="true"></i> View Combo <i class="fas fa-arrow-right" aria-hidden="true"></i></a>'
+            . '</div></div></article>';
     }
     if (!$count) {
-        $cardsHtml = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:3rem 1rem;">'
-            . '<p>No combo offers right now. <a href="/products">Browse everything</a>.</p></div>';
+        $cardsHtml = velorex_catalog_empty_html('combo offers');
     }
 
     $html = velorex_shell();
@@ -919,6 +1032,113 @@ if ($route === 'blog' || $route === 'blogpost') {
     $html = velorex_inject_head($html, $head);
     $html = velorex_show_section($html, 'page-blog');
     $html = velorex_set_div_inner($html, '<div class="blog-grid" id="blog-grid">', $cards);
+    echo $html;
+    exit;
+}
+
+// -----------------------------------------------------------------------------
+// Route: The Evolution of Music & Audio — /music-history, /music-history/<slug>
+//
+// Server-rendered from src/history/, the same library /api/music-history.php
+// serves to the SPA. A crawler that never runs JavaScript gets the complete
+// article; a visitor who does gets the same words rebuilt in place.
+//
+// This section is INDEPENDENT educational material. Nothing in it was made by
+// Velorex, and the JSON-LD says so by omission: it is marked up as an Article,
+// never as a Product or an Offer, because none of these machines is for sale
+// here. Same rule that keeps Offer markup off combos (§17).
+// -----------------------------------------------------------------------------
+if ($route === 'musichistory' || $route === 'musichistoryarticle') {
+    require_once __DIR__ . '/src/history/history-render.php';
+
+    // ---- single article ----
+    if ($route === 'musichistoryarticle') {
+        $slug = isset($_GET['slug']) ? preg_replace('/[^a-z0-9-]/', '', (string)$_GET['slug']) : '';
+        $article = $slug !== '' ? velorex_history_article($slug) : null;
+        if (!$article) velorex_send_404('Topic not found');
+
+        $canonical = VELOREX_SITE_URL . '/music-history/' . $article['slug'];
+
+        $head  = velorex_meta_block([
+            'title'       => $article['metaTitle'],
+            'description' => $article['metaDescription'],
+            'canonical'   => $canonical,
+            'image'       => VELOREX_DEFAULT_OG_IMAGE,
+            'imageAlt'    => $article['title'] . ' — a history of music technology',
+            'type'        => 'article',
+        ]);
+        $head .= velorex_jsonld_site();
+        $head .= velorex_jsonld_breadcrumbs([
+            ['name' => 'Home', 'url' => VELOREX_SITE_URL . '/'],
+            ['name' => 'Music History', 'url' => VELOREX_SITE_URL . '/music-history'],
+            ['name' => $article['title']],
+        ]);
+        $head .= "\n" . '<script type="application/ld+json">' . json_encode([
+            '@context'            => 'https://schema.org',
+            '@type'               => 'Article',
+            'headline'            => $article['title'],
+            'description'         => $article['metaDescription'],
+            'mainEntityOfPage'    => ['@type' => 'WebPage', '@id' => $canonical],
+            'author'              => ['@type' => 'Organization', 'name' => VELOREX_SITE_NAME],
+            'publisher'           => [
+                '@type' => 'Organization',
+                'name'  => VELOREX_SITE_NAME,
+                'logo'  => ['@type' => 'ImageObject', 'url' => VELOREX_SITE_URL . '/src/img/logo-1200.png'],
+            ],
+            'isAccessibleForFree' => true,
+            'articleSection'      => 'History of music technology',
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . '</script>';
+
+        $html = velorex_shell();
+        $html = velorex_inject_head($html, $head);
+        $html = velorex_show_section($html, 'page-music-history-article');
+        $html = velorex_history_fill_motifs($html);
+        $html = velorex_set_div_inner(
+            $html,
+            '<div id="music-history-article-body">',
+            velorex_history_article_html($article)
+        );
+        echo $html;
+        exit;
+    }
+
+    // ---- hub ----
+    // ?era=… selects which era panel is open. It is a query parameter rather
+    // than a path segment because every era is already described in full on
+    // this one page — nine near-identical URLs would be nine thin duplicates.
+    // The canonical therefore always points at the bare /music-history.
+    $index = velorex_history_index();
+    $era   = isset($_GET['era']) ? preg_replace('/[^a-z0-9-]/', '', (string)$_GET['era']) : '';
+
+    $head  = velorex_meta_block([
+        'title'       => 'The Evolution of Music & Audio | History of Recorded Sound',
+        // Fits velorex_meta_block()'s 160-character trim on purpose, and is
+        // byte-identical to PAGE_META['music-history'] in src/js/seo.js. A
+        // longer string would be ellipsised here and replaced in full by the
+        // SPA, so one URL would carry two different descriptions.
+        'description' => 'How recorded music worked, from the phonograph and gramophone to vinyl, '
+            . 'cassettes, CDs, MP3 and streaming — the dates, the machines and what replaced them.',
+        'canonical'   => VELOREX_SITE_URL . '/music-history',
+        'image'       => VELOREX_DEFAULT_OG_IMAGE,
+        'imageAlt'    => 'A timeline of music playback technology',
+    ]);
+    $head .= velorex_jsonld_site();
+    $head .= velorex_jsonld_breadcrumbs([
+        ['name' => 'Home', 'url' => VELOREX_SITE_URL . '/'],
+        ['name' => 'Music History'],
+    ]);
+
+    $html = velorex_shell();
+    $html = velorex_inject_head($html, $head);
+    $html = velorex_show_section($html, 'page-music-history');
+    // Draw the hero collage and the nostalgia mosaic before the SPA boots, so
+    // the first paint is not nine empty boxes above the fold.
+    $html = velorex_history_fill_motifs($html);
+    $html = velorex_set_div_inner(
+        $html,
+        '<div id="music-history-body">',
+        velorex_history_index_html($index, $era)
+    );
     echo $html;
     exit;
 }

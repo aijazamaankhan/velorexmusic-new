@@ -208,6 +208,32 @@ try {
     error_log('[sitemap] blog query failed: ' . $e->getMessage());
 }
 
+// ---- The Evolution of Music & Audio -----------------------------------------
+// Editorial content that ships with the code, so there is nothing to query and
+// nothing that can be a draft — every article listed here exists as long as the
+// file does. No lastmod: the honest value is the deploy date, and inventing a
+// fresher one to look active is the kind of signal that stops being believed.
+//
+// Every URL in velorex_history_order() is listed, including the two topics
+// (vinyl, mp3) that have no card on the hub — they are reachable from their
+// era panel and from the prev/next chain, and an article worth writing is an
+// article worth indexing.
+try {
+    require_once __DIR__ . '/src/history/history-lib.php';
+    $xml .= velorex_sitemap_url(VELOREX_SITE_URL . '/music-history', null, 'monthly', '0.7');
+    foreach (velorex_history_order() as $slug) {
+        if (!velorex_history_article($slug)) continue;
+        $xml .= velorex_sitemap_url(
+            VELOREX_SITE_URL . '/music-history/' . $slug,
+            null,
+            'monthly',
+            '0.6'
+        );
+    }
+} catch (Throwable $e) {
+    error_log('[sitemap] music history failed: ' . $e->getMessage());
+}
+
 // ---- Static information pages ----------------------------------------------
 // Lower priority: useful for trust and long-tail policy queries ("velorex
 // music return policy"), but never the pages we want ranking for head terms.
