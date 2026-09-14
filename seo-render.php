@@ -925,3 +925,110 @@ if ($route === 'blog' || $route === 'blogpost') {
 
 // Unknown _route — someone hit seo-render.php directly.
 velorex_send_404('Page not found');
+// -----------------------------------------------------------------------------
+// Route: The Evolution of Music & Audio — /music-history, /music-history/<slug>
+//
+// Server-rendered from src/history/, the same library /api/music-history.php
+// serves to the SPA. A crawler that never runs JavaScript gets the complete
+// article; a visitor who does gets the same words rebuilt in place.
+//
+// This section is INDEPENDENT educational material. Nothing in it was made by
+// Velorex, and the JSON-LD says so by omission: it is marked up as an Article,
+// never as a Product or an Offer, because none of these machines is for sale
+// here. Same rule that keeps Offer markup off combos (§17).
+// -----------------------------------------------------------------------------
+if ($route === 'musichistory' || $route === 'musichistoryarticle') {
+    require_once __DIR__ . '/src/history/history-render.php';
+
+    // ---- single article ----
+    if ($route === 'musichistoryarticle') {
+        $slug = isset($_GET['slug']) ? preg_replace('/[^a-z0-9-]/', '', (string)$_GET['slug']) : '';
+        $article = $slug !== '' ? velorex_history_article($slug) : null;
+        if (!$article) velorex_send_404('Topic not found');
+
+        $canonical = VELOREX_SITE_URL . '/music-history/' . $article['slug'];
+
+        $head  = velorex_meta_block([
+            'title'       => $article['metaTitle'],
+            'description' => $article['metaDescription'],
+            'canonical'   => $canonical,
+            'image'       => VELOREX_DEFAULT_OG_IMAGE,
+            'imageAlt'    => $article['title'] . ' — a history of music technology',
+            'type'        => 'article',
+        ]);
+        $head .= velorex_jsonld_site();
+        $head .= velorex_jsonld_breadcrumbs([
+            ['name' => 'Home', 'url' => VELOREX_SITE_URL . '/'],
+            ['name' => 'Music History', 'url' => VELOREX_SITE_URL . '/music-history'],
+            ['name' => $article['title']],
+        ]);
+        $head .= "\n" . '<script type="application/ld+json">' . json_encode([
+            '@context'            => 'https://schema.org',
+            '@type'               => 'Article',
+            'headline'            => $article['title'],
+            'description'         => $article['metaDescription'],
+            'mainEntityOfPage'    => ['@type' => 'WebPage', '@id' => $canonical],
+            'author'              => ['@type' => 'Organization', 'name' => VELOREX_SITE_NAME],
+            'publisher'           => [
+                '@type' => 'Organization',
+                'name'  => VELOREX_SITE_NAME,
+                'logo'  => ['@type' => 'ImageObject', 'url' => VELOREX_SITE_URL . '/src/img/logo-1200.png'],
+            ],
+            'isAccessibleForFree' => true,
+            'articleSection'      => 'History of music technology',
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . '</script>';
+
+        $html = velorex_shell();
+        $html = velorex_inject_head($html, $head);
+        $html = velorex_show_section($html, 'page-music-history-article');
+        $html = velorex_history_fill_motifs($html);
+        $html = velorex_set_div_inner(
+            $html,
+            '<div id="music-history-article-body">',
+            velorex_history_article_html($article)
+        );
+        echo $html;
+        exit;
+    }
+
+    // ---- hub ----
+    // ?era=… selects which era panel is open. It is a query parameter rather
+    // than a path segment because every era is already described in full on
+    // this one page — nine near-identical URLs would be nine thin duplicates.
+    // The canonical therefore always points at the bare /music-history.
+    $index = velorex_history_index();
+    $era   = isset($_GET['era']) ? preg_replace('/[^a-z0-9-]/', '', (string)$_GET['era']) : '';
+
+    $head  = velorex_meta_block([
+        'title'       => 'The Evolution of Music & Audio | History of Recorded Sound',
+        // Fits velorex_meta_block()'s 160-character trim on purpose, and is
+        // byte-identical to PAGE_META['music-history'] in src/js/seo.js. A
+        // longer string would be ellipsised here and replaced in full by the
+        // SPA, so one URL would carry two different descriptions.
+        'description' => 'How recorded music worked, from the phonograph and gramophone to vinyl, '
+            . 'cassettes, CDs, MP3 and streaming — the dates, the machines and what replaced them.',
+        'canonical'   => VELOREX_SITE_URL . '/music-history',
+        'image'       => VELOREX_DEFAULT_OG_IMAGE,
+        'imageAlt'    => 'A timeline of music playback technology',
+    ]);
+    $head .= velorex_jsonld_site();
+    $head .= velorex_jsonld_breadcrumbs([
+        ['name' => 'Home', 'url' => VELOREX_SITE_URL . '/'],
+        ['name' => 'Music History'],
+    ]);
+
+    $html = velorex_shell();
+    $html = velorex_inject_head($html, $head);
+    $html = velorex_show_section($html, 'page-music-history');
+    // Draw the hero collage and the nostalgia mosaic before the SPA boots, so
+    // the first paint is not nine empty boxes above the fold.
+    $html = velorex_history_fill_motifs($html);
+    $html = velorex_set_div_inner(
+        $html,
+        '<div id="music-history-body">',
+        velorex_history_index_html($index, $era)
+    );
+    echo $html;
+    exit;
+}
+

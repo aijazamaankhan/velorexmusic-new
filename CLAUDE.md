@@ -1407,6 +1407,7 @@ See `PLAYWRIGHT_MCP_README.md` for the optional MCP server setup if you want bro
 | Abandoned cart / checkout recovery | ✅ Shipped | Admin panel over both sources, plus automatic 2-hour and 24-hour emails once the cron is installed (§9). See §26. |
 | Server-side cart persistence | ✅ Shipped | `carts` table mirrored from the browser on a debounce. localStorage is still the source of truth — this is a one-way copy for reporting and recovery. See §26. |
 | Campaign sending | Manual | There is a consent-correct list and a Brevo sync, but no campaign composer here — write and send those from Brevo's dashboard. Filter on `Campaign safe: YES` in the CSV export, or on the opted-in list in Brevo. |
+| Music & audio history | ✅ Shipped | An independent educational section at `/music-history` with an article per topic — server-rendered, sourced from institutional archives, and explicitly not about Velorex products. See §41. |
 | Frontend test coverage | Minimal | Only `test-admin-login.js` exists. Worth expanding when there's time. |
 
 ## 13. Conventions for AI assistants editing this repo
@@ -3083,3 +3084,190 @@ this is required once ads are running, not just for verification.
 Worth knowing before switching it on: AdSense approval needs original content
 and a real privacy policy, and a blog with a handful of posts is often declined
 on first application.
+
+## 41. The Evolution of Music & Audio
+
+An independent educational section at `/music-history`, with an article per
+topic at `/music-history/<slug>`. Navbar → **History**, and a footer link.
+
+| Piece | File |
+|---|---|
+| Content library (eras, order, cards, article lookup) | [src/history/history-lib.php](src/history/history-lib.php) |
+| The articles themselves | [src/history/history-content.php](src/history/history-content.php), [history-content-2.php](src/history/history-content-2.php), [history-content-3.php](src/history/history-content-3.php) |
+| Server-side HTML | [src/history/history-render.php](src/history/history-render.php) |
+| JSON for the SPA | [api/music-history.php](api/music-history.php) |
+| Storefront views | [src/js/storefront/music-history.js](src/js/storefront/music-history.js) |
+| Styles | [src/styles/components/music-history.css](src/styles/components/music-history.css) |
+| Server render | `$route === 'musichistory'` / `'musichistoryarticle'` in [seo-render.php](seo-render.php) |
+| Hover sounds | [src/js/storefront/music-history-audio.js](src/js/storefront/music-history-audio.js) |
+| Guards | [tests/music-history.php](tests/music-history.php) |
+
+### What it is NOT
+
+**It is not the history of Velorex Music, and Velorex made none of these
+machines.** Fourteen eras and twenty-one articles about how recording and
+playback technology actually developed — Edison's cylinder, Berliner's disc,
+KDKA, the microgroove LP, the Compact Cassette, the CD, MiniDisc and DAT,
+surround sound, Napster and the download era, the loudness war, the iPod, the
+phone, lossless and spatial audio, and the vinyl revival.
+
+`history-content-3.php` holds everything from 1987 onwards. It is a separate
+file because the modern era did not happen in one line: recordable digital
+formats, surround sound, file sharing, the phone and a revival of the oldest
+format all overlap, so they are kept together rather than threaded through the
+earlier files by date.
+Every brand named belongs to somebody else, and the brands block says so in
+the copy, not just in a comment. `tests/music-history.php` fails the build if
+an article ever puts "Velorex" next to a manufacturing verb.
+
+The point of the section is search traffic and the pleasure of the subject,
+not a sales pitch. There is exactly one call to action, at the very bottom.
+
+### Content lives in PHP, not in the database
+
+The blog keeps its text in MySQL because the owner writes posts. This is
+curated, fact-checked reference material, so it ships with the code where it
+can be reviewed in a diff and cannot be edited into something inaccurate from
+a browser. One canonical copy, read by three consumers: the JSON endpoint, the
+server renderer and the sitemap.
+
+**Sources are institutional and each article carries them at the foot** —
+Library of Congress, Smithsonian, the IEEE's Engineering and Technology
+History Wiki, Philips' and Fraunhofer's own archives. Where accounts genuinely
+differ (the phonograph's construction date) the text says so rather than
+picking one and stating it flatly. The prose is written from the research, not
+copied from it. **If you add an article, add its sources.**
+
+### Illustrations are drawn, not photographed
+
+Era and topic art is inline SVG (`historyMotif()` in the JS,
+`velorex_history_motif()` in the PHP — seventeen motifs, kept identical).
+Historical product photography is almost always someone else's copyright and
+museum scans carry credit requirements this codebase has no field for. A drawn
+motif is honest about being an illustration and claims nothing.
+
+### Two renderers, one content library
+
+`history-render.php` and `music-history.js` build the same markup against the
+same classes — the server so a crawler gets the complete article, the SPA so
+navigation stays instant. **Change a class name or block shape in one and
+change it in the other**, or that half silently loses its styling.
+
+Three things that were bugs here:
+
+- **The index payload carries a `titles` map covering EVERY article**, not just
+  the ones with hub cards. An era panel links to whatever articles belong to
+  it, and four of them (`vinyl`, `mp3`, `loudness-war`, `file-sharing`) have no
+  card — reading names off the card list alone printed a raw slug on the client
+  while the server rendered the real title, so the page changed under you as it
+  hydrated.
+- **A meta description must fit 160 BYTES**, because `velorex_trim_text()`
+  ellipsises the server's copy while `src/js/seo.js` sets the full string on
+  hydration — one URL, two different descriptions. The limit is bytes, not
+  characters: an em dash costs three. Eight of the first fourteen were over.
+- **The hub's title and description exist twice** — in `seo-render.php` and in
+  `PAGE_META['music-history']` in `src/js/seo.js` — and must stay
+  byte-identical for the same reason. The test compares the two files.
+
+### `?era=` is a query parameter, not a path segment
+
+Every era is described in full on the one hub page, so nine era paths would be
+nine near-duplicate thin pages. The era is recorded with `history.replaceState`
+so the back button and a shared link both work, and the canonical always points
+at the bare `/music-history`.
+
+### JSON-LD is `Article`, never `Product`
+
+You cannot buy a gramophone here. Marking these up as purchasable Offers would
+be a false claim about a buyable item — the same rule that keeps Offer markup
+off combos (§17).
+
+### The timeline rail scrolls; it does not collapse into a second layout
+
+`.mh-rail` is one horizontally scrollable strip at every width, so a phone gets
+a swipe rather than a separate mobile list that would drift out of step with
+the desktop one. `.mh-era-label` is `white-space: nowrap` — the labels must
+never be allowed to shrink into ambiguity. Verified at 1440 and 390 with no
+clipped label and no horizontal page overflow.
+
+**A hidden scrollbar has to be replaced by something, or the rail is a trap.**
+`scrollbar-width: none` removed the only affordance a desktop mouse had, and
+with fourteen eras that made everything after 1990 unreachable — reported as
+*"years are not moving after 1990"*. Four things now say it scrolls, and all
+four earn their place:
+
+- **Arrow buttons**, which live in gutters `.mh-rail-wrap.has-overflow`
+  reserves for them. They were briefly overlaid on the track instead, which
+  put an arrow on top of whichever era sat under it — including, in the
+  reported case, the selected one. The track must never scroll under an arrow.
+- **Edge fades**, switched off at whichever end you have reached, so a fully
+  scrolled rail does not keep implying there is more.
+- **The wheel**, claimed only while the rail can still move that way, so the
+  page keeps scrolling normally at either end.
+- **Selecting an era reveals it** — `historyRailReveal()` centres it — and a
+  deep link to `?era=modern-listening` opens with that era in view rather than
+  at 1877.
+
+`historyRailReveal()` computes the offset itself instead of calling
+`scrollIntoView()`. That method also scrolls every scrollable ancestor
+*including the window*, so choosing a late era jumped the page vertically, and
+its `inline: center` + `block: nearest` pair declined to move the rail at all
+on a fresh deep link. It runs on the next frame after the arrows are bound,
+because binding adds `.has-overflow` and therefore changes the track width the
+centring measures against.
+
+### The hero has a record playing behind it
+
+`.mh-stage` in `index.html`: a drawn LP that rotates, a tonearm that tracks in
+by about two degrees, and a thirteen-bar level meter along the bottom edge.
+Static markup, like the rest of this hero, and `aria-hidden`.
+
+It is drawn in SVG for the same reason the motifs are — a photograph of a
+turntable is someone else's copyright — and it is constrained the way any
+decoration on a reading page has to be: `pointer-events: none`, masked away
+from the headline, hidden below 900px where there is no empty column for it,
+and **completely still under `prefers-reduced-motion`**, which is the whole
+point of that setting. The disc turns once every 24 seconds rather than at 33
+rpm, because at this size a real speed is a blur.
+
+### Hover sounds are synthesised, and off by default
+
+Each card in The Machines grid can play a short cue for the machine it
+describes, keyed by the motif already on the card (`data-sound`), emitted by
+both renderers.
+
+**There are no audio files.** Every cue is built at runtime from oscillators
+and filtered noise buffers in
+[music-history-audio.js](src/js/storefront/music-history-audio.js) — crackle is
+sparse impulses, a cassette is a filtered transient, streaming is a rising
+sine. That is the same decision as the drawn artwork: a recording of a real
+gramophone is someone's copyright, an oscillator is not, and it costs about
+4 KB instead of 400.
+
+**It is off until the visitor turns it on**, and the toggle sits in the header
+of the section where the sounds happen. Sound that starts because a pointer
+crossed something is hostile. It is also the only arrangement that *can* work:
+browsers will not start audio without a user gesture, and moving a mouse is not
+one — the click on the toggle is what unlocks the `AudioContext`. Nothing is
+constructed while the feature is off, the preference is remembered in
+localStorage, and the toggle hides itself entirely where `(hover: hover) and
+(pointer: fine)` fails or Web Audio is missing, rather than offering a control
+that does nothing.
+
+Repeats of the same cue inside 320ms are dropped, so sweeping the grid cannot
+stack a dozen voices, and every gain is ramped rather than switched — a gain
+that jumps to or from zero clicks on every cue.
+
+### Adding an article
+
+1. Add it to `velorex_history_articles()` in one of the content files, with
+   `metaTitle`, `metaDescription` (≤160 **bytes**), sections, brands, facts,
+   nostalgia and `sources`.
+2. Add the slug to `velorex_history_order()` — that drives prev/next **and**
+   the sitemap. Add it to `velorex_history_cards()` too if it is a machine or a
+   format; leave it off if it is a subject (the grid is introduced as the
+   equipment), and it stays reachable from its era panel and the sitemap.
+   Neither the hub copy nor this section states a count, deliberately — both
+   went stale the first time the section grew.
+3. Attach it to an era's `articles` list so it is reachable from the timeline.
+4. Run `php tests/music-history.php`.

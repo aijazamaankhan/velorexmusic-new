@@ -137,7 +137,7 @@
   <script src="src/js/analytics.js?v=85ee1923"></script>
   <!-- URL vocabulary + live metadata. Must load before router.js and pages.js,
        both of which call Seo.buildPath()/Seo.productPath() to render hrefs. -->
-  <script src="src/js/seo.js?v=76572bc9"></script>
+  <script src="src/js/seo.js?v=67f54f88"></script>
   <script src="src/js/constants.js?v=b0f974a1"></script>
   <script src="src/js/storage.js?v=7d4b11c3"></script>
   <script src="src/js/auth.js?v=b09358ad"></script>
@@ -176,13 +176,15 @@
   <script src="src/js/storefront/combos.js?v=32d788b8"></script>
   <script src="src/js/storefront/ads.js?v=cbb5cd9c"></script>
   <script src="src/js/storefront/blog.js?v=1cd0941e"></script>
+  <script src="src/js/storefront/music-history.js?v=45f7aa17"></script>
+    <script src="src/js/storefront/music-history-audio.js?v=7b77bb14"></script>
   <script src="src/js/storefront/recent-sales.js?v=956fc5e9"></script>
   <script src="src/js/storefront/site-settings.js?v=159a6208"></script>
   <script src="src/js/storefront/coupon.js?v=bcf00ad5"></script>
   <!-- Newsletter signup. Bound from router.js's boot and from the inline
        onclick on the homepage form. -->
   <script src="src/js/storefront/newsletter.js?v=ee512e2d"></script>
-  <script src="src/js/storefront/router.js?v=5562d861"></script>
+  <script src="src/js/storefront/router.js?v=03298b6f"></script>
   <script src="src/js/storefront/checkout.js?v=f539fe43"></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
        they can be shared between the storefront pages without duplication.
@@ -202,6 +204,7 @@
   <link rel="stylesheet" href="src/styles/components/announcement.css?v=7b03a99d">
   <link rel="stylesheet" href="src/styles/components/coupon.css?v=bce683e9">
   <link rel="stylesheet" href="src/styles/components/ads.css?v=e52c803f">
+  <link rel="stylesheet" href="src/styles/components/music-history.css?v=6e18fb90">
   <link rel="stylesheet" href="src/styles/components/recent-sales.css?v=066910e1">
   <link rel="stylesheet" href="src/styles/components/label-band.css?v=58b6bd4e">
   <!-- Page-specific styles (hero, products, cart, profile, footer, etc.).
@@ -999,6 +1002,188 @@
                 <div id="addresses-list" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;"></div>
               </div>
             </div>
+
+    <!-- ==================== THE EVOLUTION OF MUSIC & AUDIO ====================
+         An INDEPENDENT educational section. Nothing described in it was made by
+         Velorex Music, and no copy here may imply otherwise — the guard note
+         lives in src/history/history-lib.php and applies to this markup too.
+
+         The hero, nostalgia and closing blocks are STATIC in this file for the
+         same reason the homepage hero's brand slide is (CLAUDE.md §15): these
+         two routes are server-rendered by seo-render.php, which injects the
+         head and reveals the section, but the prose a crawler reads has to
+         exist somewhere. The timeline and the topic cards are built by
+         src/js/storefront/music-history.js from the same PHP library the
+         server renders from, so the two can never disagree. -->
+    <div id="page-music-history" class="page-section">
+      <header class="mh-hero">
+        <!-- A record playing, behind everything. Drawn, not photographed, for
+             the same reason the motifs are (see history-lib.php): a photograph
+             of a turntable is someone else's copyright. Decorative and
+             aria-hidden — it says nothing a reader needs. -->
+        <div class="mh-stage" aria-hidden="true">
+          <div class="mh-deck">
+            <svg class="mh-disc" viewBox="0 0 400 400" focusable="false">
+              <defs>
+                <radialGradient id="mhDiscFace" cx="50%" cy="42%" r="62%">
+                  <stop offset="0%"  stop-color="#2a2140"/>
+                  <stop offset="55%" stop-color="#161226"/>
+                  <stop offset="100%" stop-color="#0d0a16"/>
+                </radialGradient>
+                <linearGradient id="mhDiscSheen" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%"   stop-color="#ff6b35" stop-opacity="0"/>
+                  <stop offset="42%"  stop-color="#ff6b35" stop-opacity="0.55"/>
+                  <stop offset="58%"  stop-color="#ffd7c2" stop-opacity="0.30"/>
+                  <stop offset="100%" stop-color="#ff6b35" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <circle cx="200" cy="200" r="196" fill="url(#mhDiscFace)"/>
+              <circle cx="200" cy="200" r="196" fill="url(#mhDiscSheen)" opacity="0.5"/>
+              <!-- Grooves. Spaced unevenly on purpose: evenly spaced rings
+                   read as a target, not as a record. -->
+              <g fill="none" stroke="#ffffff" stroke-opacity="0.07">
+                <circle cx="200" cy="200" r="186"/><circle cx="200" cy="200" r="176"/>
+                <circle cx="200" cy="200" r="169"/><circle cx="200" cy="200" r="158"/>
+                <circle cx="200" cy="200" r="150"/><circle cx="200" cy="200" r="139"/>
+                <circle cx="200" cy="200" r="131"/><circle cx="200" cy="200" r="118"/>
+                <circle cx="200" cy="200" r="109"/><circle cx="200" cy="200" r="97"/>
+              </g>
+              <circle cx="200" cy="200" r="70" fill="#ff6b35" fill-opacity="0.20"/>
+              <circle cx="200" cy="200" r="70" fill="none" stroke="#ff6b35" stroke-opacity="0.45"/>
+              <circle cx="200" cy="200" r="34" fill="#ff6b35" fill-opacity="0.30"/>
+              <circle cx="200" cy="200" r="7"  fill="#0d0a16"/>
+              <!-- One highlight that rotates with the disc, so the spin is
+                   legible even though the grooves are radially symmetric. -->
+              <path d="M200 12a188 188 0 0 1 133 55" fill="none"
+                    stroke="#ffffff" stroke-opacity="0.16" stroke-width="3" stroke-linecap="round"/>
+            </svg>
+            <!-- The arm does not rotate; it rests on the disc and drifts in by
+                 a couple of degrees, which is what sells "playing". -->
+            <svg class="mh-arm" viewBox="0 0 200 200" focusable="false">
+              <g fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round">
+                <path d="M176 26 L120 104"/>
+                <path d="M120 104 l-10 16"/>
+              </g>
+              <circle cx="176" cy="26" r="12" fill="currentColor" fill-opacity="0.22"
+                      stroke="currentColor" stroke-width="3"/>
+              <circle cx="108" cy="124" r="5" fill="currentColor"/>
+            </svg>
+          </div>
+          <!-- Level meter. Seven bars is enough to read as sound and few
+               enough that the eye does not start counting them. -->
+          <div class="mh-eq">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            <i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+        </div>
+        <div class="mh-hero-inner">
+          <div>
+            <span class="mh-eyebrow">The story of music technology</span>
+            <h1>A Journey Through <span>Music &amp; Machines</span></h1>
+            <p class="mh-hero-sub">From the earliest recording devices to today's streaming world,
+              discover how the machines and formats we use to experience music have evolved.</p>
+            <div class="mh-hero-cta">
+              <a href="#mh-timeline" class="btn btn-primary btn-lg"
+                 onclick="document.getElementById('mh-timeline').scrollIntoView({behavior:'smooth'});return false;">
+                <i class="fas fa-timeline"></i> Explore the Timeline</a>
+              <a href="/music-history/gramophone" class="btn btn-secondary btn-lg"
+                 onclick="navigate('music-history-article',{slug:'gramophone'});return false;">
+                <i class="fas fa-play"></i> Start the Journey</a>
+            </div>
+            <!-- Static, like the rest of this hero, and deliberately free of
+                 counts: an era or article total goes stale the next time the
+                 section grows, and nobody notices until it is wrong. -->
+            <div class="mh-hero-meta">
+              <div><strong>1877 &ndash; today</strong><span>The span</span></div>
+              <div><strong>Cylinder to stream</strong><span>The journey</span></div>
+              <div><strong>Sourced &amp; cited</strong><span>Every claim</span></div>
+            </div>
+          </div>
+          <!-- Oldest to newest, left to right. Drawn motifs, not photographs —
+               historical product photography is almost always someone else's
+               copyright. -->
+          <div class="mh-collage" aria-hidden="true">
+            <div class="mh-collage-item" data-motif="cylinder"></div>
+            <div class="mh-collage-item" data-motif="radio"></div>
+            <div class="mh-collage-item" data-motif="reel"></div>
+            <div class="mh-collage-item" data-motif="turntable"></div>
+            <div class="mh-collage-item" data-motif="amp"></div>
+            <div class="mh-collage-item" data-motif="cassette"></div>
+            <div class="mh-collage-item" data-motif="cd"></div>
+            <div class="mh-collage-item" data-motif="ipod"></div>
+            <div class="mh-collage-item" data-motif="stream"></div>
+          </div>
+        </div>
+      </header>
+
+      <div class="mh-section">
+        <div class="mh-wrap">
+          <div id="music-history-body">
+            <!-- Timeline + topic cards are rendered here, by the SPA on a live
+                 visit and by seo-render.php for a crawler. -->
+            <div class="loading-spinner"></div>
+          </div>
+        </div>
+      </div>
+
+      <section class="mh-nostalgia">
+        <div class="mh-wrap">
+          <div class="mh-nostalgia-grid">
+            <div>
+              <span class="mh-eyebrow">Before the playlist</span>
+              <h2 class="mh-h2">Remember When Music <span>Felt Different?</span></h2>
+              <p class="mh-sub">Before streaming, listening was an activity rather than a background
+                condition. It had steps, and the steps were part of it.</p>
+              <ul class="mh-steps">
+                <li>You chose a record.</li>
+                <li>You cleaned it.</li>
+                <li>You placed the needle.</li>
+                <li>You adjusted the amplifier.</li>
+                <li>You pressed play on a cassette.</li>
+                <li>You waited for the radio.</li>
+                <li>You built a CD collection, one at a time.</li>
+              </ul>
+              <p class="mh-nostalgia-close">These machines didn't just play music. They sat in
+                particular rooms, in particular years, and they ended up carrying the memory of
+                whatever was happening while they played.</p>
+            </div>
+            <div class="mh-mosaic" aria-hidden="true">
+              <div class="mh-mosaic-item" data-motif="vinyl"></div>
+              <div class="mh-mosaic-item" data-motif="cassette"></div>
+              <div class="mh-mosaic-item" data-motif="stereo"></div>
+              <div class="mh-mosaic-item" data-motif="headphones"></div>
+              <div class="mh-mosaic-item" data-motif="radio"></div>
+              <div class="mh-mosaic-item" data-motif="turntable"></div>
+              <div class="mh-mosaic-item" data-motif="cd"></div>
+              <div class="mh-mosaic-item" data-motif="reel"></div>
+              <div class="mh-mosaic-item" data-motif="speaker"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="mh-closing">
+        <div class="mh-wrap">
+          <h2>Music Changes. <span>The Memories Stay.</span></h2>
+          <p>Every format on this page was once the newest thing there was, and every one of them was
+            replaced. What has not changed in a hundred and fifty years is the part underneath: the
+            wish to hear something again, to keep it, and to play it for somebody else.</p>
+          <a href="/products" class="btn btn-primary btn-lg"
+             onclick="navigate('products');return false;">
+            <i class="fas fa-compact-disc"></i> Explore Music at Velorex</a>
+        </div>
+      </section>
+    </div>
+
+    <!-- Article route: /music-history/<slug> -->
+    <div id="page-music-history-article" class="page-section">
+      <div class="mh-wrap">
+        <div id="music-history-article-body">
+          <div class="loading-spinner"></div>
+        </div>
+      </div>
+    </div>
+
           </div>
         </div>
       </section>
