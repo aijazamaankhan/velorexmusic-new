@@ -19,12 +19,15 @@
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/_blog_helpers.php';
+require_once __DIR__ . '/_collections_helpers.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $pdo = db();
 
 try {
     blog_ensure_table($pdo);
+    $hasRelated = blog_has_related_columns($pdo);
+    $hasMeta    = blog_has_meta_columns($pdo);
     $isAdmin = is_admin_request();
 
     // ---------------------------------------------------------------- GET ---
@@ -44,6 +47,14 @@ try {
             }
             $post = blog_row_to_full($row);
             $post['readMinutes'] = blog_read_minutes($row['content']);
+            $post['wasUpdated']  = blog_was_updated($row['published_at'], $row['updated_at']);
+            // What to read or shop next — the same links seo-render.php prints
+            // under the server-rendered article (api/_collections_helpers.php).
+            if ($row['status'] === 'published') {
+                $rel = collections_related_for_post($pdo, $row['slug']);
+                $rel['products'] = array_map(static fn($p) => $p + ['url' => velorex_product_path($p)], $rel['products']);
+                $post['related'] = $rel;
+            }
             echo json_encode($post);
             exit;
         }
@@ -117,7 +128,21 @@ try {
         $cover = trim((string)($b['coverImage'] ?? ''));
         if ($cover !== '' && !blog_safe_url($cover)) $cover = '';
 
-        $author = trim((string)($b['author'] ?? 'Velorex Music'));
+        // Author is optional. Blank means the post is by the shop itself; a
+        // name is shown and marked up as a Person, so only enter a real one.
+        $author = mb_substr(trim((string)($b['author'] ?? '')), 0, 100);
+        if ($author === '') $author = 'Velorex Music';
+
+        // Editorial relations, validated. Unknown shapes are dropped.
+        $relCollections = json_encode(array_slice(blog_decode_list($b['relatedCollections'] ?? [], 'path'), 0, 8));
+        $relProducts    = json_encode(array_slice(blog_decode_list($b['relatedProducts'] ?? [], 'int'), 0, 12));
+
+        // Optional SEO overrides. Blank stores NULL so the derived value
+        // (velorex_blog_meta_title / _description) is used.
+        $metaTitle = mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($b['metaTitle'] ?? ''))), 0, 70);
+        $metaDesc  = mb_substr(trim(preg_replace('/\s+/u', ' ', (string)($b['metaDescription'] ?? ''))), 0, 170);
+        $metaTitle = $metaTitle !== '' ? $metaTitle : null;
+        $metaDesc  = $metaDesc !== '' ? $metaDesc : null;
         $id = isset($b['id']) && $b['id'] !== '' && $b['id'] !== null ? (int)$b['id'] : 0;
 
         if ($id > 0) {
@@ -142,32 +167,52 @@ try {
             $publishedAt = $existing['published_at'];
             if ($status === 'published' && !$publishedAt) $publishedAt = date('Y-m-d H:i:s');
 
+            // updated_at feeds the "Updated <date>" line and dateModified. Only
+            // a change to what the reader reads may move it: re-tagging related
+            // collections or flipping status must not make an old post look
+            // freshly revised. Assigning the column to itself suppresses
+            // MySQL's ON UPDATE stamp.
+            $textChanged = $title !== $existing['title'] || $content !== $existing['content']
+                        || $excerpt !== (string)$existing['excerpt'];
             $st = $pdo->prepare(
                 'UPDATE blog_posts
                     SET slug=:slug, title=:title, excerpt=:excerpt, content=:content,
                         cover_image=:cover, status=:status, author=:author,
-                        published_at=:pub
-                  WHERE id=:id'
+                        published_at=:pub'
+                  . ($hasRelated ? ', related_collections=:rc, related_products=:rp' : '')
+                  . ($hasMeta ? ', meta_title=:mt, meta_description=:md' : '')
+                  . ($textChanged ? '' : ', updated_at=updated_at')
+                  . ' WHERE id=:id'
             );
-            $st->execute([
+            $params = [
                 ':slug' => $slug, ':title' => $title, ':excerpt' => $excerpt,
                 ':content' => $content, ':cover' => $cover !== '' ? $cover : null,
                 ':status' => $status, ':author' => $author,
                 ':pub' => $publishedAt, ':id' => $id,
-            ]);
+            ];
+            if ($hasRelated) { $params[':rc'] = $relCollections; $params[':rp'] = $relProducts; }
+            if ($hasMeta) { $params[':mt'] = $metaTitle; $params[':md'] = $metaDesc; }
+            $st->execute($params);
         } else {
             $slug = blog_unique_slug($pdo, trim((string)($b['slug'] ?? '')) ?: $title);
             $publishedAt = $status === 'published' ? date('Y-m-d H:i:s') : null;
             $st = $pdo->prepare(
                 'INSERT INTO blog_posts (slug, title, excerpt, content, cover_image,
-                                         status, author, published_at)
-                 VALUES (:slug, :title, :excerpt, :content, :cover, :status, :author, :pub)'
+                                         status, author, published_at'
+                . ($hasRelated ? ', related_collections, related_products' : '')
+                . ($hasMeta ? ', meta_title, meta_description' : '') . ')
+                 VALUES (:slug, :title, :excerpt, :content, :cover, :status, :author, :pub'
+                . ($hasRelated ? ', :rc, :rp' : '')
+                . ($hasMeta ? ', :mt, :md' : '') . ')'
             );
-            $st->execute([
+            $params = [
                 ':slug' => $slug, ':title' => $title, ':excerpt' => $excerpt,
                 ':content' => $content, ':cover' => $cover !== '' ? $cover : null,
                 ':status' => $status, ':author' => $author, ':pub' => $publishedAt,
-            ]);
+            ];
+            if ($hasRelated) { $params[':rc'] = $relCollections; $params[':rp'] = $relProducts; }
+            if ($hasMeta) { $params[':mt'] = $metaTitle; $params[':md'] = $metaDesc; }
+            $st->execute($params);
             $id = (int)$pdo->lastInsertId();
         }
 

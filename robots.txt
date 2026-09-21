@@ -13,12 +13,28 @@
 User-agent: *
 
 # --- Admin panel -------------------------------------------------------------
-# Deliberately off the conventional /admin path so scanners 404, but there is
-# no reason for a crawler to ever request it.
-Disallow: /vlx-admin-2026.html
+# The admin page is deliberately NOT named here. Listing it in a public
+# robots.txt advertised the one URL its unconventional name exists to hide.
+# It carries <meta name="robots" content="noindex, nofollow, noarchive">,
+# which keeps it out of the index without announcing where it is.
 Disallow: /old%20admin/
 
 # --- Backend + tooling -------------------------------------------------------
+# The public, read-only endpoints the storefront calls to BUILD its pages are
+# allowed: Googlebot renders the SPA and fetches exactly these, and with all of
+# /api/ blocked, the homepage's product grids, combos and blog cards rendered
+# empty for Google. The responses carry "X-Robots-Tag: noindex" (api/.htaccess),
+# so the JSON itself never becomes a search result. Longest match wins, so
+# these Allow lines beat the Disallow below.
+Allow: /api/products.php
+Allow: /api/product.php
+Allow: /api/categories.php
+Allow: /api/combos.php
+Allow: /api/blog.php
+Allow: /api/music-history.php
+Allow: /api/settings.php
+Allow: /api/recent-sales.php
+Allow: /api/collections.php
 Disallow: /api/
 Disallow: /scripts/
 Disallow: /node_modules/
@@ -26,14 +42,11 @@ Disallow: /test-results/
 Disallow: /seo-render.php
 
 # --- Transactional / personal views ------------------------------------------
-# No ranking value, and we never want a cart or profile URL surfacing publicly.
-Disallow: /cart
-Disallow: /checkout
-Disallow: /profile
-Disallow: /login
-Disallow: /signup
-Disallow: /forgot
-Disallow: /track-order.html
+# /cart, /checkout, /profile, /login, /signup, /forgot and /track-order.html are
+# NOT disallowed, on purpose. Each is served with "noindex" in its own HTML
+# (seo-render.php _route=private; track-order.html's meta tag). A Disallow
+# would stop Google reading that noindex, and a blocked URL can still be
+# indexed bare from links — so they stay crawlable and say "noindex" themselves.
 
 # --- Crawl-budget control ----------------------------------------------------
 # Faceted filtering can generate effectively unlimited URL permutations from
@@ -43,6 +56,14 @@ Disallow: /*?search=
 Disallow: /*?sort=
 Disallow: /*&search=
 Disallow: /*&sort=
+Disallow: /*?people=
+Disallow: /*&people=
+
+# --- Private one-time links --------------------------------------------------
+# Cart-recovery and coupon links from emails. They carry a token or a personal
+# code and render nothing a searcher could use.
+Disallow: /*?recover=
+Disallow: /*?coupon=
 
 # --- Assets ------------------------------------------------------------------
 # Explicitly allowed: Google must fetch CSS/JS to render the SPA, and blocking

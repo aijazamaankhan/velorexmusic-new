@@ -3348,3 +3348,146 @@ adjust their filters reads as a broken page.
   §17 rules out. Banner copy avoids "less cost" for the same reason.
 - Merchandise's banner says **Pan-India**, not Worldwide: checkout is India-only
   (§12).
+
+## 43. SEO hardening (September 2026)
+
+A second pass over §15. The architecture did not change; what changed is that
+the markup stopped making claims the shop cannot back.
+
+**Structured data that must stay honest**
+
+- **No `aggregateRating`.** `products.rating`/`reviews` are typed into the
+  admin form (it defaults the rating to 4.5); there is no review system and no
+  review text on the page. Publishing them is fake review markup. The detail
+  page also hides its star row when `reviews` is 0.
+- **Out of stock is `OutOfStock`, never `PreOrder`.** The cart refuses stock-0
+  items, so "Pre-order available" was a promise checkout could not keep. The
+  visible text says "Out of stock", or "Coming soon" for `badge = upcoming`.
+- **`brand` is the record label** (`specs.label`), omitted when there is none.
+  It used to be the artist.
+- **No invented `priceValidUntil`**, and `shippingDetails` only when the
+  product's charge is actually known (free, or a flat `shipping_charge`).
+
+**Shared builders — PHP and JS must agree** (guarded by
+`node tests/seo-meta-parity.js [full-products.json]`):
+
+| PHP (`src/seo/seo-lib.php`) | JS (`src/js/seo.js`) |
+|---|---|
+| `velorex_product_meta_description()` | `Seo.productDescription()` |
+| `velorex_category_meta()` | `Seo.categoryMeta()` |
+| `velorex_product_image_alt()` | `Seo.productImageAlt()` |
+
+Every product description is built from real fields only and is guaranteed
+≤160 characters, so neither side ever trims it. Category descriptions must
+also be ≤160 — the test fails otherwise, because the server trims and the SPA
+does not. `velorex_trim_text()` counts characters, not bytes.
+
+**One `<h1>` per view.** The homepage `<h1>` is the descriptive line in the
+hero badge ("Buy Vinyl Records & Cassettes Online in India"); the slogan is a
+`<p class="hero-title">`. On product pages the banner title `#detail-title` is
+a `<p>` and the product name in the detail block is the `<h1>`.
+
+**Breadcrumbs are drawn server-side** from the same trail as the
+BreadcrumbList JSON-LD: `velorex_jsonld_breadcrumbs()` records it and
+`velorex_inject_head()` draws it. Product trail is Home › Category › Language
+› Product (`velorex_product_trail()`), mirrored in `updateBreadcrumbs()`.
+
+**404s.** `ErrorDocument 404 /seo-render.php` gives every unclaimed URL the
+branded page with a real 404, no canonical, `noindex`, and a
+`<meta name="velorex-404">` that makes the router keep the `#page-not-found`
+view instead of showing the homepage. Missing assets get a plain-text 404.
+Trailing slashes and external `/index.html` requests 301 to the clean URL.
+
+**robots.txt allows the read-only API endpoints the SPA renders from**
+(products, product, categories, combos, blog, music-history, settings,
+recent-sales); `api/.htaccess` sends `X-Robots-Tag: noindex` so the JSON never
+enters the index. Blocking all of `/api/` left the homepage grids empty in
+Google's render.
+
+**Copy follows the stock.** Category and homepage copy describe what is on the
+shelf (Hindi vinyl, cassettes, pre-owned). Widen it when CDs, English titles or
+films arrive — not before. Never put sample personal data back into the
+profile markup in `index.html`.
+
+## 44. Collection graph, composer pages and Journal relations (Phase 2)
+
+| Piece | File |
+|---|---|
+| Composer registry, facet rule, pre-owned copy (pure) | `velorex_artist_collections()`, `velorex_facet_status()`, `velorex_preowned_meta()` in [src/seo/seo-lib.php](src/seo/seo-lib.php) |
+| Graph: what is live, what links to what | [api/_collections_helpers.php](api/_collections_helpers.php) |
+| Same data for the SPA | [api/collections.php](api/collections.php) (`?path=` / `?product=` / `?artist=`) |
+| Storefront rendering | [src/js/storefront/collections.js](src/js/storefront/collections.js) + [collection-links.css](src/styles/components/collection-links.css) |
+| Homepage About panel | [about-velorex.css](src/styles/components/about-velorex.css) |
+
+**Composer pages (`/artists/<slug>`) are curated, not generated.** A composer
+gets a page only by being added to `velorex_artist_collections()` with written,
+verifiable context, and the page is indexable only while it holds
+`VELOREX_ARTIST_MIN_PRODUCTS` (8) records. Do not add a page per artist — a
+bare grid for every name is exactly the thin-page pattern this avoids. The
+registry's `about` copy states only well-documented facts; nothing about
+Velorex's stock is hand-written (counts are computed).
+
+**Every related link is computed and points at a live, indexable page.**
+`collections_live_targets()` filters by stock, the facet rule and the composer
+threshold. The server (seo-render.php) and the SPA render the same links from
+the same PHP, so a crawler and a visitor see one link graph.
+
+**Index rules that prevent cannibalisation:**
+
+- Language facet: holds every product of its parent → canonical to the parent;
+  fewer than 6 products → noindex. Same rule in the sitemap and in `Seo.facetStatus()`.
+- Pre-owned: when one format holds all second-hand stock, `/pre-owned/<format>`
+  canonicalises to `/pre-owned`, and the hub's copy names that format.
+
+**Journal relations are editorial.** Admin → Blog now has Author (real names
+only), "Records in this article" (product ids) and "Related collections"
+(checkboxes). They drive the block under the post and the Journal links on
+those collections and products. Columns are auto-added. An untagged post falls
+back to the broadest live shelves, and untagged vinyl pages show the newest
+posts — both stop the moment posts are tagged.
+
+**"Updated" means the words changed.** `blog_was_updated()` shows it only when
+`updated_at` is more than a day after publishing, and api/blog.php assigns
+`updated_at = updated_at` on saves that don't change title, excerpt or body, so
+re-tagging or re-publishing cannot fake freshness.
+
+**`relatedProducts()` (pages.js) mirrors `collections_related_products()`** —
+same composer, then same format + language; in stock first.
+
+**The homepage links to `/artists/r-d-burman` and `/artists/a-r-rahman`
+statically.** If either composer ever drops to zero records that link 404s —
+remove it from the About tiles then.
+
+## 45. SEO QA pass (September 2026, Phase 3)
+
+The architecture record is **[SEO-CHANGELOG.md](SEO-CHANGELOG.md)**; the owner's
+Search Console routine is **[SEO-GOOGLE-SEARCH-CONSOLE.md](SEO-GOOGLE-SEARCH-CONSOLE.md)**.
+Both are denied over HTTP by the `.md` rule in `.htaccess`.
+
+What this pass changed, in one place:
+
+- **Dev files were publicly downloadable.** `test-admin-login.js` named the
+  admin URL and the dev login. `.htaccess` now refuses it and
+  `playwright-mcp-server.js`, `ids.txt`, `carrier-preview.html`. robots.txt no
+  longer names the admin page either.
+- **Private views go through `seo-render.php` `_route=private`**, which serves
+  the shell with `noindex` and no canonical. As raw `index.html` they declared
+  the homepage canonical. They are no longer disallowed in robots.txt, so Google
+  can read that noindex.
+- **All 32 storefront scripts are `defer`.** See the comment in index.html.
+- **Layout-shift fixes** (each measured): homepage section visible in static
+  HTML (`velorex_shell()` hides it for other routes); `.hero-track` min-height
+  on ≤968px; `renderProductsBanner()` keeps the server's stats and intro while
+  on that path; `initPageProduct()` skips the lean paint when the container
+  carries `data-ssr-id`.
+- **Images:** Product JSON-LD omits `image` when there is no photo (it used to
+  send the brand card); placeholders render with `alt=""`
+  (`VELOREX_PLACEHOLDER_IMAGE`).
+- **`products_decode_text()` loops** until stable — live rows held
+  `&amp;amp;amp;amp;amp;`.
+- **Journal SEO fields:** `meta_title`, `meta_description` (auto-added by
+  `blog_has_meta_columns()`); `velorex_blog_meta_title()` mirrors
+  `Seo.blogMetaTitle()`.
+- **Admin → SEO** (`src/js/admin/seo.js`, `api/admin/seo.php`): product
+  scorecard sorted by a stated priority, plus the measurement guide. Read-only.
+- Static info pages link home as `/`, not `index.html` (which now 301s).

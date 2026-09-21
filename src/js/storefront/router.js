@@ -349,6 +349,14 @@
     }
 
     function parsePageFromUrl() {
+      // seo-render.php answered this URL with a 404. Keep its "not found" view:
+      // falling through to the path parser would show the homepage (for an
+      // unknown path) or a failing product fetch (for a deleted product) on a
+      // URL the server has already told Google does not exist. `path` keeps
+      // the address bar on the URL the visitor actually typed.
+      if (document.querySelector('meta[name="velorex-404"]')) {
+        return { page: 'not-found', params: { path: window.location.pathname + window.location.search } };
+      }
       var hash = window.location.hash.slice(1);
       var fromPath = Seo.parsePath(window.location.pathname, window.location.search);
 
@@ -442,9 +450,31 @@
           }
         } else items.push({ name: 'All Products', active: true });
       } else if (page === 'product') {
-        items.push({ name: 'All Products', page: 'products', params: {} });
+        // Home › Category › Language › Product — the same trail seo-render.php
+        // declares in BreadcrumbList (velorex_product_trail()). This used to be
+        // Home › All Products › Product, which disagreed with the structured
+        // data on every product page.
+        let prod = null;
+        try { prod = (Storage.getProducts() || []).find(p => String(p.id) === String(params.id)) || null; } catch (e) {}
+        const pcat = prod && CAT_LABELS[prod.category] ? prod.category : null;
+        if (pcat) {
+          items.push({ name: CAT_LABELS[pcat], page: 'products', params: { cat: pcat } });
+          const plang = String(prod.language || '').trim().toLowerCase();
+          if (!Seo.isDepartment(pcat) && LANG_LABELS[plang]) {
+            items.push({ name: LANG_LABELS[plang], page: 'products', params: { cat: pcat, lang: plang } });
+          }
+        } else {
+          items.push({ name: 'All Products', page: 'products', params: {} });
+        }
         const title = (document.getElementById('detail-title') || {}).textContent;
         items.push({ name: title && title !== 'Product Details' ? title : 'Details', active: true });
+      }
+      else if (page === 'not-found') items.push({ name: 'Page not found', active: true });
+      else if (page === 'artist') {
+        // Mirrors the BreadcrumbList seo-render.php emits for /artists/<slug>.
+        items.push({ name: 'Vinyl Records', page: 'products', params: { cat: 'vinyl' } });
+        const at = (params && params.title) || (document.getElementById('artist-title') || {}).textContent || '';
+        items.push({ name: at.replace(/ Vinyl Records$/, '') || 'Composer', active: true });
       }
       else if (page === 'preowned') {
         if (params.cat) {
@@ -513,5 +543,18 @@
       else if (page === 'music-history') initPageMusicHistory();
       else if (page === 'music-history-article') initPageMusicHistoryArticle(params);
       else if (page === 'blog-post') initPageBlogPost(params);
+      else if (page === 'artist') initPageArtist(params);
       else if (page === 'forgot') { /* static page, nothing to init */ }
+
+      // "Keep exploring" under listings — the same links seo-render.php
+      // printed on a landing, rebuilt after client-side navigation. Canonical
+      // path only: filters and search never change what the block links to.
+      if (typeof CollectionLinks !== 'undefined') {
+        if (page === 'products') {
+          CollectionLinks.loadPath('collection-related',
+            Seo.buildPath('products', { cat: params && params.cat, lang: params && params.lang, sub: params && params.sub }).split('?')[0]);
+        } else if (page === 'preowned') {
+          CollectionLinks.loadPath('preowned-related', Seo.buildPath('preowned', params || {}));
+        }
+      }
     }

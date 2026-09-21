@@ -79,6 +79,70 @@
 
     function blogEditorEl() { return document.getElementById('blog-content'); }
 
+    // Collection paths an editor can tie a post to. The storefront drops any
+    // that are empty at render time, so listing them all here is safe.
+    // Paths must match velorex_categories() / velorex_artist_collections().
+    var BLOG_COLLECTION_OPTIONS = [
+      ['/vinyl-records', 'Vinyl records'],
+      ['/vinyl-records/hindi', 'Hindi & Bollywood vinyl'],
+      ['/vinyl-records/english', 'English vinyl'],
+      ['/artists/r-d-burman', 'R. D. Burman'],
+      ['/artists/a-r-rahman', 'A. R. Rahman'],
+      ['/pre-owned', 'Pre-owned'],
+      ['/cassettes', 'Cassettes'],
+      ['/audio-cds', 'Audio CDs'],
+      ['/vinyl-care', 'Vinyl care'],
+      ['/merchandise', 'Merchandise']
+    ];
+
+    function renderBlogCollectionOptions(selected) {
+      var host = document.getElementById('blog-related-collections');
+      if (!host) return;
+      selected = selected || [];
+      host.innerHTML = BLOG_COLLECTION_OPTIONS.map(function (o) {
+        return '<label style="display:inline-flex;align-items:center;gap:0.35rem;font-size:0.85rem;">'
+          + '<input type="checkbox" value="' + escapeHTML(o[0]) + '"' + (selected.indexOf(o[0]) !== -1 ? ' checked' : '') + '> '
+          + escapeHTML(o[1]) + '</label>';
+      }).join('');
+    }
+
+    // Character counters for the SEO fields. Past the display limit the count
+    // turns red — Google cuts the text there.
+    function renderBlogMetaCounts() {
+      [['blog-meta-title', 'blog-meta-title-count', 60], ['blog-meta-description', 'blog-meta-desc-count', 155]].forEach(function (c) {
+        var el = document.getElementById(c[0]), out = document.getElementById(c[1]);
+        if (!el || !out) return;
+        var n = el.value.trim().length;
+        out.textContent = n ? '(' + n + '/' + c[2] + ')' : '';
+        out.style.color = n > c[2] ? 'var(--danger, #e74c3c)' : 'var(--text-muted)';
+      });
+    }
+
+    function blogRelatedProductIds() {
+      var raw = (document.getElementById('blog-related-products') || {}).value || '';
+      var out = [];
+      raw.split(/[\s,]+/).forEach(function (t) {
+        var n = parseInt(t, 10);
+        if (n > 0 && out.indexOf(n) === -1) out.push(n);
+      });
+      return out;
+    }
+
+    // Names the records as they are typed, so a wrong id is caught before save.
+    function renderBlogRelatedPreview() {
+      var el = document.getElementById('blog-related-products-preview');
+      if (!el) return;
+      var ids = blogRelatedProductIds();
+      if (!ids.length) { el.textContent = 'Shown as product cards under the post, and the post is linked from those product pages.'; return; }
+      var byId = {};
+      (Storage.getProducts() || []).forEach(function (p) { byId[p.id] = p; });
+      el.innerHTML = ids.map(function (id) {
+        var p = byId[id];
+        return p ? escapeHTML('#' + id + ' ' + p.title)
+                 : '<span style="color:var(--danger,#e74c3c);">#' + id + ' not found</span>';
+      }).join(' · ');
+    }
+
     async function openBlogEditor(id) {
       blogEditingId = id || null;
       const modal = document.getElementById('blog-modal');
@@ -89,6 +153,13 @@
       document.getElementById('blog-slug').value = '';
       document.getElementById('blog-excerpt').value = '';
       document.getElementById('blog-status').value = 'published';
+      document.getElementById('blog-author').value = '';
+      document.getElementById('blog-meta-title').value = '';
+      document.getElementById('blog-meta-description').value = '';
+      renderBlogMetaCounts();
+      document.getElementById('blog-related-products').value = '';
+      renderBlogCollectionOptions([]);
+      renderBlogRelatedPreview();
       setBlogCover('');
       blogEditorEl().innerHTML = '';
       modal.style.display = 'flex';
@@ -106,6 +177,14 @@
         document.getElementById('blog-slug').value = p.slug || '';
         document.getElementById('blog-excerpt').value = p.excerpt || '';
         document.getElementById('blog-status').value = p.status || 'draft';
+        // "Velorex Music" is what a blank author saves as; show it as blank.
+        document.getElementById('blog-author').value = (p.author && p.author !== 'Velorex Music') ? p.author : '';
+        document.getElementById('blog-related-products').value = (p.relatedProducts || []).join(', ');
+        document.getElementById('blog-meta-title').value = p.metaTitle || '';
+        document.getElementById('blog-meta-description').value = p.metaDescription || '';
+        renderBlogMetaCounts();
+        renderBlogCollectionOptions(p.relatedCollections || []);
+        renderBlogRelatedPreview();
         setBlogCover(p.coverImage || '');
         blogEditorEl().innerHTML = p.content || '';
       } catch (e) {
@@ -249,7 +328,13 @@
         excerpt: document.getElementById('blog-excerpt').value.trim(),
         content: content,
         coverImage: document.getElementById('blog-cover-url').value.trim(),
-        status: publishOverride || document.getElementById('blog-status').value
+        status: publishOverride || document.getElementById('blog-status').value,
+        author: document.getElementById('blog-author').value.trim(),
+        metaTitle: document.getElementById('blog-meta-title').value.trim(),
+        metaDescription: document.getElementById('blog-meta-description').value.trim(),
+        relatedProducts: blogRelatedProductIds(),
+        relatedCollections: Array.from(document.querySelectorAll('#blog-related-collections input:checked'))
+          .map(function (i) { return i.value; })
       };
       if (blogEditingId) body.id = blogEditingId;
 

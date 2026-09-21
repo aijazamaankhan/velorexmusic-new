@@ -120,7 +120,13 @@
       var date = blogFormatDate(post.publishedAt);
       var meta = [];
       if (date) meta.push(Utils.escape(date));
-      if (post.author) meta.push(Utils.escape(post.author));
+      // Only a genuine revision more than a day after publishing (the server
+      // decides — blog_was_updated()), mirrored from seo-render.php.
+      if (post.wasUpdated && post.updatedAt) {
+        var upd = blogFormatDate(post.updatedAt);
+        if (upd) meta.push('Updated ' + Utils.escape(upd));
+      }
+      if (post.author) meta.push('By ' + Utils.escape(post.author));
       if (post.readMinutes) meta.push(post.readMinutes + ' min read');
 
       var cover = post.coverImage
@@ -133,6 +139,9 @@
         + cover
         + (meta.length ? '<div class="blog-post-meta">' + meta.join(' · ') + '</div>' : '')
         + '<div class="blog-post-body">' + (post.content || '') + '</div>'
+        // Records the article discusses, shelves to browse, and more reading —
+        // chosen by the editor in the admin post form (api/_collections_helpers.php).
+        + ((typeof CollectionLinks !== 'undefined') ? CollectionLinks.postRelatedHtml(post.related) : '')
         + '<div class="blog-post-footer">'
         + '<a href="/blog" onclick="navigate(\'blog\');return false;" class="btn btn-secondary">← All posts</a>'
         + '<a href="/products" onclick="navigate(\'products\');return false;" class="btn btn-primary">Browse the shop</a>'

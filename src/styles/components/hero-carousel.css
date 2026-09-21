@@ -127,6 +127,11 @@
   margin-bottom: 1.35rem;
   backdrop-filter: blur(6px);
 }
+/* The badge carries the homepage <h1>. On a narrow phone that line wraps, and
+   a 50px pill radius on a two-line box reads as a lozenge — so the radius
+   eases off and the line height tightens. Single-line it looks identical. */
+h1.hero-badge { line-height: 1.35; border-radius: 1.1rem; max-width: 100%; }
+.hero-badge-dot { flex-shrink: 0; }
 .hero-badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--secondary); animation: heroPulse 2.4s ease-out infinite; }
 @keyframes heroPulse {
   0%   { box-shadow: 0 0 0 0 rgba(255, 107, 53, 0.55); }
@@ -305,6 +310,13 @@
   .hero-slide-product .hero-visual { order: -1; }
   .hero-sleeve { width: min(260px, 62vw); }
   .hero-sleeve-tag { font-size: 0.95rem; padding: 0.45rem 0.85rem; }
+  /* Reserve the height the product slides will need. Below this width their
+     artwork stacks above the copy, making them 100–190px taller than the brand
+     slide, so the banner grew when hero.js appended them and pushed the trust
+     band and categories down (CLS 0.25, measured in the September 2026 QA).
+     The final layout is unchanged — the track was already this tall once the
+     slides arrived; this only makes the first frame match it. */
+  .hero-track { min-height: 780px; }
 }
 
 @media (max-width: 640px) {
@@ -318,6 +330,7 @@
      dots at this width. */
   .hero-arrow { display: none; }
   .hero-grid-lines { display: none; }
+  .hero-track { min-height: 860px; }
 }
 
 /* ---- Reduced motion ------------------------------------------------------ */

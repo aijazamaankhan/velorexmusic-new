@@ -75,13 +75,21 @@ var Seo = (function () {
   // `robots: 'noindex, follow'` on transactional views: they hold no ranking
   // value, and a cart URL surfacing in search results is actively bad.
   var PAGE_META = {
+    // index MUST match the static tags inside the velorex:seo-head markers in
+    // index.html. products MUST match the /products branch of seo-render.php.
+    // They differ on purpose: two pages with one title compete with each other.
     index: {
-      title: 'Velorex Music | Buy Vinyl Records, CDs & Cassettes Online India',
-      description: 'Buy original vinyl records, audio CDs, cassettes, Blu-rays and DVDs online in India. Hindi film soundtracks, English albums and rare collector pressings. Delivered across India.'
+      title: 'Buy Vinyl Records & Cassettes Online in India | Velorex Music',
+      description: 'Shop original Bollywood and Hindi film vinyl LPs, new and pre-owned, plus audio cassettes at Velorex Music. Hand-checked and shipped across India.'
     },
     products: {
-      title: 'Buy Vinyl Records, CDs & Cassettes Online India | Velorex Music',
-      description: 'Browse the full Velorex Music catalogue — vinyl records, audio CDs, cassettes, Blu-rays and DVDs. Hindi and English titles shipped across India.'
+      title: 'All Products: Vinyl Records, Cassettes & More | Velorex Music',
+      description: 'Browse the full Velorex Music catalogue — Bollywood and Hindi film vinyl LPs, pre-owned records and audio cassettes, delivered across India.'
+    },
+    'not-found': {
+      title: 'Page not found | Velorex Music',
+      description: 'The page you are looking for is no longer available. Browse our vinyl records and cassettes instead.',
+      robots: 'noindex, follow'
     },
     preowned: {
       title: 'Pre-owned Vinyl, CDs & Cassettes | Buy Used Records India',
@@ -108,6 +116,80 @@ var Seo = (function () {
     signup:  { title: 'Create an Account | Velorex Music',    description: 'Create a Velorex Music account to track orders and check out faster.', robots: 'noindex, follow' },
     forgot:  { title: 'Password Help | Velorex Music',        description: 'Recover access to your Velorex Music account.', robots: 'noindex, follow' }
   };
+
+  // Category titles + descriptions. MIRRORS velorex_categories() /
+  // velorex_category_meta() in src/seo/seo-lib.php, byte for byte: a
+  // server-rendered category that the visitor later navigates back to must not
+  // be re-titled by the SPA. Guarded by tests/seo-meta-parity.js.
+  var CATEGORY_META = {
+    'vinyl-records': {
+      title: 'Buy Vinyl Records Online in India | Bollywood LPs | Velorex Music',
+      description: 'Shop original vinyl records online in India — Bollywood and Hindi film soundtrack LPs from R. D. Burman, A. R. Rahman, Anu Malik and more, new and pre-owned.',
+      facets: {
+        hindi: {
+          title: 'Hindi & Bollywood Vinyl Records | Buy Online in India',
+          description: 'Buy Bollywood and Hindi film vinyl records online in India — soundtrack LPs by R. D. Burman, A. R. Rahman, Anu Malik and more. New and pre-owned.'
+        }
+      }
+    },
+    'audio-cds': {
+      title: 'Buy Audio CDs Online India | Hindi & English Music CDs',
+      description: 'Buy audio CDs online in India — Bollywood soundtracks, ghazals, classical and English albums. Sealed and pre-owned music CDs with pan-India delivery.'
+    },
+    'cassettes': {
+      title: 'Buy Audio Cassettes Online in India | Bollywood & Blank Tapes',
+      description: 'Shop audio cassettes online in India — Bollywood songs-and-dialogue tapes and blank recording cassettes, delivered across India by Velorex Music.'
+    },
+    'blu-ray-movies': {
+      title: 'Buy Blu-ray Movies Online India | Hindi & English Blu-rays',
+      description: 'Buy Blu-ray discs online in India — Bollywood classics, Hindi cinema restorations and English films in HD. Original sealed Blu-rays with pan-India shipping.'
+    },
+    'dvd-movies': {
+      title: 'Buy DVD Movies Online India | Bollywood & English DVDs',
+      description: 'Shop DVD movies online in India — Bollywood classics, regional cinema and English films. Original DVDs with pan-India delivery.'
+    },
+    'merchandise': {
+      title: 'Music Merchandise India | Band T-Shirts, Hoodies & Posters',
+      description: 'Music merchandise from Velorex Music — band t-shirts, hoodies, caps, tote bags, posters, stickers, mugs, keychains and slipmats. Shipped across India.'
+    },
+    'vinyl-care': {
+      title: 'Vinyl Record Care & Cleaning Products India | Velorex Music',
+      description: 'Vinyl record care in India — cleaning brushes and solution, anti-static and outer sleeves, storage boxes, stylus cleaners and record clamps.'
+    }
+  };
+  var CATEGORY_LABELS_BY_SLUG = {
+    'vinyl-records': 'Vinyl Records', 'audio-cds': 'Audio CDs', 'cassettes': 'Cassettes',
+    'blu-ray-movies': 'Blu-ray Movies', 'dvd-movies': 'DVD Movies',
+    'merchandise': 'Merchandise', 'vinyl-care': 'Vinyl Care'
+  };
+
+  // cat = DB key ('vinyl'); returns { title, description } or null.
+  function categoryMeta(cat, lang, sub) {
+    var slug = CAT_TO_SLUG[cat];
+    var meta = slug && CATEGORY_META[slug];
+    if (!meta) return null;
+    var label = CATEGORY_LABELS_BY_SLUG[slug];
+    if (sub) {
+      var subLabel = SUBCATS[cat] && SUBCATS[cat][sub];
+      if (!subLabel) return null;
+      return {
+        title: 'Buy ' + subLabel + ' Online India | ' + SITE_NAME,
+        description: 'Shop ' + subLabel.toLowerCase() + ' at Velorex Music — part of our '
+          + label.toLowerCase() + ' range, shipped across India.'
+      };
+    }
+    if (lang) {
+      if (!LANGS[lang]) return null;
+      if (meta.facets && meta.facets[lang]) return meta.facets[lang];
+      var h1 = LANGS[lang] + ' ' + label;
+      return {
+        title: 'Buy ' + h1 + ' Online India | ' + SITE_NAME,
+        description: 'Shop ' + LANGS[lang].toLowerCase() + ' ' + label.toLowerCase()
+          + ' online in India at Velorex Music. Original releases and collector titles, delivered pan-India.'
+      };
+    }
+    return { title: meta.title, description: meta.description };
+  }
 
   // ---------------------------------------------------------------------------
   // Slug + URL construction
@@ -204,7 +286,10 @@ var Seo = (function () {
       return params.slug ? '/music-history/' + params.slug : '/music-history';
     }
 
+    if (page === 'artist') return params.slug ? '/artists/' + params.slug : '/vinyl-records';
     if (page === 'index') return '/';
+    // A 404 stays on the URL that was requested; see parsePageFromUrl().
+    if (page === 'not-found') return params.path || '/';
     return '/' + page;
   }
 
@@ -235,6 +320,9 @@ var Seo = (function () {
     if (path === '/blog') return { page: 'blog', params: params };
     var bm = path.match(/^\/blog\/([A-Za-z0-9-]+)$/);
     if (bm) { params.slug = bm[1]; return { page: 'blog-post', params: params }; }
+
+    var am = path.match(/^\/artists\/([a-z0-9-]+)$/);
+    if (am) { params.slug = am[1]; return { page: 'artist', params: params }; }
 
     if (path === '/music-history') return { page: 'music-history', params: params };
     var mh = path.match(/^\/music-history\/([a-z0-9-]+)$/);
@@ -326,6 +414,147 @@ var Seo = (function () {
       title += ' | ' + SITE_NAME;
     }
     return title;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Product meta description
+  // ---------------------------------------------------------------------------
+  //
+  // MIRRORED IN PHP: velorex_product_meta_description() in src/seo/seo-lib.php.
+  // Real fields only, then as much of the free-text description as fits, never
+  // over 160 characters — see the PHP header. Guarded by
+  // tests/seo-meta-parity.js.
+
+  var FORMAT_PHRASES = { vinyl: 'vinyl', cd: 'CD', cassette: 'cassette', bluray: 'Blu-ray', dvd: 'DVD' };
+
+  function collapseWs(s) {
+    return String(s == null ? '' : s).replace(/\s+/g, ' ').replace(/^ | $/g, '');
+  }
+
+  function inr(n) {
+    n = Math.trunc(Number(n) || 0);
+    var s = String(Math.abs(n));
+    if (s.length > 3) {
+      var last3 = s.slice(-3);
+      var rest = s.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ',');
+      s = rest + ',' + last3;
+    }
+    return (n < 0 ? '-' : '') + s;
+  }
+
+  function fitWords(prefix, text, max) {
+    text = collapseWs(text);
+    if (!text) return prefix;
+    var full = prefix === '' ? text : prefix + ' ' + text;
+    if (full.length <= max) return full;
+    var out = prefix, added = false, words = text.split(' ');
+    for (var i = 0; i < words.length; i++) {
+      var cand = out === '' ? words[i] : out + ' ' + words[i];
+      if (cand.length > max - 1) break;
+      out = cand;
+      added = true;
+    }
+    if (!added) return prefix;
+    return out.replace(/[\s,.;:–—-]+$/, '') + '…';
+  }
+
+  function productDescription(p) {
+    var max = 160;
+    var name = collapseWs(p && p.title);
+    var artist = primaryArtist(p && p.artist);
+    var fmt = FORMAT_PHRASES[p && p.category] || '';
+    var used = (p && p.condition) === 'pre-owned';
+
+    var lead = 'Buy ' + name;
+    if (artist && !titleContains(name, artist)) lead += ' by ' + artist;
+    var saidUsed = false;
+    if (fmt && !titleContains(name, fmt)) {
+      lead += ' on ' + (used ? 'pre-owned ' : '') + fmt;
+      saidUsed = used;
+    }
+    lead += '.';
+
+    var specs = (p && p.specs && typeof p.specs === 'object') ? p.specs : {};
+    var label = collapseWs(specs.label);
+    var year = collapseWs(specs.year);
+    var facts = [];
+    if (label && year) facts.push('Label: ' + label + ' (' + year + ').');
+    else if (label) facts.push('Label: ' + label + '.');
+    else if (year) facts.push('Year: ' + year + '.');
+    if (used && !saidUsed) facts.push('Pre-owned.');
+
+    var stock = parseInt(p && p.stock, 10) || 0;
+    var avail = stock > 0 ? 'in stock, shipped across India.'
+      : ((p && p.badge) === 'upcoming' ? 'coming soon.' : 'currently out of stock.');
+    var tail = '₹' + inr(p && p.price) + ' — ' + avail;
+
+    var core = [lead].concat(facts, [tail]).join(' ');
+    if (core.length > max) core = lead + ' ' + tail;
+    if (core.length > max) return fitWords('', core, max);
+    return fitWords(core, p && p.description, max);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Collection rules — MIRRORS of src/seo/seo-lib.php, guarded by
+  // tests/seo-meta-parity.js. The server applies them on a landing; these make
+  // a client-side navigation reach the same indexing decision.
+  // ---------------------------------------------------------------------------
+  var FACET_MIN_PRODUCTS = 6; // VELOREX_FACET_MIN_PRODUCTS
+
+  function facetStatus(facetCount, parentCount) {
+    if (facetCount > 0 && facetCount >= parentCount) return 'duplicate';
+    if (facetCount < FACET_MIN_PRODUCTS) return 'thin';
+    return 'index';
+  }
+
+  // formats = DB category keys with pre-owned stock; catSlug = format page or null.
+  function preownedMeta(formats, catSlug) {
+    var label = catSlug && CATEGORY_LABELS_BY_SLUG[catSlug];
+    if (label) {
+      return {
+        title: 'Pre-owned ' + label + ' | Buy Used ' + label + ' Online India',
+        description: 'Shop pre-owned ' + label.toLowerCase() + ' in India at Velorex Music. Second-hand and collector copies, condition-checked before dispatch, with pan-India delivery.',
+        h1: 'Pre-owned ' + label
+      };
+    }
+    var uniq = [];
+    (formats || []).forEach(function (f) { if (uniq.indexOf(f) === -1) uniq.push(f); });
+    if (uniq.length === 1 && uniq[0] === 'vinyl') {
+      return {
+        title: 'Pre-owned Vinyl Records | Buy Used LPs Online in India',
+        description: 'Pre-owned Bollywood and Hindi film vinyl LPs, including first editions and 2LP sets — each copy condition-checked before dispatch and shipped across India.',
+        h1: 'Pre-owned Vinyl Records'
+      };
+    }
+    return {
+      title: 'Pre-owned Vinyl, CDs & Cassettes | Buy Used Records India',
+      description: 'Shop pre-owned vinyl records, audio CDs, cassettes, Blu-rays and DVDs in India. Second-hand and collector copies, condition-checked before dispatch.',
+      h1: 'Pre-owned'
+    };
+  }
+
+  // Composer page count line — mirrors velorex_artist_count_line().
+  function artistCountLine(count, inStock) {
+    var noun = count === 1 ? 'record' : 'records';
+    if (inStock === count) return count + ' ' + noun + ' on the shelf, all in stock';
+    return count + ' ' + noun + ' on the shelf · ' + inStock + ' in stock';
+  }
+
+  function cachedProducts() {
+    try { return Storage.getProducts() || []; } catch (e) { return []; }
+  }
+
+  // Image alt text from real fields — mirrors velorex_product_image_alt().
+  // n > 1 marks further gallery images.
+  function productImageAlt(p, n) {
+    var name = collapseWs(p && p.title);
+    var artist = primaryArtist(p && p.artist);
+    var fmt = FORMAT_LABELS[p && p.category] || '';
+    var alt = name;
+    if (artist && !titleContains(name, artist)) alt += ' by ' + artist;
+    if (fmt && !titleContains(name, fmt)) alt += ' – ' + fmt;
+    if (n > 1) alt += ' (image ' + n + ')';
+    return alt;
   }
 
   // ---------------------------------------------------------------------------
@@ -428,34 +657,31 @@ var Seo = (function () {
     }
 
     if (page === 'products') {
-      var catLabels = {
-        vinyl: 'Vinyl Records', cd: 'Audio CDs', cassette: 'Cassettes',
-        bluray: 'Blu-ray Movies', dvd: 'DVD Movies',
-        merchandise: 'Merchandise', 'vinyl-care': 'Vinyl Care'
-      };
-      var label = params.cat ? catLabels[params.cat] : null;
-      // A department subcategory is the specific thing being sold, so it leads
-      // the title ("Buy T-Shirts Online India") rather than the department.
-      if (label && isDepartment(params.cat) && params.sub && SUBCATS[params.cat][params.sub]) {
-        var subLabel = SUBCATS[params.cat][params.sub];
+      var cm = params.cat
+        ? categoryMeta(params.cat,
+            !isDepartment(params.cat) && LANGS[params.lang] ? params.lang : null,
+            isDepartment(params.cat) && params.sub ? params.sub : null)
+        : null;
+      if (cm) {
+        var robots = params.search ? 'noindex, follow' : undefined;
+        // Language facet: same rule as the server (velorex_facet_status).
+        if (!isDepartment(params.cat) && LANGS[params.lang]) {
+          var all = cachedProducts();
+          var parentN = all.filter(function (p) { return p.category === params.cat; }).length;
+          var facetN = all.filter(function (p) {
+            return p.category === params.cat && String(p.language || '').trim().toLowerCase() === params.lang;
+          }).length;
+          if (parentN > 0) {
+            var fs = facetStatus(facetN, parentN);
+            if (fs === 'duplicate') canonical = ORIGIN + buildPath('products', { cat: params.cat });
+            else if (fs === 'thin') robots = 'noindex, follow';
+          }
+        }
         applyTags({
-          title: 'Buy ' + subLabel + ' Online India | Velorex Music',
-          description: 'Shop ' + subLabel.toLowerCase() + ' at Velorex Music. '
-            + 'Part of our ' + label.toLowerCase() + ' range, shipped across India.',
-          canonical: canonical
-        });
-        return;
-      }
-      var langLabel = params.lang && LANGS[params.lang] ? LANGS[params.lang] : null;
-
-      if (label) {
-        var full = (langLabel ? langLabel + ' ' : '') + label;
-        applyTags({
-          title: 'Buy ' + full + ' Online India | Velorex Music',
-          description: 'Shop ' + full.toLowerCase() + ' online in India at Velorex Music. '
-            + 'Original pressings, collector titles and current releases, delivered pan-India.',
+          title: cm.title,
+          description: cm.description,
           canonical: canonical,
-          robots: params.search ? 'noindex, follow' : undefined
+          robots: robots
         });
         return;
       }
@@ -508,6 +734,31 @@ var Seo = (function () {
       return;
     }
 
+    // Pre-owned: copy follows the formats actually in second-hand stock, and a
+    // format page that holds all of it canonicalises to the hub — as on the server.
+    if (page === 'preowned') {
+      var formats = [];
+      cachedProducts().forEach(function (p) {
+        if (p.condition === 'pre-owned' && formats.indexOf(p.category) === -1) formats.push(p.category);
+      });
+      var pslug = params.cat ? CAT_TO_SLUG[params.cat] : null;
+      var pm = preownedMeta(formats, pslug);
+      applyTags({
+        title: pm.title,
+        description: pm.description,
+        canonical: (pslug && formats.length === 1 && formats[0] === params.cat)
+          ? ORIGIN + '/pre-owned' : canonical
+      });
+      return;
+    }
+
+    // Composer collection: real tags arrive with the data (syncArtist); until
+    // then, a neutral title rather than one borrowed from another page.
+    if (page === 'artist') {
+      applyTags({ title: 'Vinyl Records | Velorex Music', canonical: canonical });
+      return;
+    }
+
     var meta = PAGE_META[page] || PAGE_META.index;
     applyTags({
       title: meta.title,
@@ -518,24 +769,9 @@ var Seo = (function () {
   }
 
   function applyProduct(p, canonical) {
-    // Plural label here: the fallback description reads "… on Vinyl Records at
-    // Velorex Music", matching what seo-render.php generates. The <title> uses
-    // the singular form via productTitle().
-    var catLabel = CATEGORY_LABELS[p.category] || 'Music';
-    var price = Number(p.price || 0).toLocaleString('en-IN');
-    var desc = String(p.description || '').replace(/\s+/g, ' ').trim();
-    if (!desc) {
-      desc = 'Buy ' + p.title + ' by ' + p.artist + ' on ' + catLabel
-        + ' at Velorex Music. ₹' + price + '. '
-        + ((p.stock > 0) ? 'In stock and ready to ship across India.' : 'Available to pre-order.');
-    } else {
-      desc = '₹' + price + ' · ' + desc;
-    }
-    if (desc.length > 160) desc = desc.slice(0, 157).replace(/\s+\S*$/, '') + '…';
-
     applyTags({
       title: productTitle(p),
-      description: desc,
+      description: productDescription(p),
       canonical: canonical || (ORIGIN + productPath(p)),
       image: absoluteImage(p.image),
       type: 'product'
@@ -563,17 +799,40 @@ var Seo = (function () {
   // Called from renderBlogPost() once the post has been fetched. The listing
   // page and the SPA shell can't know a post's title or cover in advance, so
   // this is what gives a JS-rendering crawler correct per-article metadata.
+  // Mirrors velorex_blog_meta_title() / velorex_blog_meta_description().
+  function blogMetaTitle(title, metaTitle) {
+    var m = collapseWs(metaTitle);
+    if (m) return m;
+    var t = collapseWs(title);
+    var withSuffix = t + ' | Velorex Journal';
+    return withSuffix.length <= TITLE_SOFT_LIMIT ? withSuffix : t;
+  }
+  function blogMetaDescription(excerpt, metaDescription) {
+    var m = collapseWs(metaDescription);
+    return fitWords('', m || excerpt || '', 160);
+  }
+
   function syncBlogPost(post) {
     if (!post || !post.slug) return;
     var url = ORIGIN + '/blog/' + post.slug;
-    var desc = String(post.excerpt || '').replace(/\s+/g, ' ').trim();
-    if (desc.length > 160) desc = desc.slice(0, 157).replace(/\s+\S*$/, '') + '…';
     applyTags({
-      title: post.title + ' | Velorex Journal',
-      description: desc,
+      title: blogMetaTitle(post.title, post.metaTitle),
+      description: blogMetaDescription(post.excerpt, post.metaDescription),
       canonical: url,
       image: post.coverImage ? absoluteImage(post.coverImage) : undefined,
       type: 'article'
+    });
+  }
+
+  // Called by initPageArtist() with the API payload (same strings the server
+  // renders from velorex_artist_collections()).
+  function syncArtist(a) {
+    if (!a || !a.slug) return;
+    applyTags({
+      title: a.title,
+      description: a.description,
+      canonical: ORIGIN + '/artists/' + a.slug,
+      robots: a.indexable ? undefined : 'noindex, follow'
     });
   }
 
@@ -599,6 +858,16 @@ var Seo = (function () {
     ORIGIN: ORIGIN,
     slugify: slugify,
     productTitle: productTitle,
+    productDescription: productDescription,
+    productImageAlt: productImageAlt,
+    blogMetaTitle: blogMetaTitle,
+    blogMetaDescription: blogMetaDescription,
+    facetStatus: facetStatus,
+    preownedMeta: preownedMeta,
+    artistCountLine: artistCountLine,
+    syncArtist: syncArtist,
+    categoryMeta: categoryMeta,
+    CATEGORY_LABELS: CATEGORY_LABELS,
     syncBlogPost: syncBlogPost,
     syncCombo: syncCombo,
     productPath: productPath,

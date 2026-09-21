@@ -35,6 +35,11 @@ define('VELOREX_DEFAULT_OG_IMAGE', VELOREX_SITE_URL . '/src/img/og-default.jpg')
 // not a promotional banner with overlaid text.
 define('VELOREX_LOGO_IMAGE', VELOREX_SITE_URL . '/src/img/logo-1200.png');
 
+// Shown where a product has no photo of its own. The same image the SPA falls
+// back to (pages.js), so the server render and the hydrated page match. Always
+// rendered with alt="" — it is not a picture of the product.
+define('VELOREX_PLACEHOLDER_IMAGE', 'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=400&h=400&fit=crop');
+
 // -----------------------------------------------------------------------------
 // Category taxonomy
 //
@@ -47,12 +52,26 @@ define('VELOREX_LOGO_IMAGE', VELOREX_SITE_URL . '/src/img/logo-1200.png');
 // -----------------------------------------------------------------------------
 function velorex_categories(): array {
     return [
+        // Copy describes what is actually on the shelf. It used to promise
+        // "English rock, jazz and classical LPs" while the catalogue held none —
+        // a claim a searcher checks in one click and a quality rater would
+        // flag. If the English shelf fills up, widen this copy then, not before.
         'vinyl-records' => [
             'key'   => 'vinyl',
             'label' => 'Vinyl Records',
-            'title' => 'Buy Vinyl Records Online India | Hindi & English LP Records',
-            'description' => 'Shop original vinyl records online in India — Bollywood LPs, Hindi film soundtracks, English rock and jazz pressings. R.D. Burman, Kishore Kumar, Lata Mangeshkar and more. Delivered pan-India.',
-            'intro' => 'Original and reissue vinyl records shipped across India. Our collection spans Hindi film soundtracks and rare Bollywood pressings alongside English rock, jazz and classical LPs — curated for collectors who care about pressing quality.',
+            'title' => 'Buy Vinyl Records Online in India | Bollywood LPs | Velorex Music',
+            'description' => 'Shop original vinyl records online in India — Bollywood and Hindi film soundtrack LPs from R. D. Burman, A. R. Rahman, Anu Malik and more, new and pre-owned.',
+            'intro' => 'Vinyl LPs shipped across India, led by Hindi film soundtracks — golden-era R. D. Burman and Laxmikant–Pyarelal scores alongside Nadeem–Shravan, Anu Malik and A. R. Rahman. New pressings and hand-checked pre-owned copies, each listed with its label, year and track listing.',
+            // Hand-written copy for the language facets that carry real stock.
+            // A facet without an entry here falls back to the formula in
+            // velorex_category_meta(); mirrored in CATEGORY_META in src/js/seo.js.
+            'facets' => [
+                'hindi' => [
+                    'title' => 'Hindi & Bollywood Vinyl Records | Buy Online in India',
+                    'description' => 'Buy Bollywood and Hindi film vinyl records online in India — soundtrack LPs by R. D. Burman, A. R. Rahman, Anu Malik and more. New and pre-owned.',
+                    'intro' => 'Hindi film soundtracks on vinyl — the Bollywood LPs collectors actually look for, from 1970s R. D. Burman scores to 1990s Nadeem–Shravan and A. R. Rahman. Every listing carries its label, year and full track listing, and pre-owned copies are condition-checked before dispatch.',
+                ],
+            ],
         ],
         'audio-cds' => [
             'key'   => 'cd',
@@ -64,15 +83,15 @@ function velorex_categories(): array {
         'cassettes' => [
             'key'   => 'cassette',
             'label' => 'Cassettes',
-            'title' => 'Buy Audio Cassettes Online India | Vintage Bollywood Tapes',
-            'description' => 'Shop vintage audio cassettes online in India — original Bollywood tapes, Hindi film soundtracks and English albums. Rare pre-recorded cassettes for collectors, delivered across India.',
-            'intro' => 'Pre-recorded cassettes from the golden era of Hindi film music, plus English titles. Popular with collectors rebuilding a childhood tape deck collection.',
+            'title' => 'Buy Audio Cassettes Online in India | Bollywood & Blank Tapes',
+            'description' => 'Shop audio cassettes online in India — Bollywood songs-and-dialogue tapes and blank recording cassettes, delivered across India by Velorex Music.',
+            'intro' => 'Pre-recorded Bollywood cassettes — songs and dialogue from the films people grew up with — alongside blank tapes for anyone still recording on a deck.',
         ],
         'blu-ray-movies' => [
             'key'   => 'bluray',
             'label' => 'Blu-ray Movies',
             'title' => 'Buy Blu-ray Movies Online India | Hindi & English Blu-rays',
-            'description' => 'Buy Blu-ray discs online in India — Bollywood classics, Hindi cinema restorations and English films in HD. Original sealed Blu-rays with fast pan-India shipping.',
+            'description' => 'Buy Blu-ray discs online in India — Bollywood classics, Hindi cinema restorations and English films in HD. Original sealed Blu-rays with pan-India shipping.',
             'intro' => 'High-definition Blu-ray releases spanning restored Hindi cinema and English films. Original pressings only — no unauthorised copies.',
         ],
         'dvd-movies' => [
@@ -108,7 +127,7 @@ function velorex_categories(): array {
             'key'   => 'vinyl-care',
             'label' => 'Vinyl Care',
             'title' => 'Vinyl Record Care & Cleaning Products India | Velorex Music',
-            'description' => 'Vinyl record care in India — cleaning brushes, carbon fibre brushes, cleaning solution, anti-static inner sleeves, outer sleeves, storage boxes, stylus cleaners and record clamps.',
+            'description' => 'Vinyl record care in India — cleaning brushes and solution, anti-static and outer sleeves, storage boxes, stylus cleaners and record clamps.',
             'intro' => 'Everything needed to keep a collection playing properly: cleaning kit, anti-static and protective sleeves, storage, stylus care and turntable accessories.',
             'subs'  => [
                 'record-cleaning-brush'     => 'Record Cleaning Brush',
@@ -268,13 +287,236 @@ function velorex_e(?string $s): string {
 // Collapse whitespace and hard-truncate on a word boundary. Meta descriptions
 // beyond ~160 chars get ellipsised by Google, so we cut them ourselves rather
 // than let the SERP do it mid-word.
+//
+// Counts CHARACTERS, not bytes. It used to count bytes, so any description with
+// a ₹ or an em dash (3 bytes each) was cut well short of 160 visible characters,
+// and a string the SPA considered in-budget was ellipsised here — one URL, two
+// descriptions.
 function velorex_trim_text(?string $s, int $max = 160): string {
-    $s = trim(preg_replace('/\s+/', ' ', strip_tags((string)$s)) ?? '');
-    if ($s === '' || strlen($s) <= $max) return $s;
-    $cut = substr($s, 0, $max - 1);
-    $sp  = strrpos($cut, ' ');
-    if ($sp !== false && $sp > $max * 0.6) $cut = substr($cut, 0, $sp);
+    $s = trim(preg_replace('/\s+/u', ' ', strip_tags((string)$s)) ?? '');
+    if ($s === '' || mb_strlen($s) <= $max) return $s;
+    $cut = mb_substr($s, 0, $max - 1);
+    $sp  = mb_strrpos($cut, ' ');
+    if ($sp !== false && $sp > $max * 0.6) $cut = mb_substr($cut, 0, $sp);
     return rtrim($cut, " ,.;:-") . '…';
+}
+
+// -----------------------------------------------------------------------------
+// Product meta description
+//
+// MIRRORED IN JS: Seo.productDescription() in src/js/seo.js must return the
+// same string for the same product, because Seo.syncProductUrl() rewrites the
+// server's tags as soon as the full product loads. Guarded by
+// tests/seo-meta-parity.js.
+//
+// Built from real fields only — name, artist, format, label, year, condition,
+// price, stock — then as much of the free-text description as fits. A field
+// that is empty is left out; nothing is invented to fill the space. The result
+// is guaranteed ≤ 160 characters so neither side ever has to trim it (the two
+// trimming routines differ, which is how the pair drifted before).
+// -----------------------------------------------------------------------------
+
+// JS's \s, spelled out: PCRE's \s does not include the Unicode spaces JS does.
+const VELOREX_WS = '[\s\x{00A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}]';
+
+function velorex_collapse_ws(?string $s): string {
+    $s = preg_replace('/' . VELOREX_WS . '+/u', ' ', (string)$s) ?? '';
+    return preg_replace('/^ | $/u', '', $s) ?? '';
+}
+
+// String length as JavaScript measures it (UTF-16 code units), so an emoji in
+// a description counts the same on both sides.
+function velorex_js_len(string $s): int {
+    return intdiv(strlen(mb_convert_encoding($s, 'UTF-16LE', 'UTF-8')), 2);
+}
+
+// Indian digit grouping (1,23,456) without depending on ICU on either side.
+function velorex_inr(int $n): string {
+    $s = (string)abs($n);
+    if (strlen($s) > 3) {
+        $last3 = substr($s, -3);
+        $rest  = substr($s, 0, -3);
+        $rest  = preg_replace('/\B(?=(\d{2})+(?!\d))/', ',', $rest);
+        $s = $rest . ',' . $last3;
+    }
+    return ($n < 0 ? '-' : '') . $s;
+}
+
+// Append whole words of $text to $prefix while the result fits $max. When the
+// text does not fit whole, the last word that fits is followed by an ellipsis.
+function velorex_fit_words(string $prefix, string $text, int $max): string {
+    $text = velorex_collapse_ws($text);
+    if ($text === '') return $prefix;
+    $full = $prefix === '' ? $text : $prefix . ' ' . $text;
+    if (velorex_js_len($full) <= $max) return $full;
+    $out = $prefix;
+    $added = false;
+    foreach (explode(' ', $text) as $w) {
+        $cand = $out === '' ? $w : $out . ' ' . $w;
+        if (velorex_js_len($cand) > $max - 1) break;
+        $out = $cand;
+        $added = true;
+    }
+    if (!$added) return $prefix;
+    return (preg_replace('/[\s,.;:\x{2013}\x{2014}-]+$/u', '', $out) ?? $out) . '…';
+}
+
+// Lower-case format phrase for running prose ("on vinyl"), keyed by DB category.
+function velorex_format_phrase_for_key(string $key): string {
+    $map = ['vinyl' => 'vinyl', 'cd' => 'CD', 'cassette' => 'cassette', 'bluray' => 'Blu-ray', 'dvd' => 'DVD'];
+    return $map[$key] ?? '';
+}
+
+// Visible availability wording. Out-of-stock items are NOT offered as
+// pre-orders: the storefront's stock guard refuses to add them to a cart, so
+// "pre-order available" was a promise checkout could not keep.
+function velorex_availability_text(array $p): string {
+    if ((int)($p['stock'] ?? 0) > 0) return 'In stock';
+    return (($p['badge'] ?? '') === 'upcoming') ? 'Coming soon' : 'Out of stock';
+}
+
+function velorex_product_meta_description(array $p): string {
+    $max    = 160;
+    $name   = velorex_collapse_ws((string)($p['title'] ?? ''));
+    $artist = velorex_primary_artist((string)($p['artist'] ?? ''));
+    $fmt    = velorex_format_phrase_for_key((string)($p['category'] ?? ''));
+    $used   = (($p['condition'] ?? 'new') === 'pre-owned');
+
+    $lead = 'Buy ' . $name;
+    if ($artist !== '' && !velorex_title_contains($name, $artist)) $lead .= ' by ' . $artist;
+    $saidUsed = false;
+    if ($fmt !== '' && !velorex_title_contains($name, $fmt)) {
+        $lead .= ' on ' . ($used ? 'pre-owned ' : '') . $fmt;
+        $saidUsed = $used;
+    }
+    $lead .= '.';
+
+    $specs = is_array($p['specs'] ?? null) ? $p['specs'] : [];
+    $label = velorex_collapse_ws((string)($specs['label'] ?? ''));
+    $year  = velorex_collapse_ws((string)($specs['year'] ?? ''));
+    $facts = [];
+    if ($label !== '' && $year !== '') $facts[] = 'Label: ' . $label . ' (' . $year . ').';
+    elseif ($label !== '')            $facts[] = 'Label: ' . $label . '.';
+    elseif ($year !== '')             $facts[] = 'Year: ' . $year . '.';
+    if ($used && !$saidUsed)          $facts[] = 'Pre-owned.';
+
+    $stock = (int)($p['stock'] ?? 0);
+    $avail = $stock > 0 ? 'in stock, shipped across India.'
+           : ((($p['badge'] ?? '') === 'upcoming') ? 'coming soon.' : 'currently out of stock.');
+    $tail  = '₹' . velorex_inr((int)($p['price'] ?? 0)) . ' — ' . $avail;
+
+    $core = implode(' ', array_merge([$lead], $facts, [$tail]));
+    if (velorex_js_len($core) > $max) {
+        $core = $lead . ' ' . $tail;               // drop the optional facts first
+    }
+    if (velorex_js_len($core) > $max) {
+        return velorex_fit_words('', $core, $max); // pathological title length
+    }
+    return velorex_fit_words($core, (string)($p['description'] ?? ''), $max);
+}
+
+// -----------------------------------------------------------------------------
+// Category / facet metadata
+//
+// One function answers "what are the title, description, H1 and intro for this
+// listing?" so the server render and the sitemap cannot disagree. MIRRORED IN
+// JS as Seo.categoryMeta() (title + description only) — guarded by
+// tests/seo-meta-parity.js.
+// -----------------------------------------------------------------------------
+function velorex_category_meta(string $catSlug, ?string $lang = null, ?string $sub = null): ?array {
+    $cats = velorex_categories();
+    if (!isset($cats[$catSlug])) return null;
+    $meta  = $cats[$catSlug];
+    $label = $meta['label'];
+
+    if ($sub !== null) {
+        $subs = velorex_subcategories($catSlug);
+        if (!isset($subs[$sub])) return null;
+        $subLabel = $subs[$sub];
+        return [
+            'title'       => 'Buy ' . $subLabel . ' Online India | ' . VELOREX_SITE_NAME,
+            'description' => 'Shop ' . strtolower($subLabel) . ' at Velorex Music — part of our '
+                           . strtolower($label) . ' range, shipped across India.',
+            'h1'          => $subLabel,
+            'intro'       => ucfirst(strtolower($subLabel) . ' from the Velorex Music ' . strtolower($label) . ' range.'),
+        ];
+    }
+
+    if ($lang !== null) {
+        $langs = velorex_languages();
+        if (!isset($langs[$lang])) return null;
+        $adj = $langs[$lang]['adjective'];
+        $h1  = $adj . ' ' . $label;
+        if (isset($meta['facets'][$lang])) {
+            return $meta['facets'][$lang] + ['h1' => $h1];
+        }
+        return [
+            'title'       => 'Buy ' . $h1 . ' Online India | ' . VELOREX_SITE_NAME,
+            'description' => 'Shop ' . strtolower($adj) . ' ' . strtolower($label)
+                           . ' online in India at Velorex Music. Original releases and collector titles, delivered pan-India.',
+            'h1'          => $h1,
+            'intro'       => $adj . ' titles from our ' . strtolower($label) . ' collection, shipped across India.',
+        ];
+    }
+
+    return [
+        'title'       => $meta['title'],
+        'description' => $meta['description'],
+        'h1'          => $label,
+        'intro'       => $meta['intro'],
+    ];
+}
+
+// Image alt text from real fields: "Gomti Ke Kinare by R. D. Burman – Vinyl
+// Record". Mirrored by Seo.productImageAlt() so the SPA's cards and gallery say
+// the same thing. $n > 1 marks further gallery images.
+function velorex_product_image_alt(array $p, int $n = 1): string {
+    $name   = velorex_collapse_ws((string)($p['title'] ?? ''));
+    $artist = velorex_primary_artist((string)($p['artist'] ?? ''));
+    $fmt    = velorex_format_label_for_key((string)($p['category'] ?? ''));
+    $alt = $name;
+    if ($artist !== '' && !velorex_title_contains($name, $artist)) $alt .= ' by ' . $artist;
+    if ($fmt !== '' && !velorex_title_contains($name, $fmt)) $alt .= ' – ' . $fmt;
+    if ($n > 1) $alt .= ' (image ' . $n . ')';
+    return $alt;
+}
+
+// The breadcrumb trail for a product: Home › Category › Language › Product.
+// The language level exists only where it is a real page (/vinyl-records/hindi).
+// updateBreadcrumbs() in router.js builds the same trail on the client.
+function velorex_product_trail(array $p): array {
+    $trail = [['name' => 'Home', 'url' => VELOREX_SITE_URL . '/']];
+    $catKey  = (string)($p['category'] ?? '');
+    $catSlug = velorex_category_slug_for_key($catKey);
+    if ($catSlug) {
+        $trail[] = ['name' => velorex_category_label_for_key($catKey), 'url' => velorex_category_url($catSlug)];
+        $lang = strtolower(trim((string)($p['language'] ?? '')));
+        if (!velorex_is_department($catSlug) && isset(velorex_languages()[$lang])) {
+            $trail[] = ['name' => velorex_languages()[$lang]['adjective'], 'url' => velorex_category_url($catSlug, $lang)];
+        }
+    }
+    $trail[] = ['name' => (string)($p['title'] ?? '')];
+    return $trail;
+}
+
+// Visible breadcrumb trail, server-rendered into .breadcrumbs-container so a
+// crawler that does not run JavaScript sees the same hierarchy the
+// BreadcrumbList JSON-LD declares. Markup matches updateBreadcrumbs() in
+// src/js/storefront/router.js, which replaces it on boot.
+// $trail = [['name' => …, 'url' => absolute|null], …]; the last is the page.
+function velorex_breadcrumbs_html(array $trail): string {
+    $out = '';
+    $n = count($trail);
+    foreach ($trail as $i => $t) {
+        $label = velorex_e($t['name']);
+        if ($i === $n - 1 || empty($t['url'])) {
+            $out .= '<li class="breadcrumb-item active" aria-current="page">' . $label . '</li>';
+        } else {
+            $path = substr($t['url'], strlen(VELOREX_SITE_URL)) ?: '/';
+            $out .= '<li class="breadcrumb-item"><a href="' . velorex_e($path) . '">' . $label . '</a></li>';
+        }
+    }
+    return $out;
 }
 
 // -----------------------------------------------------------------------------
@@ -547,9 +789,19 @@ function velorex_jsonld_local_business(): string {
     return $out;
 }
 
+// Remembers the trail the page declared in JSON-LD so seo-render.php can draw
+// the SAME trail visibly — one source, so the markup and the visible bar cannot
+// disagree. Call with no argument to read.
+function velorex_last_trail(?array $set = null): ?array {
+    static $trail = null;
+    if ($set !== null) $trail = $set;
+    return $trail;
+}
+
 // BreadcrumbList. $trail is [['name' => ..., 'url' => absolute|null], ...].
 // The last item conventionally omits the url (it is the current page).
 function velorex_jsonld_breadcrumbs(array $trail): string {
+    velorex_last_trail($trail);
     $items = [];
     $pos = 1;
     foreach ($trail as $t) {
@@ -582,50 +834,84 @@ function velorex_jsonld_product(array $p): string {
             if ($abs !== VELOREX_DEFAULT_OG_IMAGE) $images[] = $abs;
         }
     }
-    if (!$images) $images[] = velorex_absolute_image($p['image'] ?? '');
+    if (!$images) {
+        $single = velorex_absolute_image($p['image'] ?? '');
+        if ($single !== VELOREX_DEFAULT_OG_IMAGE) $images[] = $single;
+    }
+
+    $desc = trim((string)($p['description'] ?? ''));
+    $offer = [
+        '@type'         => 'Offer',
+        'url'           => $url,
+        'priceCurrency' => 'INR',
+        'price'         => (string)(int)($p['price'] ?? 0),
+        // No priceValidUntil: the shop makes no promise about how long a price
+        // holds, and a date computed as "today + 1 year" was an invented claim.
+        // Google no longer warns on its absence.
+        //
+        // Out of stock is OutOfStock. It was PreOrder, but the cart refuses
+        // stock-0 items, so the markup offered something nobody could buy.
+        'availability'  => $stock > 0
+            ? 'https://schema.org/InStock'
+            : 'https://schema.org/OutOfStock',
+        // Was hardcoded to NewCondition. Now that pre-owned stock exists,
+        // that would be a false claim in structured data — Google surfaces
+        // condition in shopping results, and mislabelling used goods as new
+        // is both a rich-result violation and a consumer-trust problem.
+        'itemCondition' => (($p['condition'] ?? 'new') === 'pre-owned')
+            ? 'https://schema.org/UsedCondition'
+            : 'https://schema.org/NewCondition',
+        'seller'        => ['@id' => VELOREX_SITE_URL . '/#organization'],
+    ];
+    // Shipping details ONLY when this product's charge is actually known. The
+    // zone rate depends on the delivery address, so a product on the zone rate
+    // has no single honest number; the old block declared a destination with
+    // no rate, which Search Console reports as incomplete.
+    $shipRate = null;
+    if (!empty($p['freeShipping'])) $shipRate = 0;
+    elseif (isset($p['shippingCharge']) && $p['shippingCharge'] !== null) $shipRate = (int)$p['shippingCharge'];
+    if ($shipRate !== null) {
+        $offer['shippingDetails'] = [
+            '@type' => 'OfferShippingDetails',
+            'shippingRate' => ['@type' => 'MonetaryAmount', 'value' => (string)$shipRate, 'currency' => 'INR'],
+            'shippingDestination' => ['@type' => 'DefinedRegion', 'addressCountry' => 'IN'],
+        ];
+    }
 
     $data = [
         '@context'    => 'https://schema.org',
         '@type'       => 'Product',
         '@id'         => $url . '#product',
         'name'        => $p['title'] ?? '',
-        'image'       => array_values(array_unique($images)),
-        'description' => velorex_trim_text($p['description'] ?? ($p['title'] ?? ''), 400),
+        // The visible description, or the same generated sentence the meta
+        // description uses — never text that is not on the page.
+        'description' => $desc !== '' ? velorex_trim_text($desc, 400) : velorex_product_meta_description($p),
         'sku'         => 'VLX-' . (int)$p['id'],
         'url'         => $url,
         'category'    => velorex_category_label_for_key($p['category'] ?? ''),
-        'brand'       => ['@type' => 'Brand', 'name' => $p['artist'] ?: VELOREX_SITE_NAME],
-        'offers'      => [
-            '@type'         => 'Offer',
-            'url'           => $url,
-            'priceCurrency' => 'INR',
-            'price'         => (string)(int)($p['price'] ?? 0),
-            // Offers without a validity window get flagged in Search Console.
-            'priceValidUntil' => date('Y-m-d', strtotime('+1 year')),
-            'availability'  => $stock > 0
-                ? 'https://schema.org/InStock'
-                : 'https://schema.org/PreOrder',
-            // Was hardcoded to NewCondition. Now that pre-owned stock exists,
-            // that would be a false claim in structured data — Google surfaces
-            // condition in shopping results, and mislabelling used goods as new
-            // is both a rich-result violation and a consumer-trust problem.
-            'itemCondition' => (($p['condition'] ?? 'new') === 'pre-owned')
-                ? 'https://schema.org/UsedCondition'
-                : 'https://schema.org/NewCondition',
-            'seller'        => ['@id' => VELOREX_SITE_URL . '/#organization'],
-            'shippingDetails' => [
-                '@type' => 'OfferShippingDetails',
-                'shippingDestination' => [
-                    '@type' => 'DefinedRegion',
-                    'addressCountry' => 'IN',
-                ],
-            ],
-        ],
+        'offers'      => $offer,
     ];
+
+    // Only a real photo of this product. With none on file the property is
+    // omitted: it used to fall back to the brand card (og-default.jpg), which
+    // told Google a promotional banner was a picture of the record. Missing is
+    // honest — and Search Console's "missing image" warning is the prompt to
+    // photograph it.
+    if ($images) $data['image'] = array_values(array_unique($images));
+
+    // Brand = the record label, when the listing names one. It used to be the
+    // ARTIST, which is not a brand: "R. D. Burman" did not manufacture the
+    // record, Saregama did. With no label on file the property is omitted
+    // rather than guessed.
+    $label = trim((string)($p['specs']['label'] ?? ''));
+    if ($label !== '') $data['brand'] = ['@type' => 'Brand', 'name' => $label];
 
     // Extra descriptive properties Google uses for matching long-tail queries
     // like "Sholay vinyl R.D. Burman 1975".
     $props = [];
+    if (!empty($p['artist'])) {
+        $props[] = ['@type' => 'PropertyValue', 'name' => 'Artist', 'value' => (string)$p['artist']];
+    }
     if (!empty($p['musicDirector'])) {
         $props[] = ['@type' => 'PropertyValue', 'name' => 'Music Director', 'value' => $p['musicDirector']];
     }
@@ -641,20 +927,12 @@ function velorex_jsonld_product(array $p): string {
     }
     if ($props) $data['additionalProperty'] = $props;
 
-    // Only advertise a rating when there is a real review behind it. Emitting
-    // aggregateRating with reviewCount 0 is a structured-data violation and
-    // gets the whole rich result suppressed.
-    $reviews = (int)($p['reviews'] ?? 0);
-    $rating  = (float)($p['rating'] ?? 0);
-    if ($reviews > 0 && $rating > 0) {
-        $data['aggregateRating'] = [
-            '@type'       => 'AggregateRating',
-            'ratingValue' => (string)$rating,
-            'reviewCount' => (string)$reviews,
-            'bestRating'  => '5',
-            'worstRating' => '1',
-        ];
-    }
+    // NO aggregateRating, deliberately. products.rating and products.reviews
+    // are numbers typed into the admin form (the form defaults the rating to
+    // 4.5); there is no customer review system and no review text on the page.
+    // Google requires a rating to come from genuine, visible reviews —
+    // publishing these would be fake review markup, a manual-action risk for
+    // the whole domain. Add it back only alongside a real review feature.
 
     return velorex_jsonld($data);
 }
@@ -700,7 +978,12 @@ function velorex_jsonld_article(array $p): string {
         'url'              => $url,
         'mainEntityOfPage' => ['@type' => 'WebPage', '@id' => $url],
         'inLanguage'       => 'en-IN',
-        'author'    => ['@type' => 'Organization', 'name' => $p['author'] ?: VELOREX_SITE_NAME],
+        // A named author is a person; with none on the post, the shop itself
+        // is the author. It was always typed Organization, which mislabelled
+        // every post a person had signed.
+        'author'    => (trim((string)($p['author'] ?? '')) !== '' && trim((string)$p['author']) !== VELOREX_SITE_NAME)
+            ? ['@type' => 'Person', 'name' => trim((string)$p['author'])]
+            : ['@type' => 'Organization', 'name' => VELOREX_SITE_NAME, 'url' => VELOREX_SITE_URL . '/'],
         'publisher' => ['@id' => VELOREX_SITE_URL . '/#organization'],
     ];
     if (!empty($p['published_at'])) {
@@ -719,4 +1002,143 @@ function velorex_category_label_for_key(string $key): string {
         if ($meta['key'] === $key) return $meta['label'];
     }
     return 'Music';
+}
+
+// =============================================================================
+// Phase 2 — collection graph (composer collections, facet rules, pre-owned)
+// =============================================================================
+
+// Composer / artist collections. Deliberately a short, hand-curated registry —
+// NOT one page per artist in the catalogue. A composer earns a page only when
+// the shelf holds enough of their records for the page to be worth landing on
+// (VELOREX_ARTIST_MIN_PRODUCTS), and each page carries written context rather
+// than a bare product grid. Facts in `about` are limited to well-documented
+// ones; anything about Velorex's own stock is computed from the database at
+// render time, never written here.
+//
+// `aliases` are normalised with velorex_norm_person(): letters only, lower
+// case, so "R.D. Burman", "R. D. Burman" and "RD Burman" all match "rdburman".
+const VELOREX_ARTIST_MIN_PRODUCTS = 8;
+
+function velorex_artist_collections(): array {
+    return [
+        'r-d-burman' => [
+            'name'    => 'R. D. Burman',
+            'aliases' => ['rdburman', 'rahuldevburman'],
+            'title'   => 'R. D. Burman Vinyl Records | Bollywood Soundtrack LPs',
+            'description' => 'R. D. Burman soundtracks on vinyl — Hindi film LPs from the composer known as Pancham, new reissues and pre-owned copies, shipped across India by Velorex Music.',
+            'about'   => [
+                'Rahul Dev Burman (1939–1994), known to listeners as Pancham, was the son of composer S. D. Burman and one of the defining voices of Hindi film music from the 1960s into the 1990s. His scores include Amar Prem (1972), Sholay (1975) and 1942: A Love Story (1994), and his long partnerships with Kishore Kumar and Asha Bhosle produced many of the era\'s best-known songs.',
+                'On vinyl, his soundtracks are among the most collected Bollywood records — both as original pressings and as the reissues labels such as Saregama have brought back to the shelf.',
+            ],
+        ],
+        'a-r-rahman' => [
+            'name'    => 'A. R. Rahman',
+            'aliases' => ['arrahman', 'arrehman', 'allahrakharahman'],
+            'title'   => 'A. R. Rahman Vinyl Records | Film Soundtrack LPs',
+            'description' => 'A. R. Rahman soundtracks on vinyl — Hindi film score LPs from the Oscar-winning composer, new and pre-owned, shipped across India by Velorex Music.',
+            'about'   => [
+                'A. R. Rahman, born in Chennai in 1967, made his film debut with Mani Ratnam\'s Roja (1992) and went on to score Hindi films including Dil Se.. (1998), Taal (1999), Lagaan (2001) and Rang De Basanti (2006). His work for Slumdog Millionaire won two Academy Awards in 2009, for Best Original Score and Best Original Song.',
+                'His soundtracks have been reissued on vinyl in recent years, bringing 1990s and 2000s film music to the format for the first time for many listeners.',
+            ],
+        ],
+    ];
+}
+
+function velorex_norm_person(?string $s): string {
+    return preg_replace('/[^a-z]/', '', strtolower((string)$s)) ?? '';
+}
+
+// Which registered artist collection, if any, a product belongs to. Matches the
+// music director first, then the first credited artist.
+function velorex_product_artist_slug(array $p): ?string {
+    $md    = velorex_norm_person($p['musicDirector'] ?? '');
+    $first = velorex_norm_person(velorex_primary_artist((string)($p['artist'] ?? '')));
+    foreach (velorex_artist_collections() as $slug => $a) {
+        if (($md !== '' && in_array($md, $a['aliases'], true))
+            || ($first !== '' && in_array($first, $a['aliases'], true))) {
+            return $slug;
+        }
+    }
+    return null;
+}
+
+// Indexing rule for a language facet (/vinyl-records/hindi). MIRRORED by
+// Seo.facetStatus() in src/js/seo.js.
+//   'duplicate' — the facet holds every product its parent does, so it is the
+//                 same page twice: canonical to the parent.
+//   'thin'      — too few products to be worth a search landing: noindex.
+//   'index'     — a genuinely distinct, useful listing.
+const VELOREX_FACET_MIN_PRODUCTS = 6;
+
+function velorex_facet_status(int $facetCount, int $parentCount): string {
+    if ($facetCount > 0 && $facetCount >= $parentCount) return 'duplicate';
+    if ($facetCount < VELOREX_FACET_MIN_PRODUCTS) return 'thin';
+    return 'index';
+}
+
+// Pre-owned hub copy follows what is actually second-hand on the shelf. With
+// only vinyl in stock the old copy ("Pre-owned Vinyl, CDs & Cassettes")
+// promised formats that were not there, and /pre-owned/vinyl-records showed
+// the identical grid under a second URL. $formats = DB category keys that have
+// pre-owned stock. MIRRORED by Seo.preownedMeta().
+function velorex_preowned_meta(array $formats, ?string $catSlug = null): array {
+    $cats = velorex_categories();
+    if ($catSlug !== null && isset($cats[$catSlug])) {
+        $label = $cats[$catSlug]['label'];
+        return [
+            'title'       => 'Pre-owned ' . $label . ' | Buy Used ' . $label . ' Online India',
+            'description' => 'Shop pre-owned ' . strtolower($label) . ' in India at Velorex Music. Second-hand and collector copies, condition-checked before dispatch, with pan-India delivery.',
+            'h1'          => 'Pre-owned ' . $label,
+        ];
+    }
+    $formats = array_values(array_unique($formats));
+    if (count($formats) === 1 && $formats[0] === 'vinyl') {
+        return [
+            'title'       => 'Pre-owned Vinyl Records | Buy Used LPs Online in India',
+            'description' => 'Pre-owned Bollywood and Hindi film vinyl LPs, including first editions and 2LP sets — each copy condition-checked before dispatch and shipped across India.',
+            'h1'          => 'Pre-owned Vinyl Records',
+        ];
+    }
+    return [
+        'title'       => 'Pre-owned Vinyl, CDs & Cassettes | Buy Used Records India',
+        'description' => 'Shop pre-owned vinyl records, audio CDs, cassettes, Blu-rays and DVDs in India. Second-hand and collector copies, condition-checked before dispatch.',
+        'h1'          => 'Pre-owned',
+    ];
+}
+
+// Composer page count line, from the live shelf. MIRRORED by artistCountLine()
+// in src/js/storefront/collections.js.
+function velorex_artist_count_line(int $count, int $inStock): string {
+    $noun = $count === 1 ? 'record' : 'records';
+    if ($inStock === $count) return $count . ' ' . $noun . ' on the shelf, all in stock';
+    return $count . ' ' . $noun . ' on the shelf · ' . $inStock . ' in stock';
+}
+
+// The written context on a composer page. MIRRORED by the SPA renderer.
+function velorex_artist_about_html(array $a, array $products = []): string {
+    $out = '';
+    foreach ($a['about'] as $para) $out .= '<p>' . velorex_e($para) . '</p>';
+    return $out;
+}
+
+// -----------------------------------------------------------------------------
+// Journal post <title> and description. MIRRORED by Seo.blogMetaTitle() /
+// Seo.blogMetaDescription() in src/js/seo.js (tests/seo-meta-parity.js).
+//
+// An editor-written SEO title wins. Otherwise the headline, with the
+// " | Velorex Journal" suffix only while it fits 60 characters — appending it
+// unconditionally produced 97-character titles that Google cut mid-word.
+// -----------------------------------------------------------------------------
+function velorex_blog_meta_title(string $title, ?string $metaTitle = null): string {
+    $m = velorex_collapse_ws((string)$metaTitle);
+    if ($m !== '') return $m;
+    $t = velorex_collapse_ws($title);
+    $withSuffix = $t . ' | Velorex Journal';
+    return velorex_js_len($withSuffix) <= VELOREX_TITLE_SOFT_LIMIT ? $withSuffix : $t;
+}
+
+function velorex_blog_meta_description(?string $excerpt, ?string $metaDescription = null): string {
+    $m = velorex_collapse_ws((string)$metaDescription);
+    return velorex_fit_words('', $m !== '' ? $m : (string)$excerpt, 160);
 }

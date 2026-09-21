@@ -405,6 +405,7 @@
         orders: { t: 'Customer Orders', s: 'Track customer purchases and fulfillment' },
         categories: { t: 'Categories', s: 'Manage product categories' },
         blog: { t: 'Blog', s: 'Write and publish posts for the storefront' },
+        seo: { t: 'SEO', s: 'Product pages to improve, and where the search numbers live' },
         combos: { t: 'Combo Offers', s: 'Bundle products that go well together' },
         users: { t: 'Customer Management', s: 'Search, edit, support and remove customer accounts' },
         abandoned: { t: 'Abandoned Carts', s: 'Baskets and checkouts that were walked away from' },
@@ -442,6 +443,7 @@
       if (panelId === 'settings') loadSettings();
       if (panelId === 'coupons')  loadCoupons();
       if (panelId === 'policies') loadPolicies();
+      if (panelId === 'seo') loadSeoPanel();
 
       // Use initDashboard (not renderProductsTable alone) so the stat card +
       // recent-products list also refresh — paintPanelSkeleton above filled

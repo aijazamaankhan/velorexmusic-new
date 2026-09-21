@@ -72,7 +72,12 @@
       const stars = '<i class="fas fa-star" style="color:var(--accent);"></i>'.repeat(Math.round(product.rating)) + '<i class="far fa-star" style="color:var(--accent);"></i>'.repeat(5 - Math.round(product.rating));
       const priceHtml = product.originalPrice ? `<span class="product-price">₹${product.price.toLocaleString()}</span><span class="product-price-original">₹${product.originalPrice.toLocaleString()}</span>` : `<span class="product-price">₹${product.price.toLocaleString()}</span>`;
       const catLabel = product.category === 'vinyl' ? '<i class="fas fa-compact-disc"></i> Vinyl' : product.category === 'cd' ? '<i class="fas fa-compact-disc"></i> CD' : product.category === 'cassette' ? '<i class="fas fa-tape"></i> Cassette' : product.category === 'bluray' ? '<i class="fas fa-film"></i> Blu-ray' : '<i class="fas fa-film"></i> DVD';
-      const langLabel = facetVal(product.language) === 'hindi' ? '<i class="fas fa-globe"></i> Hindi' : '<i class="fas fa-earth-americas"></i> English';
+      // Only a language the product actually records. Anything that was not
+      // 'hindi' used to be labelled English, including the rows with no language
+      // at all — a false fact on the card.
+      const langKey = facetVal(product.language);
+      const langLabel = langKey === 'hindi' ? '<i class="fas fa-globe"></i> Hindi'
+        : langKey === 'english' ? '<i class="fas fa-earth-americas"></i> English' : '';
       // Three image states:
       //   1. image is a real string         → render <img>
       //   2. image missing + not synced yet → render skeleton (stripped cache;
@@ -87,9 +92,12 @@
       const hasImage = typeof product.image === 'string' && product.image.length > 0;
       const synced = Array.isArray(Storage._memory);
       const imageHtml = hasImage
-        ? `<img src="${product.image}" alt="${Utils.escape(product.title)}" loading="lazy" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=400&h=400&fit=crop'">`
+        ? `<img src="${product.image}" alt="${Utils.escape(Seo.productImageAlt(product))}" loading="lazy" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=400&h=400&fit=crop'">`
         : (synced
-            ? `<img src="https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=400&h=400&fit=crop" alt="${Utils.escape(product.title)}" loading="lazy" decoding="async">`
+            // No photo on file: a stock placeholder, so alt="" — naming the record
+            // on it would describe an image that is not the record (matches
+            // velorex_render_card() in seo-render.php).
+            ? `<img src="https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=400&h=400&fit=crop" alt="" loading="lazy" decoding="async">`
             : `<div class="skeleton skeleton-card-image" aria-label="Loading image"></div>`);
       // Real href to the product's canonical path. Crawlers discover products
       // by following <a href> — they do not fire onclick handlers, so while
@@ -105,7 +113,7 @@
         : '';
       // Descriptive alt text: "<title> — <artist> <format>" reads naturally and
       // is what Google Images matches against for cover-art queries.
-      const altText = Utils.escape(product.title + ' — ' + product.artist);
+      const altText = Utils.escape(Seo.productImageAlt(product));
       // Add to Cart is the primary action on the card now, with the detail page
       // one tap away on the eye. The old hover-only quick actions duplicated
       // both and never appeared at all on a touch screen, so they are gone.
@@ -125,7 +133,7 @@
           ${condHtml}
         </div>
         <div class="product-card-body">
-          <div class="product-category-tag">${catLabel} · ${langLabel}</div>
+          <div class="product-category-tag">${catLabel}${langLabel ? ' · ' + langLabel : ''}</div>
           <h3 class="product-title"><a href="${href}" onclick="navigate('product',{id:${product.id}});return false;">${Utils.escape(product.title)}</a></h3>
           <p class="product-artist">${Utils.escape(product.artist)}</p>
           <div class="product-rating"><span class="stars">${stars}</span><span class="rating-count">(${product.reviews})</span></div>
@@ -214,13 +222,22 @@
 
       var desc = document.getElementById('page-banner-desc');
       if (desc) {
+        // The server wrote this route's unique SEO intro (data-ssr). Keep it
+        // for as long as the visitor is on THAT path — including the re-render
+        // after the background product sync, which used to overwrite it with
+        // the generic sentence below. That swap shifted the page and left the
+        // rendered DOM (what Google indexes) with the weaker copy.
         if (desc.hasAttribute('data-ssr')) {
-          // The server wrote this route's unique SEO intro. Keep it for the
-          // first paint; any later navigation writes its own.
+          desc.setAttribute('data-ssr-path', location.pathname);
           desc.removeAttribute('data-ssr');
+        }
+        if (desc.getAttribute('data-ssr-path') === location.pathname) {
+          /* keep the server's intro */
         } else if (dept) {
+          desc.removeAttribute('data-ssr-path');
           desc.textContent = DEPARTMENT_BANNER_DESC[params.cat];
         } else {
+          desc.removeAttribute('data-ssr-path');
           var noun = MUSIC_BANNER_NOUNS[params.cat] || 'records, CDs, cassettes and films';
           desc.textContent = 'Rediscover timeless melodies. Explore our curated collection of '
             + (lang ? lang + ' ' : '') + noun + ' from legendary artists and iconic films.';
@@ -229,7 +246,10 @@
 
       var stats = document.getElementById('page-banner-stats');
       if (stats && !dept) {
-        if (!allProducts || !allProducts.length) { stats.innerHTML = ''; return; }
+        // Cold cache on first boot: leave whatever is there (the server's real
+        // counts) rather than blanking the row and re-growing it after the
+        // sync — that blank-then-fill was a measured layout shift.
+        if (!allProducts || !allProducts.length) return;
         var base = routeBaseProducts(allProducts, params);
         var artists = {};
         base.forEach(function (p) { artistKeys(p).forEach(function (k) { artists[k] = true; }); });
@@ -1179,7 +1199,18 @@
       var products = Storage.getProducts();
       var leanProduct = products.find(p => p.id === id) || null;
 
-      if (leanProduct) {
+      // Landed on a server-rendered product page: seo-render.php already put
+      // the COMPLETE detail (description, tracks, facts) in the container and
+      // marked it data-ssr-id. Painting the lean version over it shrank the
+      // block and then grew it back when the full record arrived — the page
+      // below jumped twice (CLS 1.3 measured in the September 2026 QA). Keep
+      // the server's render until the full record replaces it once.
+      var ssrPainted = container && container.getAttribute('data-ssr-id') === String(id);
+      if (container) container.removeAttribute('data-ssr-id');
+
+      if (ssrPainted) {
+        /* keep the server render */
+      } else if (leanProduct) {
         // Paint the lean version immediately. renderProductDetail tolerates
         // missing description/specs/people/trackListing — they just render as
         // empty sections until the full fetch arrives.
@@ -1228,7 +1259,8 @@
     function renderProductDetail(product) {
       var stars = '★'.repeat(Math.round(product.rating)) + '☆'.repeat(5 - Math.round(product.rating));
       var catLabel = product.category === 'vinyl' ? '💿 Vinyl Record' : product.category === 'cd' ? '💽 Audio CD' : product.category === 'cassette' ? '📼 Cassette' : product.category === 'bluray' ? '🎬 Blu-ray' : '🎞️ DVD';
-      var langLabel = facetVal(product.language) === 'hindi' ? '🇮🇳 Hindi' : '🌍 English';
+      var langKey = facetVal(product.language);
+      var langLabel = langKey === 'hindi' ? '🇮🇳 Hindi' : langKey === 'english' ? '🌍 English' : '';
       var isOOS = product.stock === 0;
       var discount = product.originalPrice ? Math.round((1 - product.price / product.originalPrice) * 100) : null;
       var specsHtml = '';
@@ -1322,19 +1354,19 @@
       var primary = gallery[0] || 'https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=800&h=800&fit=crop';
       var thumbsHtml = gallery.map(function (src, i) {
         var safe = String(src).replace(/'/g, "\\'");
-        return '<button type="button" class="product-detail-thumb' + (i === 0 ? ' active' : '') + '" onclick="selectGalleryThumb(this, \'' + safe + '\')"><img src="' + src + '" alt="thumbnail ' + (i + 1) + '" loading="lazy" decoding="async" onerror="this.style.opacity=0.3"></button>';
+        return '<button type="button" class="product-detail-thumb' + (i === 0 ? ' active' : '') + '" onclick="selectGalleryThumb(this, \'' + safe + '\')"><img src="' + src + '" alt="' + Utils.escape(Seo.productImageAlt(product, i + 1)) + '" loading="lazy" decoding="async" onerror="this.style.opacity=0.3"></button>';
       }).join('');
       container.innerHTML = `
       <div class="product-detail">
         <div class="product-detail-gallery">
-          <div class="product-detail-main-image"><img src="${primary}" alt="${Utils.escape(product.title)}" id="mainImage" fetchpriority="high" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=800&h=800&fit=crop'"></div>
+          <div class="product-detail-main-image"><img src="${primary}" alt="${gallery.length ? Utils.escape(Seo.productImageAlt(product)) : ''}" id="mainImage" fetchpriority="high" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1614680376573-df3480f0c6ff?w=800&h=800&fit=crop'"></div>
           <div class="product-detail-thumbs">${thumbsHtml}</div>
         </div>
         <div class="product-detail-info">
           <div class="product-detail-header">
             <div class="product-detail-tags">
               <span class="product-badge badge-${product.badge || 'new'}">${catLabel}</span>
-              <span class="product-detail-pill">${langLabel}</span>
+              ${langLabel ? `<span class="product-detail-pill">${langLabel}</span>` : ''}
               ${product.condition === 'pre-owned' ? '<span class="product-detail-condition">Pre-owned</span>' : ''}
             </div>
             ${stockWarn}
@@ -1343,13 +1375,15 @@
           <p class="product-detail-subtitle">by <strong>${Utils.escape(product.artist)}</strong></p>
           ${musicDirectorHtml}
           ${peopleHtml}
-          <div class="product-detail-meta"><div style="display:flex;align-items:center;gap:0.5rem;"><span style="color:var(--accent);">${stars}</span><strong>${product.rating}</strong><span style="color:var(--text-muted);font-size:0.875rem;">(${product.reviews} reviews)</span></div></div>
+          ${/* Only when real reviews exist. A row of empty stars reading "0 (0 reviews)"
+               presented an admin-typed number as if it were a customer rating. */ ''}
+          ${Number(product.reviews) > 0 ? `<div class="product-detail-meta"><div style="display:flex;align-items:center;gap:0.5rem;"><span style="color:var(--accent);">${stars}</span><strong>${product.rating}</strong><span style="color:var(--text-muted);font-size:0.875rem;">(${product.reviews} reviews)</span></div></div>` : ''}
           <div class="product-detail-price-block">
             <div class="product-detail-price-meta">
               <span class="product-detail-price">₹${product.price.toLocaleString()}</span>${origPriceHtml}
             </div>
             ${discountHtml}
-            <div class="product-detail-availability">${product.stock > 0 ? 'In stock: ' + product.stock + ' units' : 'Pre-order available'}</div>
+            <div class="product-detail-availability">${product.stock > 0 ? 'In stock: ' + product.stock + ' units' : (product.badge === 'upcoming' ? 'Coming soon' : 'Out of stock')}</div>
           </div>
           <p class="product-detail-desc">${Utils.escape(product.description)}</p>
           ${trackListingHtml}
@@ -1378,8 +1412,29 @@
       var qEl = document.getElementById('qtyDisplay'); if (qEl) qEl.textContent = _detailQty;
     }
 
+    // "You may also like": same music director first, then same format and
+    // language; in-stock before sold-out; newest first. MIRRORS
+    // collections_related_products() in api/_collections_helpers.php so the
+    // grid a crawler saw on the server render is the one a visitor sees.
+    function relatedProducts(product, products, limit) {
+      var norm = s => String(s || '').toLowerCase().replace(/[^a-z]/g, '');
+      var md = norm(product.musicDirector);
+      var lang = String(product.language || '').trim().toLowerCase();
+      return products.map(function (q) {
+        if (q.id === product.id) return null;
+        var s = 0;
+        if (md && norm(q.musicDirector) === md) s += 2;
+        if (q.category === product.category && String(q.language || '').trim().toLowerCase() === lang) s += 1;
+        return s ? { s: s, stock: Number(q.stock) > 0 ? 1 : 0, id: Number(q.id), q: q } : null;
+      }).filter(Boolean).sort(function (a, b) {
+        return (b.s - a.s) || (b.stock - a.stock) || (b.id - a.id);
+      }).slice(0, limit || 4).map(function (x) { return x.q; });
+    }
+
     function renderRelatedProducts(product, products) {
-      var related = products.filter(p => p.id !== product.id && (facetVal(p.category) === facetVal(product.category) || facetVal(p.language) === facetVal(product.language))).slice(0, 4);
+      // Composer, language and format collections + reading, below the details.
+      if (typeof CollectionLinks !== 'undefined') CollectionLinks.loadProduct(product);
+      var related = relatedProducts(product, products, 4);
       var sec = document.getElementById('related-section'), grid = document.getElementById('related-grid');
       if (related.length && sec && grid) { sec.style.display = 'block'; grid.innerHTML = related.map(createProductCard).join(''); fixProductLinks('page-product'); }
       else if (sec) sec.style.display = 'none';

@@ -48,13 +48,13 @@
        script-scope. Load order: main first (defines shared helpers like
        adminAuthHeaders, switchPanel), then per-panel files, then toast last
        (the admin showToast — different shape from the storefront's). -->
-  <script src="src/js/admin/main.js?v=61f5e86f"></script>
+  <script src="src/js/admin/main.js?v=c418c1f2"></script>
   <script src="src/js/admin/customers.js?v=127735c1"></script>
   <script src="src/js/admin/orders.js?v=5f5e6bfb"></script>
   <script src="src/js/admin/invoice.js?v=bdbd72dd"></script>
   <script src="src/js/admin/image-cropper.js?v=0dfdbe4f"></script>
   <script src="src/js/admin/inventory.js?v=a37fd7f7"></script>
-  <script src="src/js/admin/blog.js?v=3698c8d7"></script>
+  <script src="src/js/admin/blog.js?v=9ee875ac"></script>
   <script src="src/js/admin/combos.js?v=de76275c"></script>
   <!-- Abandoned carts + newsletter subscribers. Loaded after main.js because
        both panels call adminAuthHeaders() at runtime. -->
@@ -62,6 +62,7 @@
   <script src="src/js/admin/dashboard.js?v=1e0ccbd7"></script>
   <script src="src/js/admin/settings.js?v=da6da734"></script>
   <script src="src/js/admin/coupons.js?v=a50b3c38"></script>
+  <script src="src/js/admin/seo.js?v=016a02b4"></script>
   <script src="src/js/admin/policies.js?v=e5841fa0"></script>
   <script src="src/js/admin/toast.js?v=9a4bf3e8"></script>
 </head>
@@ -144,6 +145,11 @@
         <li class="nav-item">
           <a href="#" class="nav-link" data-nav="blog" onclick="switchPanel('blog', this)">
             <i class="fas fa-pen-nib"></i> Blog
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#" class="nav-link" data-nav="seo" onclick="switchPanel('seo', this)">
+            <i class="fas fa-magnifying-glass-chart"></i> SEO
           </a>
         </li>
         <li class="nav-item">
@@ -371,6 +377,60 @@
 
       <!-- Blog panel. Posts live in blog_posts (created on first API hit) and
            render on the storefront at /blog and /blog/<slug>. -->
+      <!-- SEO — product content scorecard + where the organic numbers live.
+           Read-only; see src/js/admin/seo.js and api/admin/seo.php. -->
+      <div id="panel-seo" class="panel">
+        <div class="card" style="margin-bottom:1.25rem;">
+          <h3 style="font-family:var(--font-display);margin-bottom:0.25rem;">Product pages to improve</h3>
+          <p style="color:var(--text-muted);font-size:0.85rem;margin:0 0 1rem;">
+            Sorted by priority: +3 in stock, +2 on a composer page, +1 pre-owned, +1 featured on the homepage.
+            Only add facts you know — never guess a year, label or track.
+          </p>
+          <div id="seo-summary" style="margin-bottom:1rem;"></div>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;">
+            <button type="button" class="btn btn-sm btn-primary" style="width:auto;" data-seo-filter onclick="setSeoFilter('issues', this)">Needs work</button>
+            <button type="button" class="btn btn-sm" style="width:auto;" data-seo-filter onclick="setSeoFilter('instock', this)">Needs work · in stock</button>
+            <button type="button" class="btn btn-sm" style="width:auto;" data-seo-filter onclick="setSeoFilter('all', this)">All products</button>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="admin-table" style="width:100%;">
+              <thead><tr><th style="width:4rem;">Priority</th><th>Product</th><th>Missing</th><th></th></tr></thead>
+              <tbody id="seo-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="font-family:var(--font-display);margin-bottom:0.25rem;">Measuring organic search</h3>
+          <p style="color:var(--text-muted);font-size:0.85rem;margin:0 0 1rem;">
+            Google Analytics 4 is already on the storefront (with ecommerce events). Search Console needs no code.
+            Nothing extra is installed here. Full checklist: <code>SEO-GOOGLE-SEARCH-CONSOLE.md</code> in the repo.
+          </p>
+          <div style="overflow-x:auto;">
+            <table class="admin-table" style="width:100%;font-size:0.85rem;">
+              <thead><tr><th>Question</th><th>Where to look</th></tr></thead>
+              <tbody>
+                <tr><td>Organic sessions, revenue, conversion rate</td><td>GA4 → Reports → Acquisition → Traffic acquisition → filter <em>Session default channel group = Organic Search</em></td></tr>
+                <tr><td>Organic landing pages (products, collections, Journal)</td><td>GA4 → Reports → Engagement → Landing page, same Organic Search filter. Filter the page path by <code>/product/</code>, <code>/vinyl-records</code>, <code>/artists/</code>, <code>/blog/</code></td></tr>
+                <tr><td>Top organic products by revenue</td><td>GA4 → Reports → Monetization → Ecommerce purchases, add comparison <em>Organic Search</em></td></tr>
+                <tr><td>Impressions, clicks, CTR, average position</td><td>Search Console → Performance → Search results (tick all four metrics)</td></tr>
+                <tr><td>Branded vs non-branded searches</td><td>Search Console → Performance → Query filter <em>contains / doesn't contain</em> “velorex”</td></tr>
+                <tr><td>Queries in positions 4–20 (closest wins)</td><td>Search Console → Performance → Queries, sort by Position, look between 4 and 20 with impressions</td></tr>
+                <tr><td>Indexed pages, and why others are not</td><td>Search Console → Indexing → Pages</td></tr>
+                <tr><td>Product / breadcrumb rich-result health</td><td>Search Console → Shopping / Enhancements (Product snippets, Merchant listings, Breadcrumbs)</td></tr>
+                <tr><td>Core Web Vitals</td><td>Search Console → Experience → Core Web Vitals (needs real traffic to populate)</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:1rem;">
+            <a class="btn btn-sm" href="https://search.google.com/search-console" target="_blank" rel="noopener">Open Search Console</a>
+            <a class="btn btn-sm" href="https://analytics.google.com/" target="_blank" rel="noopener">Open Google Analytics</a>
+            <a class="btn btn-sm" href="https://search.google.com/test/rich-results" target="_blank" rel="noopener">Rich Results Test</a>
+            <a class="btn btn-sm" href="https://pagespeed.web.dev/" target="_blank" rel="noopener">PageSpeed Insights</a>
+          </div>
+        </div>
+      </div>
+
       <div id="panel-blog" class="panel">
         <div class="card">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem;">
@@ -895,7 +955,8 @@
 
           <div class="form-group full-width">
             <label class="form-label">Description</label>
-            <textarea class="form-control" id="f-description" rows="3"></textarea>
+            <textarea class="form-control" id="f-description" rows="4" placeholder="1–2 sentences on the film or album (year, director, cast) · the composer and singers · standout tracks · this pressing (edition, colour, 180g, gatefold, 2LP) · for pre-owned: sleeve and disc condition"></textarea>
+            <small style="display:block;margin-top:0.4rem;color:var(--text-muted);font-size:0.72rem;">Write what a buyer checks before paying: what the record is, who made it, what is special about THIS copy. Only facts you know — leave out anything you are unsure of. Its opening words also appear in the Google result, after the title, artist, label and price.</small>
           </div>
         </div>
         <div style="margin-top: 2rem; display: flex; gap: 1rem;">
@@ -1058,6 +1119,46 @@
             placeholder="Leave blank to generate from the opening lines"></textarea>
           <small style="display:block;margin-top:0.4rem;color:var(--text-muted);font-size:0.72rem;">
             Shown on the blog listing and used as the search-result description.
+          </small>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">SEO title <span id="blog-meta-title-count" style="font-weight:400;color:var(--text-muted);"></span></label>
+          <input type="text" class="form-control" id="blog-meta-title" maxlength="70" oninput="renderBlogMetaCounts()"
+            placeholder="Optional — the headline is used if blank">
+          <small style="display:block;margin-top:0.4rem;color:var(--text-muted);font-size:0.72rem;">
+            What Google shows as the link. Up to ~60 characters. Must describe this article honestly.
+          </small>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Search description <span id="blog-meta-desc-count" style="font-weight:400;color:var(--text-muted);"></span></label>
+          <textarea class="form-control" id="blog-meta-description" rows="2" maxlength="170" oninput="renderBlogMetaCounts()"
+            placeholder="Optional — the excerpt is used if blank"></textarea>
+          <small style="display:block;margin-top:0.4rem;color:var(--text-muted);font-size:0.72rem;">
+            The line under the link in Google. Up to ~155 characters.
+          </small>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Author</label>
+          <input type="text" class="form-control" id="blog-author" maxlength="100" placeholder="Leave blank for “Velorex Music”">
+          <small style="display:block;margin-top:0.4rem;color:var(--text-muted);font-size:0.72rem;">
+            A real person's name only. It is shown on the post and given to Google as the author.
+          </small>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Records in this article (product IDs)</label>
+          <input type="text" class="form-control" id="blog-related-products" placeholder="e.g. 4, 16, 27" oninput="renderBlogRelatedPreview()">
+          <small id="blog-related-products-preview" style="display:block;margin-top:0.4rem;color:var(--text-muted);font-size:0.72rem;">
+            Shown as product cards under the post, and the post is linked from those product pages.
+          </small>
+        </div>
+        <div class="form-group full-width">
+          <label class="form-label">Related collections</label>
+          <div id="blog-related-collections" style="display:flex;flex-wrap:wrap;gap:0.4rem 1rem;"></div>
+          <small style="display:block;margin-top:0.4rem;color:var(--text-muted);font-size:0.72rem;">
+            Tick the shelves this post is about. They are linked under the post, and the post appears on those
+            collection pages. A collection with no stock is skipped automatically.
           </small>
         </div>
       </div>
@@ -1257,7 +1358,8 @@
 
           <div class="form-group full-width">
             <label class="form-label">Description</label>
-            <textarea class="form-control" id="e-description" rows="3"></textarea>
+            <textarea class="form-control" id="e-description" rows="4" placeholder="1–2 sentences on the film or album (year, director, cast) · the composer and singers · standout tracks · this pressing (edition, colour, 180g, gatefold, 2LP) · for pre-owned: sleeve and disc condition"></textarea>
+            <small style="display:block;margin-top:0.4rem;color:var(--text-muted);font-size:0.72rem;">Write what a buyer checks before paying: what the record is, who made it, what is special about THIS copy. Only facts you know — leave out anything you are unsure of. Its opening words also appear in the Google result, after the title, artist, label and price.</small>
           </div>
         </div>
         <div style="margin-top: 2rem; display: flex; gap: 1rem;">

@@ -218,7 +218,18 @@ function upsert_product(PDO $pdo, array $p): void {
 function products_decode_text($v) {
     if (!is_string($v) || $v === '' || strpos($v, '&') === false) return $v;
     // ENT_QUOTES so &#39; and &quot; are both covered — Utils.escape emits both.
-    return html_entity_decode($v, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    //
+    // Repeated until stable: each re-save under the old admin escaped the
+    // ampersands again, so live rows hold "&amp;amp;amp;amp;amp;" (found in the
+    // September 2026 QA on product 1779173457). One pass left "&amp;amp;amp;amp;"
+    // on the page. Capped so a string that is genuinely about entities cannot
+    // loop; a clean string exits on the first comparison.
+    for ($i = 0; $i < 8; $i++) {
+        $d = html_entity_decode($v, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        if ($d === $v) break;
+        $v = $d;
+    }
+    return $v;
 }
 
 function row_to_product(array $r): array {

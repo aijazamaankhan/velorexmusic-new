@@ -18,6 +18,12 @@
 Options -Indexes
 DirectoryIndex index.html index.php
 
+# Any URL nothing else claims gets the storefront's own 404 page — still an
+# HTTP 404, never a 200 — instead of the host's unbranded error page.
+# seo-render.php with no _route IS the 404 renderer (velorex_send_404), and it
+# answers missing images/scripts with a tiny plain-text 404 rather than a page.
+ErrorDocument 404 /seo-render.php
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
@@ -43,6 +49,12 @@ DirectoryIndex index.html index.php
   # "old.admin" — the directory name contains a literal space; "." matches it
   # whether the request arrives raw, plus-encoded or %20-encoded.
   RewriteRule ^(scripts|node_modules|test-results|old.admin)/ - [F,L]
+
+  # Dev/test files that live at the repo root and so get deployed. Found
+  # publicly downloadable in the September 2026 SEO QA: test-admin-login.js
+  # named the hidden admin URL and the local dev login. Refused outright —
+  # nothing a visitor or crawler needs.
+  RewriteRule ^(test-admin-login\.js|playwright-mcp-server\.js|ids\.txt|carrier-preview\.html)$ - [F,L]
 
   # ---------------------------------------------------------------------------
   # 1. Canonical origin
@@ -81,6 +93,14 @@ DirectoryIndex index.html index.php
   # than just the blog (CLAUDE.md §40).
   RewriteRule ^ads\.txt$ ads-txt.php [L]
 
+  # /index.html is the homepage under a second URL. Only an EXTERNAL request
+  # for it is redirected (THE_REQUEST is the raw request line) — the internal
+  # rewrites below that serve index.html for /cart etc. are untouched. The
+  # query string is kept, and browsers keep a #fragment across the redirect,
+  # so legacy /index.html#product?id=12 links still land correctly.
+  RewriteCond %{THE_REQUEST} ^[A-Z]+\s/index\.html[\s?]
+  RewriteRule ^index\.html$ / [R=301,L]
+
   # Never rewrite something that physically exists (index.html, /src/*, the
   # /uploads symlink, the /api directory). This MUST come before the catalogue
   # rules below, otherwise a real asset whose name happens to match a pattern
@@ -89,6 +109,11 @@ DirectoryIndex index.html index.php
   RewriteCond %{REQUEST_FILENAME} -d [OR]
   RewriteCond %{REQUEST_FILENAME} -l
   RewriteRule ^ - [L]
+
+  # One URL per page: drop a trailing slash. /vinyl-records/ and
+  # /product/12-x/ both answered 200 alongside the slash-less form. Real
+  # directories never get here (the bailout above), so /api/ and /src/ are safe.
+  RewriteRule ^(.+)/$ /$1 [R=301,L]
 
   # /product/12-sholay-rd-burman  (slug optional; seo-render 301s to canonical)
   RewriteRule ^product/([0-9]+)(?:-[^/]*)?/?$ seo-render.php?_route=product&id=$1 [L,QSA]
@@ -100,6 +125,10 @@ DirectoryIndex index.html index.php
   # The sub slug is validated against the taxonomy inside seo-render.php, so an
   # unknown one 404s rather than rendering the whole department.
   RewriteRule ^(merchandise|vinyl-care)/([a-z0-9-]+)/?$ seo-render.php?_route=category&cat=$1&sub=$2 [L,QSA]
+
+  # /artists/r-d-burman — curated composer collections. Unknown or
+  # under-stocked slugs are answered 404 by seo-render.php itself.
+  RewriteRule ^artists/([a-z0-9-]+)/?$ seo-render.php?_route=artist&slug=$1 [L,QSA]
 
   # /products — the full catalogue
   RewriteRule ^products/?$ seo-render.php?_route=products [L,QSA]
@@ -123,8 +152,11 @@ DirectoryIndex index.html index.php
 
   # Client-routed, non-indexable SPA views. These need to resolve to the shell
   # on a hard refresh or the user gets a 404 after, say, reloading /cart.
-  # They are marked noindex by src/js/seo.js once the SPA boots.
-  RewriteRule ^(cart|profile|login|signup|forgot|checkout)/?$ index.html [L]
+  # Served through seo-render.php so the noindex is in the HTML the SERVER
+  # sends — as a raw index.html they declared the homepage as canonical and
+  # "index" until JavaScript ran. robots.txt no longer blocks them, so Google
+  # can actually read that noindex.
+  RewriteRule ^(cart|profile|login|signup|forgot|checkout)/?$ seo-render.php?_route=private&page=$1 [L]
 
   # Editable policy pages.
   #

@@ -26,4 +26,7 @@ Options -Indexes
     Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
     Header set Pragma "no-cache"
     Header set Expires "0"
+    # robots.txt lets Googlebot fetch the read-only endpoints it needs to
+    # render the storefront. This keeps the raw JSON out of the index.
+    Header set X-Robots-Tag "noindex"
 </IfModule>

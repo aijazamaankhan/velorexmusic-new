@@ -29,13 +29,21 @@ header('Cache-Control: public, max-age=3600');
 header_remove('Pragma');
 header_remove('Expires');
 
-/** One <url> entry. $lastmod may be null (the element is then omitted). */
-function velorex_sitemap_url(string $loc, ?string $lastmod, string $changefreq, string $priority): string {
+/**
+ * One <url> entry. $lastmod may be null (the element is then omitted — a date
+ * is only written when it is a real modification time from the database).
+ * $images are absolute URLs for Google Images; the image-sitemap extension is
+ * how a product cover gets discovered even before the page is rendered.
+ */
+function velorex_sitemap_url(string $loc, ?string $lastmod, string $changefreq, string $priority, array $images = []): string {
     $out = "  <url>\n";
     $out .= '    <loc>' . velorex_e($loc) . "</loc>\n";
     if ($lastmod) {
         $ts = strtotime($lastmod);
         if ($ts) $out .= '    <lastmod>' . date('Y-m-d', $ts) . "</lastmod>\n";
+    }
+    foreach ($images as $img) {
+        $out .= '    <image:image><image:loc>' . velorex_e($img) . "</image:loc></image:image>\n";
     }
     $out .= '    <changefreq>' . $changefreq . "</changefreq>\n";
     $out .= '    <priority>' . $priority . "</priority>\n";
@@ -44,7 +52,8 @@ function velorex_sitemap_url(string $loc, ?string $lastmod, string $changefreq, 
 }
 
 $xml  = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
-$xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+$xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'
+      . ' xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">' . "\n";
 
 // ---- Home -------------------------------------------------------------------
 $xml .= velorex_sitemap_url(VELOREX_SITE_URL . '/', null, 'daily', '1.0');
@@ -54,16 +63,30 @@ $xml .= velorex_sitemap_url(VELOREX_SITE_URL . '/products', null, 'daily', '0.9'
 
 // Only emit category and facet URLs that actually have products behind them.
 // A sitemap full of empty listings trains Google to distrust the whole file.
+// LOWER(language): the column holds both "hindi" and "Hindi" (free-text admin
+// field, CLAUDE.md §19) and the facet page matches either, so the count must too.
+// MAX(updated_at) gives each listing a real lastmod: a listing changed when the
+// newest product in it did.
 $countsByCat = [];
 $countsByCatLang = [];
+$lastmodByCat = [];
+$lastmodByCatLang = [];
 try {
-    $stmt = db()->query('SELECT category, language, COUNT(*) AS n FROM products GROUP BY category, language');
+    $stmt = db()->query(
+        'SELECT category, LOWER(TRIM(language)) AS lang, COUNT(*) AS n, MAX(updated_at) AS lm
+           FROM products GROUP BY category, LOWER(TRIM(language))'
+    );
     foreach ($stmt->fetchAll() as $r) {
         $cat  = (string)$r['category'];
-        $lang = (string)($r['language'] ?? '');
+        $lang = (string)($r['lang'] ?? '');
         $n    = (int)$r['n'];
+        $lm   = $r['lm'] ?? null;
         $countsByCat[$cat] = ($countsByCat[$cat] ?? 0) + $n;
-        if ($lang !== '') $countsByCatLang[$cat][$lang] = $n;
+        if ($lm && (!isset($lastmodByCat[$cat]) || $lm > $lastmodByCat[$cat])) $lastmodByCat[$cat] = $lm;
+        if ($lang !== '') {
+            $countsByCatLang[$cat][$lang] = ($countsByCatLang[$cat][$lang] ?? 0) + $n;
+            $lastmodByCatLang[$cat][$lang] = $lm;
+        }
     }
 } catch (Throwable $e) {
     error_log('[sitemap] category count query failed: ' . $e->getMessage());
@@ -88,21 +111,24 @@ try {
 
 foreach (velorex_categories() as $slug => $meta) {
     if (($countsByCat[$meta['key']] ?? 0) < 1) continue;
-    $xml .= velorex_sitemap_url(velorex_category_url($slug), null, 'daily', '0.9');
+    $xml .= velorex_sitemap_url(velorex_category_url($slug), $lastmodByCat[$meta['key']] ?? null, 'daily', '0.9');
     // Departments list stocked subcategories; formats list stocked languages.
     foreach (velorex_subcategories($slug) as $subSlug => $subLabel) {
         if (($countsBySub[$meta['key']][$subSlug] ?? 0) < 1) continue;
         $xml .= velorex_sitemap_url(VELOREX_SITE_URL . '/' . $slug . '/' . $subSlug, null, 'weekly', '0.8');
     }
     foreach (array_keys(velorex_languages()) as $lang) {
-        if (($countsByCatLang[$meta['key']][$lang] ?? 0) < 1) continue;
-        $xml .= velorex_sitemap_url(velorex_category_url($slug, $lang), null, 'weekly', '0.8');
+        // Same rule the page itself applies (velorex_facet_status): a facet that
+        // duplicates its parent, or is too thin to land on, is not listed.
+        $fc = $countsByCatLang[$meta['key']][$lang] ?? 0;
+        if ($fc < 1 || velorex_facet_status($fc, $countsByCat[$meta['key']] ?? 0) !== 'index') continue;
+        $xml .= velorex_sitemap_url(velorex_category_url($slug, $lang), $lastmodByCatLang[$meta['key']][$lang] ?? null, 'weekly', '0.8');
     }
 }
 
 // ---- Products ---------------------------------------------------------------
 try {
-    $stmt = db()->query('SELECT id, title, artist, updated_at FROM products ORDER BY id DESC');
+    $stmt = db()->query('SELECT id, title, artist, image, updated_at FROM products ORDER BY id DESC');
     foreach ($stmt->fetchAll() as $row) {
         // Rows written by the old admin hold entity-encoded text, which would
         // slugify to /product/12-gulzar-39-s-… — a different URL from the one
@@ -110,11 +136,14 @@ try {
         // row_to_product() does; see products_decode_text().
         $row['title']  = products_decode_text($row['title']);
         $row['artist'] = products_decode_text($row['artist']);
+        $cover = velorex_absolute_image($row['image'] ?? '');
         $xml .= velorex_sitemap_url(
             velorex_product_url($row),
             $row['updated_at'] ?? null,
             'weekly',
-            '0.8'
+            '0.8',
+            // Only a real cover, never the brand fallback card.
+            $cover !== VELOREX_DEFAULT_OG_IMAGE ? [$cover] : []
         );
     }
 } catch (Throwable $e) {
@@ -141,6 +170,9 @@ try {
             $xml .= velorex_sitemap_url(VELOREX_SITE_URL . '/pre-owned', null, 'weekly', '0.8');
             foreach (velorex_categories() as $slug => $meta) {
                 if (($poCounts[$meta['key']] ?? 0) < 1) continue;
+                // One format holding all pre-owned stock is /pre-owned twice:
+                // that page canonicalises to the hub, so it is not listed.
+                if (count($poCounts) === 1) continue;
                 $xml .= velorex_sitemap_url(VELOREX_SITE_URL . '/pre-owned/' . $slug, null, 'weekly', '0.7');
             }
         }
@@ -206,6 +238,19 @@ try {
     }
 } catch (Throwable $e) {
     error_log('[sitemap] blog query failed: ' . $e->getMessage());
+}
+
+// ---- Composer collections ---------------------------------------------------
+// Only the curated composers, and only while they meet the product threshold
+// that makes the page indexable (collections_artist_status()).
+try {
+    require_once __DIR__ . '/api/_collections_helpers.php';
+    foreach (velorex_artist_collections() as $aslug => $a) {
+        if (collections_artist_status(db(), $aslug) !== 'index') continue;
+        $xml .= velorex_sitemap_url(VELOREX_SITE_URL . '/artists/' . $aslug, $lastmodByCat['vinyl'] ?? null, 'weekly', '0.8');
+    }
+} catch (Throwable $e) {
+    error_log('[sitemap] artist collections failed: ' . $e->getMessage());
 }
 
 // ---- The Evolution of Music & Audio -----------------------------------------

@@ -1,0 +1,69 @@
+/* =============================================================================
+   Collection links — the "Keep exploring" block under listings, product pages
+   and Journal posts, plus the composer-page intro (Phase 2).
+
+   Markup comes from collections_related_html() (PHP, server render) and
+   CollectionLinks.html() (JS) — keep class names in step with both.
+   Colours are tokens only, so both themes work; links use --accent, the token
+   re-tuned for contrast in the light theme (CLAUDE.md §29).
+   ============================================================================= */
+
+.collection-links {
+  margin-top: 3rem;
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius, 12px);
+  background: var(--surface);
+}
+.collection-links-title {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  margin: 0 0 1rem;
+}
+.collection-links-groups {
+  display: grid;
+  gap: 1.25rem 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+.collection-links-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 0.6rem;
+}
+.collection-links-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.45rem; }
+.collection-links-list a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  line-height: 1.45;
+}
+.collection-links-list a:hover { text-decoration-thickness: 2px; }
+
+/* Collection chips read as destinations, not prose links. */
+.collection-links-collections .collection-links-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.collection-links-collections .collection-links-list a {
+  display: inline-block;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+.collection-links-collections .collection-links-list a:hover { border-color: var(--accent); }
+
+/* Product cards under a Journal post. */
+.post-related-products { margin-top: 2.5rem; }
+.post-related-products .products-grid { margin-top: 1rem; }
+
+/* Composer page intro. A readable measure — it is prose, not a banner. */
+.artist-about { max-width: 780px; margin: 0 0 2rem; }
+.artist-about p { color: var(--text-muted); line-height: 1.75; margin: 0 0 0.9rem; }
+
+@media (max-width: 600px) {
+  .collection-links { padding: 1.1rem; margin-top: 2rem; }
+  .collection-links-title { font-size: 1.15rem; }
+}

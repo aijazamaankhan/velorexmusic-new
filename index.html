@@ -44,21 +44,22 @@
        that lives here but is NOT re-emitted would vanish from every
        server-rendered page — put that kind outside the markers, as
        theme-color and the favicons are. -->
-  <title>Velorex Music | Buy Vinyl Records, CDs &amp; Cassettes Online India</title>
-  <meta name="description" content="Buy original vinyl records, audio CDs, cassettes, Blu-rays and DVDs online in India. Hindi film soundtracks, English albums and rare collector pressings. Delivered across India.">
+  <title>Buy Vinyl Records &amp; Cassettes Online in India | Velorex Music</title>
+  <meta name="description" content="Shop original Bollywood and Hindi film vinyl LPs, new and pre-owned, plus audio cassettes at Velorex Music. Hand-checked and shipped across India.">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
   <link rel="canonical" href="https://velorexmusic.com/">
 
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Velorex Music">
-  <meta property="og:title" content="Velorex Music | Buy Vinyl Records, CDs &amp; Cassettes Online India">
-  <meta property="og:description" content="Buy original vinyl records, audio CDs, cassettes, Blu-rays and DVDs online in India. Hindi film soundtracks, English albums and rare collector pressings.">
+  <meta property="og:title" content="Buy Vinyl Records &amp; Cassettes Online in India | Velorex Music">
+  <meta property="og:description" content="Shop original Bollywood and Hindi film vinyl LPs, new and pre-owned, plus audio cassettes at Velorex Music. Hand-checked and shipped across India.">
   <meta property="og:url" content="https://velorexmusic.com/">
   <meta property="og:image" content="https://velorexmusic.com/src/img/og-default.jpg">
+  <meta property="og:image:alt" content="Velorex Music — vinyl records and cassettes, shipped across India">
   <meta property="og:locale" content="en_IN">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Velorex Music | Buy Vinyl Records, CDs &amp; Cassettes Online India">
-  <meta name="twitter:description" content="Buy original vinyl records, audio CDs, cassettes, Blu-rays and DVDs online in India.">
+  <meta name="twitter:title" content="Buy Vinyl Records &amp; Cassettes Online in India | Velorex Music">
+  <meta name="twitter:description" content="Shop original Bollywood and Hindi film vinyl LPs, new and pre-owned, plus audio cassettes at Velorex Music. Hand-checked and shipped across India.">
   <meta name="twitter:image" content="https://velorexmusic.com/src/img/og-default.jpg">
   <!-- Organization + WebSite. The SearchAction lets Google render a sitelinks
        search box for brand queries ("velorex music"). LocalBusiness lives on
@@ -120,72 +121,90 @@
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <!-- The font FILES come from gstatic, a second origin. Without this the
+       browser only opens that connection after the CSS arrives, delaying text. -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
     href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap"
     rel="stylesheet">
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-  <!-- Storefront JS modules extracted in PR 4. Load order is meaningful —
+  <!-- Razorpay Checkout is only needed when someone presses Pay (the one
+       "new Razorpay" is in checkout.js, inside the payment handler), so it is
+       deferred. It used to block rendering of every page, product pages
+       included, on a third-party round trip. -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
+  <!-- EVERY storefront script is `defer` (SEO QA, September 2026). There were
+       32 blocking scripts here — ~800 KB the browser had to download and run
+       before painting anything, putting first paint at ~8.6 s on a throttled
+       phone. Deferred scripts still run IN ORDER and before DOMContentLoaded,
+       which is when the bootstrap at the bottom of <body> starts, so nothing
+       downstream changes. A tap that lands before they run falls back to the
+       link's real href. Do not add a non-deferred <script src> here.
+
+       Storefront JS modules extracted in PR 4. Load order is meaningful —
        leaves first, then objects that reference them. All are plain scripts
        (not type="module") so the inline <script> later in the body and
        inline onclick= handlers can resolve them via script-scope. -->
-  <script src="src/js/utils.js?v=15bf1815"></script>
-  <script src="src/js/api-base.js?v=0ce972cf"></script>
+  <script src="src/js/utils.js?v=15bf1815" defer></script>
+  <script src="src/js/api-base.js?v=0ce972cf" defer></script>
   <!-- GA4 ecommerce events. Must load before cart.js, pages.js, search.js and
        checkout.js, all of which call Analytics.* — every call site is guarded
        with a typeof check, so a blocked or failed load degrades to "no
        analytics" rather than a broken storefront. -->
-  <script src="src/js/analytics.js?v=85ee1923"></script>
+  <script src="src/js/analytics.js?v=85ee1923" defer></script>
   <!-- URL vocabulary + live metadata. Must load before router.js and pages.js,
        both of which call Seo.buildPath()/Seo.productPath() to render hrefs. -->
-  <script src="src/js/seo.js?v=67f54f88"></script>
-  <script src="src/js/constants.js?v=b0f974a1"></script>
-  <script src="src/js/storage.js?v=7d4b11c3"></script>
-  <script src="src/js/auth.js?v=b09358ad"></script>
-  <script src="src/js/addresses.js?v=9f6b79b8"></script>
-  <script src="src/js/shipping.js?v=187ee937"></script>
-  <script src="src/js/skeleton.js?v=6ca28cb2"></script>
+  <script src="src/js/seo.js?v=430cf03a" defer></script>
+  <script src="src/js/constants.js?v=b0f974a1" defer></script>
+  <script src="src/js/storage.js?v=7d4b11c3" defer></script>
+  <script src="src/js/auth.js?v=b09358ad" defer></script>
+  <script src="src/js/addresses.js?v=9f6b79b8" defer></script>
+  <script src="src/js/shipping.js?v=187ee937" defer></script>
+  <script src="src/js/skeleton.js?v=6ca28cb2" defer></script>
   <!-- Shared component JS extracted in PR 5. These are the leaves of the
        UI — toast, confirm dialog, cart, address modal. Page-level renderers
        still live in the inline <script> for now (will move in PR 6). -->
-  <script src="src/js/toast.js?v=d72083ef"></script>
+  <script src="src/js/toast.js?v=d72083ef" defer></script>
   <!-- Custom cursor. Self-initialising and self-disabling on touch /
        reduced-motion; see src/js/cursor.js. -->
-  <script src="src/js/cursor.js?v=be88ed3c"></script>
-  <script src="src/js/confirm-dialog.js?v=40a04cdd"></script>
-  <script src="src/js/cart.js?v=fb3a8ffc"></script>
+  <script src="src/js/cursor.js?v=be88ed3c" defer></script>
+  <script src="src/js/confirm-dialog.js?v=40a04cdd" defer></script>
+  <script src="src/js/cart.js?v=fb3a8ffc" defer></script>
   <!-- Server-side cart mirror + ?recover= link handling. Must load before
        storage.js is first USED (not parsed) — Storage.saveCart calls
        CartSync.schedule() at runtime, guarded by typeof. -->
-  <script src="src/js/cart-sync.js?v=7863bfb0"></script>
-  <script src="src/js/address-form.js?v=5d822cd1"></script>
+  <script src="src/js/cart-sync.js?v=7863bfb0" defer></script>
+  <script src="src/js/address-form.js?v=5d822cd1" defer></script>
   <!-- Storefront app layer extracted in PR 6. Load order: carriers (data
        only, no deps) → pages (renderers + initPage*) → router (uses
        initPage*) → checkout (used by router + page handlers). All four
        end up in script-scope; the inline <script> at the bottom of <body>
        just bootstraps DOMContentLoaded. -->
-  <script src="src/js/storefront/carriers.js?v=488bf189"></script>
-  <script src="src/js/storefront/pages.js?v=58a255ff"></script>
+  <script src="src/js/storefront/carriers.js?v=488bf189" defer></script>
+  <script src="src/js/storefront/pages.js?v=2558d415" defer></script>
   <!-- Blog views. Must load before router.js, whose initPage dispatcher calls
        initPageBlog / initPageBlogPost. -->
   <!-- Homepage hero carousel. Must load before router.js: its initPage
        dispatcher runs initPageIndex, which calls HeroCarousel.init(). -->
-  <script src="src/js/storefront/hero.js?v=25800217"></script>
+  <script src="src/js/storefront/hero.js?v=25800217" defer></script>
   <!-- Global search. Must load before router.js, whose injectNavbar calls
        VelorexSearch.bindNavbar(). -->
-  <script src="src/js/storefront/search.js?v=b7fbf620"></script>
-  <script src="src/js/storefront/combos.js?v=09dfb705"></script>
-  <script src="src/js/storefront/ads.js?v=cbb5cd9c"></script>
-  <script src="src/js/storefront/blog.js?v=1cd0941e"></script>
-  <script src="src/js/storefront/music-history.js?v=45f7aa17"></script>
-    <script src="src/js/storefront/music-history-audio.js?v=7b77bb14"></script>
-  <script src="src/js/storefront/recent-sales.js?v=956fc5e9"></script>
-  <script src="src/js/storefront/site-settings.js?v=159a6208"></script>
-  <script src="src/js/storefront/coupon.js?v=bcf00ad5"></script>
+  <script src="src/js/storefront/search.js?v=b7fbf620" defer></script>
+  <script src="src/js/storefront/combos.js?v=09dfb705" defer></script>
+  <script src="src/js/storefront/ads.js?v=cbb5cd9c" defer></script>
+  <script src="src/js/storefront/blog.js?v=2ffce2ff" defer></script>
+  <script src="src/js/storefront/music-history.js?v=45f7aa17" defer></script>
+    <script src="src/js/storefront/music-history-audio.js?v=7b77bb14" defer></script>
+  <script src="src/js/storefront/recent-sales.js?v=956fc5e9" defer></script>
+  <script src="src/js/storefront/site-settings.js?v=159a6208" defer></script>
+  <script src="src/js/storefront/coupon.js?v=bcf00ad5" defer></script>
   <!-- Newsletter signup. Bound from router.js's boot and from the inline
        onclick on the homepage form. -->
-  <script src="src/js/storefront/newsletter.js?v=ee512e2d"></script>
-  <script src="src/js/storefront/router.js?v=03298b6f"></script>
-  <script src="src/js/storefront/checkout.js?v=f539fe43"></script>
+  <script src="src/js/storefront/newsletter.js?v=ee512e2d" defer></script>
+  <!-- Collection graph: related links, composer pages. Must load before
+       router.js, whose initPage calls initPageArtist() and CollectionLinks. -->
+  <script src="src/js/storefront/collections.js?v=55ccb3ce" defer></script>
+  <script src="src/js/storefront/router.js?v=635ea023" defer></script>
+  <script src="src/js/storefront/checkout.js?v=f539fe43" defer></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
        they can be shared between the storefront pages without duplication.
        See src/styles/tokens.css and src/styles/base.css. -->
@@ -197,7 +216,7 @@
   <link rel="stylesheet" href="src/styles/components/payment-modal.css?v=02096d61">
   <link rel="stylesheet" href="src/styles/components/toast.css?v=1b13f717">
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
-  <link rel="stylesheet" href="src/styles/components/hero-carousel.css?v=79603785">
+  <link rel="stylesheet" href="src/styles/components/hero-carousel.css?v=cc74d33e">
   <link rel="stylesheet" href="src/styles/components/cursor.css?v=fb46709c">
   <link rel="stylesheet" href="src/styles/components/search.css?v=046a8aed">
   <link rel="stylesheet" href="src/styles/components/trust-band.css?v=8edcca10">
@@ -208,10 +227,12 @@
   <link rel="stylesheet" href="src/styles/components/recent-sales.css?v=066910e1">
   <link rel="stylesheet" href="src/styles/components/label-band.css?v=58b6bd4e">
   <link rel="stylesheet" href="src/styles/components/page-banner.css?v=db852962">
+  <link rel="stylesheet" href="src/styles/components/collection-links.css?v=7916300b">
+  <link rel="stylesheet" href="src/styles/components/about-velorex.css?v=4e39af50">
   <link rel="stylesheet" href="src/styles/components/catalog-empty.css?v=8c30b8f4">
   <!-- Page-specific styles (hero, products, cart, profile, footer, etc.).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=df01a429">
+  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=c5d7dae2">
 </head>
 
 <body>
@@ -256,8 +277,8 @@
   <div class="breadcrumbs-container">
     <ul class="breadcrumbs" id="breadcrumb-list"></ul>
   </div>
-  <div id="app">
-    <div id="page-index" class="page-section">
+  <main id="app">
+    <div id="page-index" class="page-section" style="display:block">
       <!-- Hero carousel. The BRAND SLIDE BELOW IS THE ONLY SLIDE IN THE HTML —
            src/js/storefront/hero.js appends the featured-product slides from
            the product cache and wires the switching. Keep it that way: the
@@ -275,8 +296,13 @@
           <article class="hero-slide hero-slide-brand is-active" role="group" aria-label="Velorex Music">
             <div class="hero-container">
               <div class="hero-content">
-                <span class="hero-badge hero-rise"><span class="hero-badge-dot" aria-hidden="true"></span> India's Premier Music Store</span>
-                <h1 class="hero-title hero-rise">Feel the Music,<br>Own the <span class="highlight">Legacy</span></h1>
+                <!-- The page's one <h1> is the descriptive line in the badge
+                     slot: it says what the shop sells and where, which is what
+                     the homepage has to rank for. It replaced the badge text
+                     "India's Premier Music Store", an unverifiable claim. The
+                     slogan below keeps its exact look as a <p>. -->
+                <h1 class="hero-badge hero-rise"><span class="hero-badge-dot" aria-hidden="true"></span> Buy Vinyl Records &amp; Cassettes Online in India</h1>
+                <p class="hero-title hero-rise">Feel the Music,<br>Own the <span class="highlight">Legacy</span></p>
                 <p class="hero-desc hero-rise">Velorex Music is a curated record store for collectors — premium vinyl, audio CDs, cassettes, Blu-rays and DVDs, from Bollywood classics to international rock. Every pressing is genuine, hand-checked and shipped tracked across India.</p>
                 <div class="hero-cta hero-rise">
                   <a href="/products" onclick="navigate('products'); return false;" class="btn btn-primary btn-lg"><i class="fas fa-grip"></i> All Products</a>
@@ -436,7 +462,7 @@
                  • the FILENAMES are the alt text's twin — see src/img/README.md.
                Card titles match velorex_categories()' labels in
                src/seo/seo-lib.php exactly ("Blu-ray Movies", not "Blu-rays"),
-               so the anchor text on the homepage matches the <h1> and <title>
+               so the anchor text on the homepage matches the page heading and title
                of the page it points at. -->
           <div class="categories-grid">
             <a href="/vinyl-records" onclick="navigate('products', {cat:'vinyl'}); return false;" class="category-card">
@@ -602,6 +628,54 @@
               <span class="label-chip-name">Zee Music Co.</span>
             </li>
           </ul>
+        </div>
+      </section>
+
+      <!-- ==================== ABOUT ====================
+           Short, crawlable description of the shop with descriptive links into
+           the collections. Static on purpose: "/" is plain index.html and never
+           reaches seo-render.php (CLAUDE.md §15). Kept to what is actually on
+           the shelf — widen it when the stock widens, not before. -->
+      <section class="section about-velorex" id="about-velorex" aria-labelledby="about-velorex-title">
+        <div class="container">
+        <div class="about-velorex-inner">
+          <div class="about-velorex-copy">
+            <span class="about-velorex-eyebrow">Our shelf</span>
+            <h2 class="section-title" id="about-velorex-title">About <span>Velorex Music</span></h2>
+            <p class="about-velorex-lead">
+              An online record store for India, built around Hindi film music on vinyl — soundtrack LPs from
+              R. D. Burman, Laxmikant–Pyarelal, Nadeem–Shravan, Anu Malik and A. R. Rahman, new pressings and
+              hand-checked pre-owned copies alike.
+            </p>
+            <p class="about-velorex-text">
+              Every listing shows its label, year and track listing, and orders ship across India with tracking.
+            </p>
+            <p class="about-velorex-reading">
+              <span>New to collecting?</span>
+              <a href="/blog">Read the Velorex Journal</a>
+              <a href="/music-history">The Evolution of Music &amp; Audio</a>
+              <a href="/shipping.html">How shipping works</a>
+            </p>
+          </div>
+          <ul class="about-velorex-tiles">
+            <li><a href="/vinyl-records/hindi" class="about-tile">
+              <span class="about-tile-icon" aria-hidden="true"><i class="fas fa-record-vinyl"></i></span>
+              <span class="about-tile-body"><strong>Hindi &amp; Bollywood vinyl</strong><small>Film soundtracks on LP</small></span>
+            </a></li>
+            <li><a href="/artists/r-d-burman" class="about-tile">
+              <span class="about-tile-icon" aria-hidden="true"><i class="fas fa-music"></i></span>
+              <span class="about-tile-body"><strong>R. D. Burman</strong><small>Pancham's scores on vinyl</small></span>
+            </a></li>
+            <li><a href="/pre-owned" class="about-tile">
+              <span class="about-tile-icon" aria-hidden="true"><i class="fas fa-recycle"></i></span>
+              <span class="about-tile-body"><strong>Pre-owned records</strong><small>First editions, condition-checked</small></span>
+            </a></li>
+            <li><a href="/artists/a-r-rahman" class="about-tile">
+              <span class="about-tile-icon" aria-hidden="true"><i class="fas fa-compact-disc"></i></span>
+              <span class="about-tile-body"><strong>A. R. Rahman</strong><small>Film scores on LP</small></span>
+            </a></li>
+          </ul>
+        </div>
         </div>
       </section>
 
@@ -857,6 +931,10 @@
               <div class="products-grid" id="products-grid"><div class="loading-spinner"></div></div>
             </div>
           </div>
+          <!-- Related collections, background reading and Journal posts for
+               this listing. Filled by seo-render.php and by CollectionLinks
+               (src/js/storefront/collections.js) from the same PHP graph. -->
+          <div id="collection-related"></div>
         </div>
       </section>
     </div>
@@ -865,17 +943,66 @@
     <div id="page-product" class="page-section">
       <div class="page-hero">
         <div class="container">
-          <h1 class="page-hero-title" id="detail-title">Product Details</h1>
+          <!-- A <p>, not an <h1>: the product name inside the detail block
+               below is the page's single <h1>. Two visible <h1>s with the same
+               text split the page's main heading in two. -->
+          <p class="page-hero-title" id="detail-title">Product Details</p>
         </div>
       </div>
       <section class="section" style="padding-top:0;">
         <div class="container">
           <div id="product-detail-container"><div class="loading-spinner"></div></div>
+          <!-- Where this record sits in the shop: its composer, language and
+               format collections, and what to read about it. -->
+          <div id="product-related-links"></div>
           <div id="related-section" style="margin-top:4rem; display:none;">
             <div class="section-header">
               <div><h2 class="section-title">You May Also <span>Like</span></h2><p class="section-subtitle">Similar products you might enjoy</p></div>
             </div>
             <div class="products-grid" id="related-grid"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- COMPOSER COLLECTION — /artists/<slug>. Only a short, curated set of
+         composers with enough records on the shelf (velorex_artist_collections()
+         in src/seo/seo-lib.php). Server-rendered by seo-render.php, rebuilt by
+         initPageArtist() in src/js/storefront/collections.js. -->
+    <div id="page-artist" class="page-section">
+      <div class="page-hero">
+        <div class="container">
+          <h1 class="page-hero-title" id="artist-title">Composer</h1>
+          <p class="artist-count" id="artist-count" style="color:var(--text-muted);margin-top:0.5rem;"></p>
+        </div>
+      </div>
+      <section class="section" style="padding-top:0;">
+        <div class="container">
+          <div class="artist-about" id="artist-about"></div>
+          <div class="products-grid" id="artist-grid"><div class="loading-spinner"></div></div>
+          <div id="artist-related"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- NOT FOUND. Revealed by seo-render.php (always with a real HTTP 404)
+         and kept by the router when the page carries <meta name="velorex-404">,
+         so a mistyped URL no longer silently shows the homepage. -->
+    <div id="page-not-found" class="page-section">
+      <div class="page-hero">
+        <div class="container">
+          <h1 class="page-hero-title" id="not-found-title">Page not found</h1>
+          <p style="color:var(--text-muted);margin-top:0.5rem;">The page you were looking for has moved or no longer exists.</p>
+        </div>
+      </div>
+      <section class="section" style="padding-top:0;">
+        <div class="container" style="text-align:center;">
+          <p style="margin-bottom:1.25rem;">Try one of these instead:</p>
+          <div style="display:flex;flex-wrap:wrap;gap:0.75rem;justify-content:center;">
+            <a href="/vinyl-records" class="btn btn-primary">Vinyl Records</a>
+            <a href="/vinyl-records/hindi" class="btn btn-secondary">Hindi &amp; Bollywood Vinyl</a>
+            <a href="/pre-owned" class="btn btn-secondary">Pre-owned</a>
+            <a href="/products" class="btn btn-secondary">All Products</a>
           </div>
         </div>
       </section>
@@ -997,6 +1124,7 @@
               <div class="products-grid" id="preowned-grid"><div class="loading-spinner"></div></div>
             </div>
           </div>
+          <div id="preowned-related"></div>
         </div>
       </section>
     </div>
@@ -1236,14 +1364,19 @@
             <aside>
               <div class="profile-sidebar-card">
                 <div class="profile-avatar">🎵</div>
-                <h3 class="profile-name" id="profile-name">Rahul Sharma</h3>
-                <p class="profile-email" id="profile-email">rahul@musiclover.com</p>
+                <!-- Empty until populateProfileFromUser() fills them from the signed-in
+                     account. This used to ship a made-up customer (name, email,
+                     phone, date of birth, order stats) in the HTML of EVERY
+                     page: public, crawlable demo data. Never put sample
+                     personal data back in this markup. -->
+                <h3 class="profile-name" id="profile-name"></h3>
+                <p class="profile-email" id="profile-email"></p>
                 <div style="display:inline-flex;align-items:center;gap:0.4rem;background:rgba(0,212,170,0.1);border:1px solid rgba(0,212,170,0.3);color:var(--success);padding:0.25rem 0.75rem;border-radius:50px;font-size:0.75rem;margin-bottom:1.5rem;">✅ Verified Member</div>
                 <div class="profile-stats">
-                  <div class="p-stat"><div class="p-stat-value">12</div><div class="p-stat-label">Orders</div></div>
-                  <div class="p-stat"><div class="p-stat-value">₹8.2K</div><div class="p-stat-label">Spent</div></div>
-                  <div class="p-stat"><div class="p-stat-value">3</div><div class="p-stat-label">Wishlist</div></div>
-                  <div class="p-stat"><div class="p-stat-value">⭐4.9</div><div class="p-stat-label">Rating</div></div>
+                  <div class="p-stat"><div class="p-stat-value">0</div><div class="p-stat-label">Orders</div></div>
+                  <div class="p-stat"><div class="p-stat-value">₹0</div><div class="p-stat-label">Spent</div></div>
+                  <div class="p-stat"><div class="p-stat-value">—</div><div class="p-stat-label">Wishlist</div></div>
+                  <div class="p-stat"><div class="p-stat-value">—</div><div class="p-stat-label">Rating</div></div>
                 </div>
                 <nav class="profile-nav">
                   <div class="profile-nav-item active" onclick="showTab('orders', this)">📦 Order History</div>
@@ -1270,12 +1403,12 @@
                 <h2 style="font-family:var(--font-display);font-size:1.5rem;font-weight:700;margin-bottom:1.5rem;">Account Details</h2>
                 <div class="admin-form-card">
                   <div class="form-grid">
-                    <div class="form-group"><label class="form-label">First Name</label><input class="form-control" type="text" value="Rahul" id="firstName"></div>
-                    <div class="form-group"><label class="form-label">Last Name</label><input class="form-control" type="text" value="Sharma" id="lastName"></div>
-                    <div class="form-group full-width"><label class="form-label">Email Address</label><input class="form-control" type="email" value="rahul@musiclover.com" id="userEmail"></div>
-                    <div class="form-group"><label class="form-label">Phone</label><input class="form-control" type="tel" value="+91 98765 43210"></div>
-                    <div class="form-group"><label class="form-label">Date of Birth</label><input class="form-control" type="date" value="1995-06-15"></div>
-                    <div class="form-group full-width"><label class="form-label">Music Preferences</label><input class="form-control" type="text" value="Classic Rock, Bollywood, Jazz" placeholder="E.g. Rock, Bollywood, Jazz"></div>
+                    <div class="form-group"><label class="form-label">First Name</label><input class="form-control" type="text" value="" id="firstName" autocomplete="given-name"></div>
+                    <div class="form-group"><label class="form-label">Last Name</label><input class="form-control" type="text" value="" id="lastName" autocomplete="family-name"></div>
+                    <div class="form-group full-width"><label class="form-label">Email Address</label><input class="form-control" type="email" value="" id="userEmail" autocomplete="email"></div>
+                    <div class="form-group"><label class="form-label">Phone</label><input class="form-control" type="tel" value="" autocomplete="tel"></div>
+                    <div class="form-group"><label class="form-label">Date of Birth</label><input class="form-control" type="date" value=""></div>
+                    <div class="form-group full-width"><label class="form-label">Music Preferences</label><input class="form-control" type="text" value="" placeholder="E.g. Rock, Bollywood, Jazz"></div>
                   </div>
                   <div style="margin-top:1.5rem;display:flex;gap:0.75rem;">
                     <button class="btn btn-primary" onclick="saveProfile()">💾 Save Changes</button>
@@ -1384,8 +1517,31 @@
         </div>
       </section>
     </div>
+  </main>
+  <!-- injectFooter() replaces this with the full footer as soon as the scripts
+       run. What is here is the fallback for anything that does not run them —
+       a non-rendering crawler, or a visitor whose scripts failed — so the
+       sitewide links still exist in the served HTML. Same destinations as the
+       real footer; nothing here is hidden. -->
+  <div id="footer-placeholder">
+    <nav class="container" aria-label="Site" style="padding:2rem 1rem;font-size:0.9rem;">
+      <ul style="list-style:none;display:flex;flex-wrap:wrap;gap:0.5rem 1.25rem;padding:0;">
+        <li><a href="/vinyl-records">Vinyl Records</a></li>
+        <li><a href="/vinyl-records/hindi">Hindi &amp; Bollywood Vinyl</a></li>
+        <li><a href="/cassettes">Cassettes</a></li>
+        <li><a href="/pre-owned">Pre-owned</a></li>
+        <li><a href="/products">All Products</a></li>
+        <li><a href="/blog">Velorex Journal</a></li>
+        <li><a href="/music-history">Music History</a></li>
+        <li><a href="/contact.html">Contact</a></li>
+        <li><a href="/faq.html">FAQ</a></li>
+        <li><a href="/shipping.html">Shipping</a></li>
+        <li><a href="/returns.html">Returns</a></li>
+        <li><a href="/privacy.html">Privacy</a></li>
+        <li><a href="/terms.html">Terms</a></li>
+      </ul>
+    </nav>
   </div>
-  <div id="footer-placeholder"></div>
 
   <script>
     window.addEventListener('scroll', () => {

@@ -36,6 +36,7 @@
 require_once __DIR__ . '/api/config.php';
 require_once __DIR__ . '/api/_products_helpers.php';
 require_once __DIR__ . '/src/seo/seo-lib.php';
+require_once __DIR__ . '/api/_collections_helpers.php';
 
 // api/config.php sets JSON + no-store headers for the API. We are serving HTML
 // that we WANT edge/browser caches to hold briefly, so override both.
@@ -62,6 +63,13 @@ function velorex_shell(): string {
     // /product/src/js/... and 404. Rewrite to root-absolute.
     $html = preg_replace('#(\s(?:src|href)=")(src/)#', '$1/$2', $html);
 
+    // index.html ships the homepage section VISIBLE, so "/" paints its content
+    // before the (deferred) scripts run instead of an empty shell that then
+    // jumps into place. Every route rendered here shows a different section,
+    // so the homepage one is hidden again first.
+    $html = str_replace('<div id="page-index" class="page-section" style="display:block">',
+                        '<div id="page-index" class="page-section">', $html);
+
     // Drop the shell's own SEO tags. Every route below injects its own
     // title/description/canonical/OG/Twitter set plus Organization+WebSite
     // JSON-LD, and injection alone left BOTH copies in the document — with the
@@ -77,10 +85,15 @@ function velorex_shell(): string {
     return velorex_strip_shell_seo($html); // src/seo/seo-lib.php
 }
 // Insert a block immediately before </head>.
+// Also draws the visible breadcrumb bar from the trail the page just declared
+// in BreadcrumbList JSON-LD (velorex_last_trail()), so every route gets it
+// without repeating the call.
 function velorex_inject_head(string $html, string $block): string {
     $pos = stripos($html, '</head>');
     if ($pos === false) return $html;
-    return substr($html, 0, $pos) . $block . substr($html, $pos);
+    $html = substr($html, 0, $pos) . $block . substr($html, $pos);
+    $trail = velorex_last_trail();
+    return $trail ? velorex_inject_breadcrumbs($html, $trail) : $html;
 }
 
 // Reveal a .page-section server-side. Without this the crawler receives a
@@ -142,25 +155,52 @@ function velorex_set_text(string $html, string $openTag, string $tagName, string
     return $result ?? $html;
 }
 
+// Fill the visible breadcrumb bar. It is otherwise drawn only by router.js, so a
+// crawler that does not run JavaScript saw BreadcrumbList JSON-LD with no
+// matching trail on the page — Google cross-checks the two.
+function velorex_inject_breadcrumbs(string $html, array $trail): string {
+    return str_replace(
+        '<ul class="breadcrumbs" id="breadcrumb-list"></ul>',
+        '<ul class="breadcrumbs" id="breadcrumb-list">' . velorex_breadcrumbs_html($trail) . '</ul>',
+        $html
+    );
+}
+
+// A real 404. Served for unknown products/categories/posts AND, via
+// ErrorDocument in .htaccess, for any URL nothing else claims — which used to
+// get the host's unbranded error page. The status is always 404, never 200.
 function velorex_send_404(string $message): void {
     http_response_code(404);
     header('Cache-Control: no-store');
+
+    // A missing image or script must not cost a full storefront page (and a
+    // database connection) — browsers and crawlers only need the status.
+    $reqPath = (string)(parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?? '');
+    if (preg_match('/\.(?:jpe?g|png|gif|webp|avif|svg|ico|css|js|map|woff2?|ttf|json|xml|txt|pdf|mp3|mp4)$/i', $reqPath)) {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo 'Not found';
+        exit;
+    }
+
     $html = velorex_shell();
-    $html = velorex_inject_head($html, velorex_meta_block([
+    // No canonical: a 404 is not a page, and pointing it at /products told
+    // Google two unrelated URLs were the same document. velorex-404 tells the
+    // SPA to keep this view instead of routing the unknown path to the homepage.
+    $head = velorex_meta_block([
         'title'       => 'Page not found | ' . VELOREX_SITE_NAME,
-        'description' => 'The page you are looking for is no longer available. Browse our vinyl records, CDs and cassettes instead.',
-        'canonical'   => VELOREX_SITE_URL . '/products',
+        'description' => 'The page you are looking for is no longer available. Browse our vinyl records and cassettes instead.',
+        'canonical'   => '',
         'robots'      => 'noindex, follow',
-    ]));
-    $html = velorex_show_section($html, 'page-products');
-    $html = velorex_set_div_inner(
-        $html,
-        '<div class="products-grid" id="products-grid">',
-        '<div style="padding:3rem 1rem;text-align:center;color:var(--text-muted);">'
-            . '<h2 style="margin-bottom:0.75rem;">' . velorex_e($message) . '</h2>'
-            . '<p>Try browsing <a href="/vinyl-records">vinyl records</a>, '
-            . '<a href="/audio-cds">audio CDs</a> or <a href="/cassettes">cassettes</a>.</p></div>'
-    );
+    ]);
+    $head = preg_replace('#\s*<link rel="canonical" href="">|\s*<meta property="og:url" content="">#', '', $head) ?? $head;
+    $head .= "  <meta name=\"velorex-404\" content=\"1\">\n";
+    $html = velorex_inject_head($html, $head);
+    $html = velorex_show_section($html, 'page-not-found');
+    $html = velorex_set_text($html, '<h1 class="page-hero-title" id="not-found-title">', 'h1', velorex_e($message));
+    $html = velorex_inject_breadcrumbs($html, [
+        ['name' => 'Home', 'url' => VELOREX_SITE_URL . '/'],
+        ['name' => 'Page not found'],
+    ]);
     echo $html;
     exit;
 }
@@ -171,19 +211,37 @@ function velorex_send_404(string $message): void {
 function velorex_render_card(array $p): string {
     $url   = velorex_product_path($p);
     $img   = velorex_absolute_image($p['image'] ?? '');
+    // No photo on file: the same neutral placeholder the SPA shows, with an
+    // EMPTY alt — the title sits right beside it, and alt text naming the
+    // record on a stock photo would describe an image that is not the record.
+    $hasImg = $img !== VELOREX_DEFAULT_OG_IMAGE;
+    if (!$hasImg) $img = VELOREX_PLACEHOLDER_IMAGE;
     $price = number_format((int)($p['price'] ?? 0));
     $orig  = !empty($p['originalPrice']) && (int)$p['originalPrice'] > (int)$p['price']
         ? '<span class="product-original-price">₹' . number_format((int)$p['originalPrice']) . '</span>'
         : '';
     return '<div class="product-card">'
         . '<a href="' . velorex_e($url) . '" class="product-image-wrap">'
-        . '<img src="' . velorex_e($img) . '" alt="' . velorex_e(($p['title'] ?? '') . ' — ' . ($p['artist'] ?? '')) . '" loading="lazy" decoding="async">'
+        . '<img src="' . velorex_e($img) . '" alt="' . ($hasImg ? velorex_e(velorex_product_image_alt($p)) : '') . '" loading="lazy" decoding="async">'
         . '</a>'
         . '<div class="product-info">'
         . '<a href="' . velorex_e($url) . '"><h3 class="product-title">' . velorex_e($p['title'] ?? '') . '</h3></a>'
         . '<p class="product-artist">' . velorex_e($p['artist'] ?? '') . '</p>'
         . '<div class="product-price-row"><span class="product-price">₹' . $price . '</span>' . $orig . '</div>'
         . '</div></div>';
+}
+
+// Under a Journal post: the records it discusses (as cards), then the
+// collections and other posts. MIRRORED by postRelatedHtml() in
+// src/js/storefront/collections.js.
+function velorex_post_related_html(array $rel): string {
+    $out = '';
+    if (!empty($rel['products'])) {
+        $out .= '<section class="post-related-products"><h2 class="collection-links-title">Records in this article</h2>'
+              . '<div class="products-grid">' . implode('', array_map('velorex_render_card', $rel['products'])) . '</div></section>';
+    }
+    $out .= collections_related_html(['collections' => $rel['collections'], 'journal' => $rel['journal']], 'Keep exploring');
+    return $out;
 }
 
 // Banner heading with its accented half. MUST match heroTitleHtml() in
@@ -293,100 +351,136 @@ if ($route === 'product') {
         exit;
     }
 
-    $catLabel  = velorex_category_label_for_key($p['category'] ?? '');
-    $catSlug   = velorex_category_slug_for_key($p['category'] ?? '');
     $inStock   = (int)($p['stock'] ?? 0) > 0;
-    $priceFmt  = number_format((int)$p['price']);
+    $priceFmt  = velorex_inr((int)$p['price']);
 
     // Shared with Seo.productTitle() in src/js/seo.js — see the header on
     // velorex_product_title() in src/seo/seo-lib.php for the formula and why
     // the old one overflowed Google's display width on every product.
     $title = velorex_product_title($p);
 
-    // Prefer the real description; fall back to a generated one so no product
-    // ever ships with an empty meta description.
-    $descSource = trim((string)($p['description'] ?? ''));
-    if ($descSource === '') {
-        // No "free shipping over ₹5,000" here: that threshold was removed in
-        // favour of per-product shipping (§16), so the sentence was a false
-        // claim being published straight into search results.
-        $descSource = 'Buy ' . $p['title'] . ' by ' . $p['artist'] . ' on ' . $catLabel
-            . ' at Velorex Music. ₹' . $priceFmt . '. '
-            . ($inStock ? 'In stock and ready to ship across India.' : 'Available to pre-order.');
-    } else {
-        $descSource = '₹' . $priceFmt . ' · ' . $descSource;
-    }
-
     $head  = velorex_meta_block([
         'title'        => $title,
-        'description'  => $descSource,
+        // Shared with Seo.productDescription(): album, artist, format, label,
+        // year, condition, price and stock — real fields only.
+        'description'  => velorex_product_meta_description($p),
         'canonical'    => VELOREX_SITE_URL . $canonicalPath,
         'image'        => velorex_absolute_image($p['image'] ?? ''),
-        'imageAlt'     => $p['title'] . ' — ' . $p['artist'],
+        'imageAlt'     => velorex_product_image_alt($p),
         'type'         => 'product',
         'price'        => (int)$p['price'],
-        'availability' => $inStock ? 'in stock' : 'preorder',
+        'availability' => $inStock ? 'in stock' : 'out of stock',
     ]);
     $head .= velorex_jsonld_site();
     $head .= velorex_jsonld_product($p);
 
-    $trail = [['name' => 'Home', 'url' => VELOREX_SITE_URL . '/']];
-    if ($catSlug) {
-        $trail[] = ['name' => $catLabel, 'url' => velorex_category_url($catSlug)];
-    }
-    $trail[] = ['name' => $p['title']];
+    $trail = velorex_product_trail($p);
     $head .= velorex_jsonld_breadcrumbs($trail);
 
     // ---- Server-rendered body content -------------------------------------
+    // Everything a searcher (or a quality rater) wants to confirm before
+    // buying a record, from fields that exist — empty ones are skipped, never
+    // filled with a guess. The SPA replaces this block on boot with its richer
+    // interactive version; the facts are the same.
     $gallery = !empty($p['images']) && is_array($p['images']) ? $p['images'] : [];
     if (!$gallery && !empty($p['image'])) $gallery = [$p['image']];
     $primary = velorex_absolute_image($gallery[0] ?? '');
 
-    $specsHtml = '';
-    if (!empty($p['specs']) && is_array($p['specs'])) {
-        $rows = '';
-        foreach (['format' => 'Format', 'speed' => 'Speed', 'label' => 'Label', 'year' => 'Year', 'tracks' => 'Tracks', 'genre' => 'Genre'] as $k => $labelText) {
-            if (!empty($p['specs'][$k])) {
-                $rows .= '<li><strong>' . velorex_e($labelText) . ':</strong> ' . velorex_e((string)$p['specs'][$k]) . '</li>';
-            }
+    $facts = [];
+    $facts['Artist'] = (string)($p['artist'] ?? '');
+    $facts['Format'] = velorex_format_label_for_key((string)($p['category'] ?? ''));
+    if (!empty($p['musicDirector'])) $facts['Music director'] = (string)$p['musicDirector'];
+    $lang = strtolower(trim((string)($p['language'] ?? '')));
+    if (isset(velorex_languages()[$lang])) $facts['Language'] = velorex_languages()[$lang]['label'];
+    $facts['Condition'] = (($p['condition'] ?? 'new') === 'pre-owned') ? 'Pre-owned' : 'New';
+    $specs = is_array($p['specs'] ?? null) ? $p['specs'] : [];
+    foreach (['format' => 'Pressing / format', 'speed' => 'Speed', 'label' => 'Label', 'year' => 'Year',
+              'genre' => 'Genre', 'tracks' => 'Tracks', 'runtime' => 'Runtime'] as $k => $labelText) {
+        $v = trim((string)($specs[$k] ?? ''));
+        if ($v !== '') $facts[$labelText] = $v;
+    }
+    $rows = '';
+    foreach ($facts as $k => $v) {
+        if ($v === '') continue;
+        $rows .= '<div class="spec-row"><span class="spec-label">' . velorex_e($k) . '</span>'
+               . '<span class="spec-value">' . velorex_e($v) . '</span></div>';
+    }
+    $specsHtml = $rows !== '' ? '<div class="product-specs"><h2 class="specs-title">Product details</h2>' . $rows . '</div>' : '';
+
+    // Track listing, including the "[Side A]" markers the admin form saves.
+    $tracksHtml = '';
+    $tl = trim((string)($p['trackListing'] ?? ''));
+    if ($tl !== '') {
+        $sides = [];
+        $cur = '';
+        foreach (preg_split('/\R/u', $tl) as $line) {
+            $line = trim($line);
+            if ($line === '' || preg_match('/^(tracks|track listing)$/i', $line)) continue;
+            if (preg_match('/^\[Side\s+([A-D])\]$/i', $line, $m)) { $cur = 'Side ' . strtoupper($m[1]); continue; }
+            $sides[$cur][] = preg_replace('/^\s*\d+[.)]?\s*/', '', $line);
         }
-        if ($rows !== '') {
-            $specsHtml = '<div class="product-detail-specs"><h2 class="specs-title">Specifications</h2><ul>' . $rows . '</ul></div>';
+        foreach ($sides as $side => $list) {
+            $tracksHtml .= '<div class="track-side">' . ($side !== '' ? '<h3>' . velorex_e($side) . '</h3>' : '')
+                . '<ul><li>' . implode('</li><li>', array_map('velorex_e', $list)) . '</li></ul></div>';
         }
+        if ($tracksHtml !== '') $tracksHtml = '<div class="track-list"><h2 class="specs-title">Track Listing</h2>' . $tracksHtml . '</div>';
     }
 
-    $mdHtml = !empty($p['musicDirector'])
-        ? '<p class="product-detail-subtitle">Music by <strong>' . velorex_e($p['musicDirector']) . '</strong></p>'
-        : '';
+    $orig = (!empty($p['originalPrice']) && (int)$p['originalPrice'] > (int)$p['price'])
+        ? '<span class="product-detail-price-original">₹' . velorex_inr((int)$p['originalPrice']) . '</span>' : '';
+    $desc = trim((string)($p['description'] ?? ''));
 
     $inner = '<div class="product-detail">'
         . '<div class="product-detail-gallery">'
         . '<div class="product-detail-main-image">'
-        . '<img src="' . velorex_e($primary) . '" alt="' . velorex_e($p['title'] . ' — ' . $p['artist'] . ' ' . $catLabel) . '" fetchpriority="high" decoding="async">'
+        . ($primary !== VELOREX_DEFAULT_OG_IMAGE
+            ? '<img src="' . velorex_e($primary) . '" alt="' . velorex_e(velorex_product_image_alt($p)) . '" fetchpriority="high" decoding="async">'
+            : '<img src="' . velorex_e(VELOREX_PLACEHOLDER_IMAGE) . '" alt="" decoding="async">')
         . '</div></div>'
         . '<div class="product-detail-info">'
         . '<h1 class="product-detail-title">' . velorex_e($p['title']) . '</h1>'
         . '<p class="product-detail-subtitle">by <strong>' . velorex_e($p['artist']) . '</strong></p>'
-        . $mdHtml
         . '<div class="product-detail-price-block">'
-        . '<div class="product-detail-price-meta"><span class="product-detail-price">₹' . $priceFmt . '</span></div>'
+        . '<div class="product-detail-price-meta"><span class="product-detail-price">₹' . $priceFmt . '</span>' . $orig . '</div>'
         . '<div class="product-detail-availability">'
-        . ($inStock ? 'In stock: ' . (int)$p['stock'] . ' units' : 'Pre-order available')
+        . velorex_e(velorex_availability_text($p)) . ($inStock ? ': ' . (int)$p['stock'] . ' units' : '')
         . '</div></div>'
-        . '<p class="product-detail-desc">' . velorex_e($p['description'] ?? '') . '</p>'
+        . ($desc !== '' ? '<p class="product-detail-desc">' . velorex_e($desc) . '</p>' : '')
+        . $tracksHtml
         . $specsHtml
         . '</div></div>';
 
     $html = velorex_shell();
     $html = velorex_inject_head($html, $head);
     $html = velorex_show_section($html, 'page-product');
+    // The banner heading above the product is a <p> — the product name inside
+    // the detail block is the page's one <h1>.
     $html = velorex_set_text(
         $html,
-        '<h1 class="page-hero-title" id="detail-title">',
-        'h1',
+        '<p class="page-hero-title" id="detail-title">',
+        'p',
         velorex_e($p['title'])
     );
+    $html = velorex_inject_breadcrumbs($html, $trail);
     $html = velorex_set_div_inner($html, '<div id="product-detail-container">', $inner);
+    // Tells initPageProduct() the complete detail is already here, so it skips
+    // its partial "lean" paint (which shifted the whole page twice).
+    $html = str_replace('<div id="product-detail-container">',
+                        '<div id="product-detail-container" data-ssr-id="' . (int)$p['id'] . '">', $html);
+
+    // Where this record sits in the shop (composer, language, format
+    // collections) and what to read about it — then "You may also like" as
+    // real links. Both used to exist only after JavaScript ran, so a crawler
+    // reached a product page and found no way onward except the navbar.
+    $html = velorex_set_div_inner($html, '<div id="product-related-links">',
+        collections_related_html(collections_related_for_product(db(), $p), 'More like this'));
+    $relatedCards = collections_related_products(db(), $p);
+    if ($relatedCards) {
+        $html = str_replace('<div id="related-section" style="margin-top:4rem; display:none;">',
+                            '<div id="related-section" style="margin-top:4rem;">', $html);
+        $html = velorex_set_div_inner($html, '<div class="products-grid" id="related-grid">',
+            implode('', array_map('velorex_render_card', $relatedCards)));
+    }
     echo $html;
     exit;
 }
@@ -463,35 +557,24 @@ if ($route === 'category' || $route === 'products') {
     if ($isAll) {
         $canonical = VELOREX_SITE_URL . '/products';
         $h1        = 'All Products';
-        $title     = 'Buy Vinyl Records, CDs & Cassettes Online India | ' . VELOREX_SITE_NAME;
-        $desc      = 'Browse ' . ($count ?: '') . ' original vinyl records, audio CDs, cassettes, Blu-rays and DVDs at Velorex Music. Hindi film soundtracks, English albums and rare collector pressings shipped across India.';
-        $intro     = 'Our full catalogue of vinyl records, audio CDs, cassettes, Blu-rays and DVDs — Hindi and English titles, from current pressings to out-of-print collector items.';
+        // Distinct from the homepage's title on purpose — two pages sharing a
+        // title compete for the same query. Byte-identical to
+        // PAGE_META.products in src/js/seo.js.
+        $title     = 'All Products: Vinyl Records, Cassettes & More | ' . VELOREX_SITE_NAME;
+        $desc      = 'Browse the full Velorex Music catalogue — Bollywood and Hindi film vinyl LPs, pre-owned records and audio cassettes, delivered across India.';
+        $intro     = 'The full Velorex Music catalogue in one place — Hindi film soundtracks on vinyl, pre-owned records and cassettes, from current pressings to out-of-print collector copies.';
     } else {
-        $canonical = velorex_category_url($catSlug, $langSlug);
-        $h1        = $meta['label'];
-        $title     = $meta['title'];
-        $desc      = $meta['description'];
-        $intro     = $meta['intro'];
-        if ($langSlug !== null) {
-            $langLabel = $langs[$langSlug]['adjective'];
-            $h1    = $langLabel . ' ' . $meta['label'];
-            $title = 'Buy ' . $langLabel . ' ' . $meta['label'] . ' Online India | ' . VELOREX_SITE_NAME;
-            $desc  = 'Shop ' . strtolower($langLabel) . ' ' . strtolower($meta['label'])
-                   . ' online in India at Velorex Music. Original pressings, collector titles and current releases with pan-India delivery and free shipping over ₹5,000.';
-            $intro = $langLabel . ' titles from our ' . strtolower($meta['label']) . ' collection, shipped across India.';
-        } elseif ($subSlug !== null) {
-            // The subcategory IS the product type people search for, so it
-            // leads the title rather than the department name.
-            $subLabel  = velorex_subcategories($catSlug)[$subSlug];
-            $canonical = VELOREX_SITE_URL . '/' . $catSlug . '/' . $subSlug;
-            $h1    = $subLabel;
-            $title = 'Buy ' . $subLabel . ' Online India | ' . VELOREX_SITE_NAME;
-            $desc  = 'Shop ' . strtolower($subLabel) . ' at Velorex Music — part of our '
-                   . strtolower($meta['label']) . ' range, shipped across India.';
-            $intro = strtolower($subLabel) . ' from the Velorex Music '
-                   . strtolower($meta['label']) . ' range.';
-            $intro = ucfirst($intro);
-        }
+        // One source for every listing's copy; mirrored by Seo.categoryMeta().
+        // (The language pages used to promise "free shipping over ₹5,000", a
+        // policy removed in favour of per-product shipping — CLAUDE.md §16.)
+        $cm        = velorex_category_meta($catSlug, $langSlug, $subSlug);
+        $canonical = $subSlug !== null
+            ? VELOREX_SITE_URL . '/' . $catSlug . '/' . $subSlug
+            : velorex_category_url($catSlug, $langSlug);
+        $h1        = $cm['h1'];
+        $title     = $cm['title'];
+        $desc      = $cm['description'];
+        $intro     = $cm['intro'];
     }
 
     // An empty listing must not be indexed — a thin page with no products is a
@@ -500,6 +583,18 @@ if ($route === 'category' || $route === 'products') {
     $robots = $count > 0
         ? 'index, follow, max-image-preview:large, max-snippet:-1'
         : 'noindex, follow';
+    $pagePath = (string)parse_url($canonical, PHP_URL_PATH);
+
+    // Language facets must be a genuinely different page from their parent.
+    // A facet holding every product of the parent is the parent twice, so it
+    // canonicalises there; one with only a handful of products is not worth a
+    // search landing and is noindexed. Same rule decides the sitemap
+    // (velorex_facet_status(), mirrored by Seo.facetStatus()).
+    if (!$isAll && $langSlug !== null && $count > 0) {
+        $fs = collections_facet_status(db(), $catSlug, $langSlug);
+        if ($fs === 'duplicate') $canonical = velorex_category_url($catSlug);
+        elseif ($fs === 'thin') $robots = 'noindex, follow';
+    }
 
     $head  = velorex_meta_block([
         'title'       => $title,
@@ -580,6 +675,8 @@ if ($route === 'category' || $route === 'products') {
         'Showing ' . $count . ' ' . ($count === 1 ? 'product' : 'products')
     );
     $html = velorex_set_div_inner($html, '<div class="products-grid" id="products-grid">', $cardsHtml);
+    $html = velorex_set_div_inner($html, '<div id="collection-related">',
+        collections_related_html(collections_related_for_path(db(), $pagePath)));
     echo $html;
     exit;
 }
@@ -618,13 +715,16 @@ if ($route === 'preowned') {
     $label = $catSlug ? $cats[$catSlug]['label'] : null;
 
     $canonical = VELOREX_SITE_URL . '/pre-owned' . ($catSlug ? '/' . $catSlug : '');
-    $h1 = $label ? 'Pre-owned ' . $label : 'Pre-owned';
-    $title = $label
-        ? 'Pre-owned ' . $label . ' | Buy Used ' . $label . ' Online India'
-        : 'Pre-owned Vinyl, CDs & Cassettes | Buy Used Records India';
-    $desc = $label
-        ? 'Shop pre-owned ' . strtolower($label) . ' in India at Velorex Music. Second-hand and collector copies, condition-checked before dispatch, with pan-India delivery.'
-        : 'Shop pre-owned vinyl records, audio CDs, cassettes, Blu-rays and DVDs in India. Second-hand and collector copies, condition-checked before dispatch.';
+    // Copy follows what is actually second-hand on the shelf (mirrored by
+    // Seo.preownedMeta()). When one format holds all the pre-owned stock, its
+    // format page is the hub twice over: canonical to /pre-owned.
+    $pm    = velorex_preowned_meta(collections_preowned_formats(db()), $catSlug);
+    $h1    = $pm['h1'];
+    $title = $pm['title'];
+    $desc  = $pm['description'];
+    if ($catSlug && collections_preowned_format_is_duplicate(db(), $cats[$catSlug]['key'])) {
+        $canonical = VELOREX_SITE_URL . '/pre-owned';
+    }
 
     // Empty listings stay out of the index — see the category route for why.
     $robots = $count > 0
@@ -661,6 +761,8 @@ if ($route === 'preowned') {
     $html = velorex_set_text($html, '<p class="products-count" id="preowned-count">', 'p',
         $count ? 'Showing ' . $count . ' pre-owned ' . ($count === 1 ? 'item' : 'items') : '');
     $html = velorex_set_div_inner($html, '<div class="products-grid" id="preowned-grid">', $cards);
+    $html = velorex_set_div_inner($html, '<div id="preowned-related">',
+        collections_related_html(collections_related_for_path(db(), '/pre-owned' . ($catSlug ? '/' . $catSlug : ''))));
     echo $html;
     exit;
 }
@@ -903,10 +1005,15 @@ if ($route === 'blog' || $route === 'blogpost') {
         if (!$post) velorex_send_404('Post not found');
 
         $canonical = VELOREX_SITE_URL . '/blog/' . $post['slug'];
-        $desc = $post['excerpt'] ?: blog_auto_excerpt($post['content']);
+        // Editor's SEO title/description when set, else derived — the same
+        // functions Seo.syncBlogPost() mirrors, so hydration changes nothing.
+        $desc = velorex_blog_meta_description(
+            $post['excerpt'] ?: blog_auto_excerpt($post['content']),
+            $post['meta_description'] ?? null
+        );
 
         $head  = velorex_meta_block([
-            'title'       => $post['title'] . ' | Velorex Journal',
+            'title'       => velorex_blog_meta_title($post['title'], $post['meta_title'] ?? null),
             'description' => $desc,
             'canonical'   => $canonical,
             'image'       => $post['cover_image'] ? velorex_absolute_image($post['cover_image']) : VELOREX_DEFAULT_OG_IMAGE,
@@ -924,9 +1031,15 @@ if ($route === 'blog' || $route === 'blogpost') {
         $meta = [];
         if ($post['published_at']) {
             $ts = strtotime($post['published_at']);
-            if ($ts) $meta[] = date('j F Y', $ts);
+            if ($ts) $meta[] = '<time datetime="' . date('c', $ts) . '">' . date('j F Y', $ts) . '</time>';
         }
-        if ($post['author']) $meta[] = velorex_e($post['author']);
+        // Shown only for a real revision more than a day after publishing —
+        // see blog_was_updated(). Mirrored in renderBlogPost().
+        if (blog_was_updated($post['published_at'], $post['updated_at'])) {
+            $uts = strtotime($post['updated_at']);
+            $meta[] = 'Updated <time datetime="' . date('c', $uts) . '">' . date('j F Y', $uts) . '</time>';
+        }
+        if ($post['author']) $meta[] = 'By ' . velorex_e($post['author']);
         $meta[] = blog_read_minutes($post['content']) . ' min read';
 
         $cover = $post['cover_image']
@@ -941,6 +1054,7 @@ if ($route === 'blog' || $route === 'blogpost') {
             . $cover
             . '<div class="blog-post-meta">' . implode(' · ', $meta) . '</div>'
             . '<div class="blog-post-body">' . $post['content'] . '</div>'
+            . velorex_post_related_html(collections_related_for_post(db(), $post['slug']))
             . '<div class="blog-post-footer">'
             . '<a href="/blog" class="btn btn-secondary">← All posts</a>'
             . '<a href="/products" class="btn btn-primary">Browse the shop</a>'
@@ -1140,6 +1254,91 @@ if ($route === 'musichistory' || $route === 'musichistoryarticle') {
         velorex_history_index_html($index, $era)
     );
     echo $html;
+    exit;
+}
+
+// -----------------------------------------------------------------------------
+// Route: composer collection — /artists/<slug>
+//
+// Only for composers in velorex_artist_collections(), and only indexable while
+// the shelf holds VELOREX_ARTIST_MIN_PRODUCTS of their records. The page is
+// written context (who they are, what is on the shelf now, which labels) plus
+// the records and onward links — not a bare grid. Everything about Velorex's
+// stock is computed here from the database, never hand-written.
+// -----------------------------------------------------------------------------
+if ($route === 'artist') {
+    $slug   = isset($_GET['slug']) ? preg_replace('/[^a-z0-9-]/', '', (string)$_GET['slug']) : '';
+    $status = $slug !== '' ? collections_artist_status(db(), $slug) : 'missing';
+    if ($status === 'missing') velorex_send_404('Page not found');
+
+    $a        = velorex_artist_collections()[$slug];
+    $products = collections_artist_products(db(), $slug);
+    $count    = count($products);
+    $inStock  = count(array_filter($products, static fn($p) => (int)$p['stock'] > 0));
+    $canonical = VELOREX_SITE_URL . '/artists/' . $slug;
+
+    $head  = velorex_meta_block([
+        'title'       => $a['title'],
+        'description' => $a['description'],
+        'canonical'   => $canonical,
+        'image'       => velorex_absolute_image($products[0]['image'] ?? ''),
+        'imageAlt'    => $a['name'] . ' vinyl records at Velorex Music',
+        'robots'      => $status === 'index'
+            ? 'index, follow, max-image-preview:large, max-snippet:-1'
+            : 'noindex, follow',
+    ]);
+    $head .= velorex_jsonld_site();
+    $head .= velorex_jsonld_item_list($products, $a['name'] . ' vinyl records', $canonical);
+    $head .= velorex_jsonld_breadcrumbs([
+        ['name' => 'Home', 'url' => VELOREX_SITE_URL . '/'],
+        ['name' => 'Vinyl Records', 'url' => velorex_category_url('vinyl-records')],
+        ['name' => $a['name']],
+    ]);
+
+    $html = velorex_shell();
+    $html = velorex_inject_head($html, $head);
+    $html = velorex_show_section($html, 'page-artist');
+    $html = velorex_set_text($html, '<h1 class="page-hero-title" id="artist-title">', 'h1',
+        velorex_e($a['name'] . ' Vinyl Records'));
+    $html = velorex_set_text($html, '<p class="artist-count" id="artist-count" style="color:var(--text-muted);margin-top:0.5rem;">', 'p',
+        velorex_e(velorex_artist_count_line($count, $inStock)));
+    $html = velorex_set_div_inner($html, '<div class="artist-about" id="artist-about">', velorex_artist_about_html($a, $products));
+    $html = velorex_set_div_inner($html, '<div class="products-grid" id="artist-grid">',
+        implode('', array_map('velorex_render_card', $products)));
+    $html = velorex_set_div_inner($html, '<div id="artist-related">',
+        collections_related_html(collections_related_for_path(db(), '/artists/' . $slug)));
+    echo $html;
+    exit;
+}
+
+// -----------------------------------------------------------------------------
+// Route: private SPA views — /cart, /profile, /login, /signup, /forgot, /checkout
+//
+// No content of their own worth indexing, and never a homepage canonical.
+// The shell is served with noindex and the SPA renders the view; titles match
+// PAGE_META in src/js/seo.js so hydration changes nothing.
+// -----------------------------------------------------------------------------
+if ($route === 'private') {
+    $pages = [
+        'cart'     => 'Your Cart | Velorex Music',
+        'checkout' => 'Checkout | Velorex Music',
+        'profile'  => 'My Account | Velorex Music',
+        'login'    => 'Sign In | Velorex Music',
+        'signup'   => 'Create an Account | Velorex Music',
+        'forgot'   => 'Password Help | Velorex Music',
+    ];
+    $page = (string)($_GET['page'] ?? '');
+    if (!isset($pages[$page])) velorex_send_404('Page not found');
+    header('Cache-Control: no-store');
+    $head = velorex_meta_block([
+        'title'       => $pages[$page],
+        'description' => 'Velorex Music account and checkout.',
+        'canonical'   => '',
+        // nofollow on the account page only — its links are all personal.
+        'robots'      => $page === 'profile' ? 'noindex, nofollow' : 'noindex, follow',
+    ]);
+    $head = preg_replace('#\s*<link rel="canonical" href="">|\s*<meta property="og:url" content="">#', '', $head) ?? $head;
+    echo velorex_inject_head(velorex_shell(), $head);
     exit;
 }
 

@@ -228,6 +228,68 @@ function blog_unique_slug(PDO $pdo, string $title, ?int $ignoreId = null): strin
     return $base . '-' . substr(bin2hex(random_bytes(3)), 0, 6);
 }
 
+// -----------------------------------------------------------------------------
+// Editorial relations (Phase 2)
+//
+// related_collections: JSON array of collection paths ("/vinyl-records/hindi")
+// related_products:    JSON array of product ids
+//
+// Chosen by the editor in the admin post form. They drive the "Shop the
+// collection" block under a post and the "From the Velorex Journal" block on
+// the collections and products it names — see api/_collections_helpers.php.
+// Auto-added on first use like products.item_condition; if the ALTER fails the
+// blog keeps working and the blocks simply fall back to untagged behaviour.
+// -----------------------------------------------------------------------------
+function blog_has_related_columns(PDO $pdo): bool {
+    static $ok = null;
+    if ($ok !== null) return $ok;
+    try {
+        $has = $pdo->query("SHOW COLUMNS FROM blog_posts LIKE 'related_collections'")->fetch();
+        if (!$has) {
+            $pdo->exec('ALTER TABLE blog_posts ADD COLUMN related_collections TEXT NULL, ADD COLUMN related_products TEXT NULL');
+        }
+        return $ok = true;
+    } catch (Throwable $e) {
+        error_log('[blog] related columns unavailable: ' . $e->getMessage());
+        return $ok = false;
+    }
+}
+
+// Optional per-post SEO fields (September 2026 QA). The headline (H1) and the
+// search-result title are different jobs: a good H1 can be 90 characters, a
+// title Google shows cannot. Blank = derived — see velorex_blog_meta_title().
+function blog_has_meta_columns(PDO $pdo): bool {
+    static $ok = null;
+    if ($ok !== null) return $ok;
+    try {
+        $has = $pdo->query("SHOW COLUMNS FROM blog_posts LIKE 'meta_title'")->fetch();
+        if (!$has) {
+            $pdo->exec('ALTER TABLE blog_posts ADD COLUMN meta_title VARCHAR(70) NULL, ADD COLUMN meta_description VARCHAR(170) NULL');
+        }
+        return $ok = true;
+    } catch (Throwable $e) {
+        error_log('[blog] meta columns unavailable: ' . $e->getMessage());
+        return $ok = false;
+    }
+}
+
+// Decode a stored JSON list, keeping only well-formed entries. $kind 'path'
+// accepts site-relative collection paths only; 'int' accepts positive ids.
+function blog_decode_list($raw, string $kind): array {
+    $list = is_array($raw) ? $raw : json_decode((string)$raw, true);
+    if (!is_array($list)) return [];
+    $out = [];
+    foreach ($list as $v) {
+        if ($kind === 'int') {
+            $n = (int)$v;
+            if ($n > 0) $out[] = $n;
+        } elseif (is_string($v) && preg_match('#^/[a-z0-9-]+(?:/[a-z0-9-]+)?$#', $v)) {
+            $out[] = $v;
+        }
+    }
+    return array_values(array_unique($out));
+}
+
 function blog_post_path(array $r): string {
     return '/blog/' . $r['slug'];
 }
@@ -249,7 +311,20 @@ function blog_row_to_card(array $r): array {
         'publishedAt' => $r['published_at'],
         'updatedAt'   => $r['updated_at'] ?? null,
         'url'         => blog_post_path($r),
+        'relatedCollections' => blog_decode_list($r['related_collections'] ?? null, 'path'),
+        'relatedProducts'    => blog_decode_list($r['related_products'] ?? null, 'int'),
+        'metaTitle'          => $r['meta_title'] ?? null,
+        'metaDescription'    => $r['meta_description'] ?? null,
     ];
+}
+
+// "Updated" is shown only when the post was genuinely edited after it went
+// live — more than a day later. updated_at is MySQL's own ON UPDATE stamp, so
+// this is never an invented freshness date.
+function blog_was_updated(?string $publishedAt, ?string $updatedAt): bool {
+    $p = $publishedAt ? strtotime($publishedAt) : false;
+    $u = $updatedAt ? strtotime($updatedAt) : false;
+    return $p && $u && ($u - $p) > 86400;
 }
 
 function blog_row_to_full(array $r): array {
