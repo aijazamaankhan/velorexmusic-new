@@ -2141,3 +2141,80 @@
 @media (max-width: 600px) {
   .combo-picker { grid-template-columns: 1fr; max-height: 260px; }
 }
+
+/* =============================================================
+   ADMIN — PHONE LAYOUT (≤768px)
+   Placed last so it settles the earlier responsive blocks.
+   Layout and sizing only; no panel logic changes.
+   ============================================================= */
+@media (max-width: 768px) {
+  /* Header: "View Store" is a bare text node (not the <span> the 768px rule
+     above hides), so the label stayed and squeezed the panel title down to
+     "Inventory Ma…". Icon-only now; the link keeps aria-label/title. The
+     theme toggle shares the class, so both become 40px square targets. */
+  .header { margin-bottom: 1rem; }
+  a.btn-view-store { font-size: 0; gap: 0; }
+  a.btn-view-store i { font-size: 0.95rem; }
+  .header-actions .btn-view-store {
+    min-width: 40px; min-height: 40px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+
+  /* Stat / KPI cards: two across instead of four full-width cards that
+     filled the whole first screen. */
+  .stats-grid,
+  .dash-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1.25rem; }
+  .stat-card { padding: 1rem; border-radius: 14px; }
+
+  /* Filter chips and row actions measured 27–33px tall — under the 44px
+     touch floor with neighbours only a few px away. */
+  .status-chip,
+  .cust-chip { min-height: 36px; }
+  .action-btn { min-height: 38px; }
+  .cust-sort-btn { min-height: 32px; }
+}
+
+/* iOS zooms the page when a focused field is under 16px. forms.css guards the
+   bare `input` selector, but these search boxes are styled through a class
+   (0,1,1), which outranks it — so products, orders, customers and subscribers
+   search all zoomed on tap. */
+@media (max-width: 1024px) {
+  .search-wrapper input,
+  .cust-search input,
+  .orders-search-wrap input { font-size: 16px; }
+}
+
+/* Product modal spec fields (Tracks, Label, Year, Genre…) are styled through
+   `.spec-field input` (0,1,1), which also outranks the forms.css guard. */
+@media (max-width: 1024px) {
+  .spec-field input,
+  .spec-field select { font-size: 16px; }
+}
+
+/* ---- Admin popups on phones ------------------------------------------------
+   Audit of every modal/drawer at 390px (Sept 2026):
+   - Combo and Blog editors: .form-grid collapses to `1fr`, but a grid item's
+     minimum is its min-content width, so a long placeholder / helper line /
+     the editor toolbar made the column 466–587px and every field ran off the
+     right edge (the Blog modal also shifted 17px off the left). minmax(0,1fr)
+     plus min-width:0 lets fields shrink to the modal.
+   - Customer drawer's edit fields were under 16px (iOS zoom).
+   - Order row chevron (22×23) and delete (27×31) were tiny tap targets. */
+@media (max-width: 768px) {
+  .modal-content .form-grid,
+  .form-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .form-grid > *,
+  .form-group { min-width: 0; }
+  .modal-content { max-width: calc(100vw - 16px); }
+  .modal-content .form-control,
+  .modal-content input,
+  .modal-content select,
+  .modal-content textarea { max-width: 100%; }
+  .chevron-btn { min-width: 36px; min-height: 36px; }
+  .order-row-delete { min-width: 36px; min-height: 36px; }
+}
+@media (max-width: 1024px) {
+  .drawer input,
+  .drawer select,
+  .drawer textarea { font-size: 16px; }
+}

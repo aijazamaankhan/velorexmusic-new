@@ -961,3 +961,11 @@
   .mh-collage-item:hover .mh-motif, .mh-mosaic-item:hover .mh-motif { transform: none; }
   .mh-card::after { display: none; }
 }
+
+/* Phone legibility: the uppercase kickers and hero meta labels computed to
+   ~10.5px at this width — below what reads comfortably on a phone. */
+@media (max-width: 640px) {
+  .mh-card-kicker,
+  .mh-hero-meta span,
+  .mh-nav-prev small, .mh-nav-next small { font-size: 0.75rem; }
+}

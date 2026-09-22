@@ -63,6 +63,21 @@ try {
         if (preg_match('/[A-Z]{4,}/', $p['title']) && $p['title'] === mb_strtoupper($p['title'])) $issues[] = 'Title in capitals';
         if (count($coreSeen[$core($p['title'])]) > 1) $issues[] = 'Possible duplicate listing';
 
+        // Keyboard-mash placeholder text ("sdfberbe", "gwergrg") in tracks,
+        // label or genre. Found live on a published product in the September
+        // 2026 content audit — a test entry that was indexable. Delete it or
+        // replace the text; never publish placeholders.
+        $mash = static function (string $s): bool {
+            $words = array_filter(preg_split('/[^A-Za-z]+/', $s) ?: [], static fn($w) => strlen($w) >= 4);
+            if (!$words) return false;
+            $bad = count(array_filter($words, static fn($w) => (bool)preg_match('/[bcdfghjklmnpqrstvwxz]{4,}/i', $w)));
+            return $bad / count($words) > 0.3;
+        };
+        $probe = (string)$p['trackListing'] . ' ' . ($specs['label'] ?? '') . ' ' . ($specs['genre'] ?? '');
+        if ($mash($probe) || $mash((string)($specs['label'] ?? '')) || $mash((string)($specs['genre'] ?? ''))) {
+            array_unshift($issues, 'Looks like test data');
+        }
+
         $artistSlug = velorex_product_artist_slug($p);
         $score = ((int)$p['stock'] > 0 ? 3 : 0) + ($artistSlug ? 2 : 0)
                + (($p['condition'] ?? 'new') === 'pre-owned' ? 1 : 0)

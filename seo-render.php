@@ -1302,7 +1302,8 @@ if ($route === 'artist') {
         velorex_e($a['name'] . ' Vinyl Records'));
     $html = velorex_set_text($html, '<p class="artist-count" id="artist-count" style="color:var(--text-muted);margin-top:0.5rem;">', 'p',
         velorex_e(velorex_artist_count_line($count, $inStock)));
-    $html = velorex_set_div_inner($html, '<div class="artist-about" id="artist-about">', velorex_artist_about_html($a, $products));
+    $html = velorex_set_div_inner($html, '<div class="artist-about" id="artist-about">', velorex_artist_about_html($a, $products)
+        . velorex_artist_shelf_html(collections_artist_shelf(db(), $slug)));
     $html = velorex_set_div_inner($html, '<div class="products-grid" id="artist-grid">',
         implode('', array_map('velorex_render_card', $products)));
     $html = velorex_set_div_inner($html, '<div id="artist-related">',

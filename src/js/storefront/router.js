@@ -209,6 +209,7 @@
           <div class="footer-bottom">
             <p>© ${new Date().getFullYear()} Velorex Music. All rights reserved.</p>
             <p>Made with 🎵 for music lovers</p>
+            <p class="footer-credit">Designed &amp; developed by <a href="/velorex-studio.html" class="footer-link" data-studio-enquiry>Velorex Studio IT Services</a></p>
           </div>
         </div>
       </footer>`;

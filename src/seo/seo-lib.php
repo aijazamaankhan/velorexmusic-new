@@ -1142,3 +1142,9 @@ function velorex_blog_meta_description(?string $excerpt, ?string $metaDescriptio
     $m = velorex_collapse_ws((string)$metaDescription);
     return velorex_fit_words('', $m !== '' ? $m : (string)$excerpt, 160);
 }
+
+// The computed "On the Velorex shelf" sentence on a composer page. MIRRORED by
+// initPageArtist() in src/js/storefront/collections.js (same class, same text).
+function velorex_artist_shelf_html(string $shelf): string {
+    return $shelf === '' ? '' : '<p class="artist-shelf">' . velorex_e($shelf) . '</p>';
+}

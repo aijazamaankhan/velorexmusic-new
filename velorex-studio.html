@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data:; font-src 'self' https: data:;">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Velorex Studio IT Services | Designed &amp; Developed This Store</title>
+  <meta name="description" content="Velorex Music was designed and developed by Velorex Studio IT Services. Enquiries about a website or web app are taken by email.">
+  <!-- A credit page, not shop content: kept out of the index so it never
+       competes with the catalogue for Velorex Music queries. Links are still
+       followed. Deliberately not listed in sitemap.php for the same reason. -->
+  <meta name="robots" content="noindex, follow">
+  <link rel="canonical" href="https://velorexmusic.com/velorex-studio.html">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="src/styles/tokens.css?v=3fdd4211">
+  <link rel="stylesheet" href="src/styles/components/cursor.css?v=fb46709c">
+  <link rel="stylesheet" href="src/styles/base.css?v=45f8212c">
+  <link rel="stylesheet" href="src/styles/pages/static-pages.css?v=1d20fe9e">
+  <link rel="stylesheet" href="src/styles/components/studio-enquiry.css?v=bf527980">
+  <style>
+    /* Page-specific only. Navbar, brand, .glass-card, headings and .btn come
+       from src/styles/pages/static-pages.css. */
+    .container { max-width: 860px; margin: 0 auto; padding: 4rem 2rem; }
+    .studio-eyebrow { color: var(--secondary); font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 0.75rem; }
+    .studio-lead { font-size: 1.1rem; }
+    .studio-services { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 2rem 0; padding: 0; list-style: none; }
+    .studio-service { padding: 1.25rem; border: 1px solid var(--border); border-radius: 14px; }
+    .studio-service i { color: var(--secondary); font-size: 1.3rem; margin-bottom: 0.6rem; display: block; }
+    .studio-service strong { display: block; color: var(--text); margin-bottom: 0.25rem; }
+    .studio-service span { font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; }
+    .studio-cta { text-align: center; }
+    .studio-cta .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.6rem; min-height: 48px; }
+    .studio-email { margin-top: 0.9rem; font-size: 0.95rem; }
+    .studio-email a { color: var(--secondary); word-break: break-all; }
+    .studio-note { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; }
+    @media (max-width: 768px) {
+      .container { padding: 2rem 1rem; }
+      .studio-services { grid-template-columns: 1fr; }
+      .studio-cta .btn { width: 100%; }
+    }
+  </style>
+  <script src="src/js/cursor.js?v=be88ed3c" defer></script>
+  <script src="src/js/storefront/studio-enquiry.js?v=20ec9dd0" defer></script>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/" class="brand">
+      <img src="/src/img/logo-lockup-dark.png" class="brand-lockup brand-lockup-dark" alt="Velorex Music" width="760" height="216">
+      <img src="/src/img/logo-lockup-light.png" class="brand-lockup brand-lockup-light" alt="Velorex Music" width="760" height="215">
+    </a>
+    <a href="/" style="color:var(--text-muted); text-decoration:none; font-size:0.9rem;">Back to Shop</a>
+  </nav>
+
+  <main class="container">
+    <p class="studio-eyebrow">Designed &amp; developed by</p>
+    <h1>Velorex Studio IT Services</h1>
+    <p class="studio-lead">The Velorex Music store — the catalogue, checkout, admin panel and this mobile app experience — was designed and built by Velorex Studio IT Services.</p>
+
+    <ul class="studio-services">
+      <li class="studio-service">
+        <i class="fas fa-pen-ruler" aria-hidden="true"></i>
+        <strong>Website design</strong>
+        <span>Layouts that work on phones, tablets and large screens alike.</span>
+      </li>
+      <li class="studio-service">
+        <i class="fas fa-cart-shopping" aria-hidden="true"></i>
+        <strong>E-commerce stores</strong>
+        <span>Catalogues, carts, secure online payments and order management.</span>
+      </li>
+      <li class="studio-service">
+        <i class="fas fa-code" aria-hidden="true"></i>
+        <strong>Web applications</strong>
+        <span>Admin panels, dashboards and custom tools for running a business.</span>
+      </li>
+    </ul>
+
+    <div class="glass-card studio-cta">
+      <h2>Have a project in mind?</h2>
+      <p>Share your requirements with your email and mobile number. The enquiry is sent to Velorex Studio by email — nothing is stored on this site — and they reply by email.</p>
+      <!-- Opens the enquiry popup (src/js/storefront/studio-enquiry.js). The
+           mailto href is the fallback if that script does not run. -->
+      <a class="btn" data-studio-enquiry href="mailto:velorexdesign@gmail.com?subject=Website%20enquiry%20(via%20velorexmusic.com)">
+        <i class="fas fa-pen-to-square" aria-hidden="true"></i> Send your requirements
+      </a>
+      <p class="studio-email">or write to <a href="mailto:velorexdesign@gmail.com">velorexdesign@gmail.com</a></p>
+      <p class="studio-note">For questions about an order or a record, please use the shop's <a href="/contact.html" style="color:var(--secondary)">Contact page</a> instead.</p>
+    </div>
+  </main>
+</body>
+</html>

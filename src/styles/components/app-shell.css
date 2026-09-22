@@ -1,0 +1,144 @@
+/* =============================================================================
+   Velorex Music — phone "app shell"
+   Owns .app-tabbar and every .app-tab* rule, plus the touch-feel rules below.
+   Markup is built by src/js/storefront/app-shell.js; nothing here renders
+   without it except the touch rules, which are harmless on their own.
+
+   The tab bar is presentation only. Every tab is a real <a href> that calls the
+   same navigate() / VelorexSearch.open() the navbar already uses — no routing,
+   cart or auth logic lives here.
+   ============================================================================= */
+
+.app-tabbar { display: none; }
+
+/* ---- Touch feel (all widths, touch devices only) ------------------------- */
+/* Android paints a grey flash over every tapped link; iOS delays taps waiting
+   for a double-tap zoom. Neither happens in a native app. */
+html { -webkit-tap-highlight-color: transparent; }
+a, button, input, select, textarea, label, [onclick] { touch-action: manipulation; }
+
+/* Hover lifts stick on touch screens — a tapped card stays raised until the
+   next tap elsewhere. Neutralise the transforms where there is no hover. */
+@media (hover: none) {
+  .product-card:hover,
+  .category-card:hover,
+  .back-to-top:hover { transform: none; }
+  .product-card:hover .product-card-image img,
+  .category-card:hover .category-card-bg { transform: none; }
+}
+
+/* ---- Tab bar (phones and tablets — same 1100px line where the navbar collapses to the hamburger) -- */
+@media (max-width: 1100px) {
+  :root { --app-tabbar-h: 62px; }
+
+  .app-tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 1400; /* under the 1500 drawer, 1600 sheets, 2000 modals */
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    height: calc(var(--app-tabbar-h) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--glass, rgba(13, 13, 13, 0.92));
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    transition: transform 0.2s ease;
+    /* On a tablet five tabs spread over 1000px are a long reach apart; keep
+       them in a centred 640px band, the bar background still full-width. */
+    padding-inline: max(0px, calc((100vw - 640px) / 2));
+  }
+  /* The on-screen keyboard pushes a fixed bar up over the field being typed
+     into. app-shell.js sets this class while a text field has focus. */
+  body.app-typing .app-tabbar { transform: translateY(110%); }
+
+  .app-tab {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    min-width: 0; color: var(--text-muted); font-size: 0.68rem; font-weight: 600;
+    background: none; border: 0; padding: 0; font-family: inherit; cursor: pointer;
+    -webkit-user-select: none; user-select: none;
+  }
+  .app-tab i { font-size: 1.15rem; transition: transform 0.15s ease; }
+  .app-tab:active i { transform: scale(0.86); }
+  .app-tab.is-active { color: var(--secondary); }
+  /* Light theme: --secondary (#ff4d00) on the pale bar is 3.3:1 → #c2410c. */
+  [data-theme="light"] .app-tab.is-active { color: #c2410c; }
+  [data-theme="light"] .app-tab.is-active::before { background: #c2410c; }
+  .app-tab-icon {
+    position: relative; line-height: 1;
+    display: grid; place-items: center; width: 52px; height: 28px; border-radius: 14px;
+    transition: background-color 0.25s ease;
+  }
+  /* Active tab: a soft pill behind the icon (native tab-bar pattern) and a
+     one-off pop when the tab BECOMES active. Motion only answers something the
+     user did — tapping a tab, adding to cart — never loops on its own: an
+     always-moving bar pulls the eye off the products and costs battery. */
+  .app-tab.is-active .app-tab-icon { background: rgba(255, 107, 53, 0.16); }
+  .app-tab.is-active i { animation: appTabPop 0.42s cubic-bezier(0.3, 1.6, 0.5, 1); }
+  .app-tab.is-active span:last-child { font-weight: 700; }
+  @keyframes appTabPop {
+    0% { transform: scale(0.7) translateY(3px); }
+    60% { transform: scale(1.18) translateY(-2px); }
+    100% { transform: scale(1) translateY(0); }
+  }
+  .app-tab-badge {
+    position: absolute; top: -7px; right: -11px; min-width: 17px; height: 17px; padding: 0 4px;
+    border-radius: 9px; background: var(--secondary); color: #fff;
+    font-size: 0.62rem; font-weight: 700; line-height: 17px; text-align: center;
+  }
+  .app-tab-badge[hidden] { display: none; }
+  .app-tab-badge { top: -5px; right: 4px; }
+  /* Count went up: bump the badge and nudge the cart icon — the confirmation
+     that an Add actually landed, seen from anywhere on the page. app-shell.js
+     adds .is-bumping only when the number increases. */
+  .app-tab-badge.is-bumping { animation: appBadgeBump 0.5s cubic-bezier(0.3, 1.6, 0.5, 1); }
+  .app-tab.is-bumping i { animation: appCartNudge 0.5s ease; }
+  @keyframes appBadgeBump { 0% { transform: scale(0.4); } 55% { transform: scale(1.35); } 100% { transform: scale(1); } }
+  @keyframes appCartNudge { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-12deg); } 60% { transform: rotate(9deg); } }
+
+  /* Bigger logo. With search, cart and account moved to the tab bar the
+     header holds only logo + theme + menu, so the lockup can take the room
+     back (it was cut to 38px when five buttons had to fit). Scoped to
+     .has-app-tabbar: if the script fails the five buttons return and the
+     smaller logo from storefront.css still applies. */
+  body.has-app-tabbar .navbar-brand .brand-lockup { height: 52px; }
+
+  /* Room for the bar under the last thing on every page. */
+  body.has-app-tabbar { padding-bottom: calc(var(--app-tabbar-h) + env(safe-area-inset-bottom, 0px)); }
+
+  /* Bottom-pinned UI moves up so the bar never covers it. */
+  body.has-app-tabbar .back-to-top { bottom: calc(var(--app-tabbar-h) + env(safe-area-inset-bottom, 0px) + 14px); right: 16px; width: 44px; height: 44px; }
+  body.has-app-tabbar .toast-container,
+  body.has-app-tabbar .coupon-promo { bottom: calc(var(--app-tabbar-h) + env(safe-area-inset-bottom, 0px) + 10px); }
+
+  /* Search, cart and account now live in the tab bar, so the top bar keeps
+     just the logo, theme toggle and menu — the layout of a native app header.
+     Scoped to .has-app-tabbar so the header is untouched if the script fails. */
+  body.has-app-tabbar .navbar-actions .search-trigger,
+  body.has-app-tabbar .navbar-actions a[href="/cart"],
+  body.has-app-tabbar .navbar-actions a[href="/login"],
+  body.has-app-tabbar .navbar-actions a[href="/profile"] { display: none; }
+
+  /* The drawer ends above the bar rather than behind it. Sized by HEIGHT, not
+     by `bottom`: .navbar has backdrop-filter, which makes it the containing
+     block for this position:fixed drawer, so top/bottom resolve against the
+     70px bar and the drawer collapsed to one row. The storefront rule uses an
+     explicit height for the same reason. */
+  body.has-app-tabbar .navbar-nav.mobile-open {
+    bottom: auto !important;
+    height: calc(100vh - 70px - var(--app-tabbar-h) - env(safe-area-inset-bottom, 0px)) !important;
+    height: calc(100dvh - 70px - var(--app-tabbar-h) - env(safe-area-inset-bottom, 0px)) !important;
+    overscroll-behavior: contain;
+  }
+}
+
+@media (max-width: 380px) {
+  body.has-app-tabbar .navbar-brand .brand-lockup { height: 46px; }
+}
+@media (max-width: 340px) {
+  body.has-app-tabbar .navbar-brand .brand-lockup { height: 42px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-tabbar, .app-tab i, .app-tab-icon { transition: none; }
+  .app-tab.is-active i,
+  .app-tab-badge.is-bumping,
+  .app-tab.is-bumping i { animation: none; }
+}

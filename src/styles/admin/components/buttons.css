@@ -22,8 +22,11 @@
   font-family: inherit;
 }
 
+/* #d4430c → #c2410c rather than var(--secondary) → #ff3a00: white on the old
+   start stop was 2.8:1, under the 4.5:1 a button label needs. Same change as
+   the storefront buttons.css. */
 .btn-primary {
-  background: linear-gradient(135deg, var(--secondary), #ff3a00);
+  background: linear-gradient(135deg, #d4430c, #c2410c);
   color: white;
   width: 100%;
 }
@@ -34,8 +37,9 @@
 
 /* Destructive action (delete / permanent removal). Mirrors the storefront's
    .btn-danger, which the admin doesn't load. */
+/* Was var(--danger) (#ef4444) → #cc0000; white on #ef4444 is 3.8:1. */
 .btn-danger {
-  background: linear-gradient(135deg, var(--danger), #cc0000);
+  background: linear-gradient(135deg, #d63031, #b91c1c);
   color: #fff;
 }
 .btn-danger:hover {
@@ -57,7 +61,28 @@
   border-color: var(--text-muted);
 }
 
-@media (max-width: 480px) {
+/* .btn-secondary and .btn-sm are used by ~60 admin buttons (Refresh, Clear,
+   Export CSV, Edit, Preview, Send…) but were only ever defined in the
+   STOREFRONT stylesheet, which the admin does not load — so every one of them
+   rendered as the browser's default grey button with black text, in both
+   themes. Styled here to match .btn-cancel's neutral look. */
+.btn-secondary {
+  background: var(--surface-light);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover {
+  border-color: var(--secondary);
+  color: var(--secondary);
+}
+.btn-sm {
+  padding: 0.5rem 0.9rem;
+  font-size: 0.82rem;
+  border-radius: 8px;
+}
+
+/* Touch sizes on phones and tablets (admin is used from a phone on the go). */
+@media (max-width: 1024px) {
   .btn { min-height: 44px; }
-  .btn-sm { min-height: 38px; }
+  .btn-sm { min-height: 40px; }
 }

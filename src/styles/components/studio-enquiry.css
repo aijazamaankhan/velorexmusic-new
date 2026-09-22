@@ -1,0 +1,107 @@
+/* =============================================================================
+   Velorex Studio enquiry popup
+   Built by src/js/storefront/studio-enquiry.js. Self-contained (own classes, no
+   dependency on the storefront's modal.css/forms.css) so the same popup works
+   on the SPA and on the static /velorex-studio.html page.
+   ============================================================================= */
+
+.vs-overlay {
+  position: fixed; inset: 0; z-index: 3200; /* above the tab bar, drawer and modals */
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+  background: rgba(5, 5, 10, 0.7);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  opacity: 0; transition: opacity 0.2s ease;
+  overflow-y: auto; overscroll-behavior: contain;
+}
+.vs-overlay.is-open { opacity: 1; }
+.vs-overlay[hidden] { display: none; }
+
+.vs-card {
+  position: relative; width: 100%; max-width: 560px; margin: auto;
+  background: var(--surface, #1a1a2e); color: var(--text, #f0eaf8);
+  border: 1px solid var(--border, rgba(255,255,255,0.1)); border-radius: 18px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  padding: 1.75rem;
+  transform: translateY(12px) scale(0.98); transition: transform 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+.vs-overlay.is-open .vs-card { transform: none; }
+
+.vs-close {
+  position: absolute; top: 0.75rem; right: 0.75rem; width: 40px; height: 40px;
+  display: grid; place-items: center; border-radius: 50%;
+  background: transparent; border: 0; color: var(--text-muted, #9890b0); font-size: 1.1rem; cursor: pointer;
+}
+.vs-close:hover { background: rgba(255, 255, 255, 0.08); color: var(--text, #fff); }
+
+.vs-eyebrow { color: #ff6b35; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; margin: 0 0 0.35rem; }
+.vs-title { font-family: var(--font-display, serif); font-size: 1.5rem; line-height: 1.2; margin: 0 2.5rem 0.4rem 0; }
+.vs-sub { color: var(--text-muted, #9890b0); font-size: 0.9rem; line-height: 1.55; margin: 0 0 1.25rem; }
+
+/* What the studio does — the same three services as /velorex-studio.html. */
+.vs-services { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: -0.4rem 0 1.25rem; padding: 0; list-style: none; }
+.vs-services li {
+  display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.4rem 0.75rem; border-radius: 999px;
+  font-size: 0.8rem; font-weight: 600; color: var(--text, #fff);
+  background: rgba(255, 107, 53, 0.1); border: 1px solid rgba(255, 107, 53, 0.25);
+}
+.vs-services i { color: #ff6b35; font-size: 0.85rem; }
+
+.vs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem 1rem; }
+.vs-field { display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
+.vs-field.vs-full { grid-column: 1 / -1; }
+.vs-label { font-size: 0.78rem; font-weight: 600; color: var(--text-muted, #9890b0); }
+.vs-label b { color: #ff6b35; font-weight: 700; }
+.vs-input {
+  width: 100%; min-height: 44px; padding: 0.65rem 0.85rem;
+  background: var(--surface2, rgba(255,255,255,0.04)); color: var(--text, #fff);
+  border: 1px solid var(--border, rgba(255,255,255,0.12)); border-radius: 10px;
+  font: inherit; font-size: 16px; /* 16px: iOS zooms the page on anything smaller */
+}
+.vs-input:focus { outline: none; border-color: #ff6b35; box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.18); }
+textarea.vs-input { min-height: 120px; resize: vertical; line-height: 1.5; }
+select.vs-input option { background: var(--surface, #1a1a2e); }
+[data-theme="light"] .vs-input { background: #ffffff; }
+
+/* Honeypot — present for bots, invisible and unreachable for people. */
+.vs-hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+
+.vs-actions { margin-top: 1.25rem; display: flex; flex-direction: column; gap: 0.6rem; }
+.vs-submit {
+  min-height: 48px; border: 0; border-radius: 12px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
+  font: inherit; font-weight: 700; font-size: 1rem; color: #fff;
+  background: linear-gradient(135deg, #d4430c, #c2410c); /* white text at ≥4.5:1 */
+  box-shadow: 0 6px 20px rgba(212, 67, 12, 0.35);
+}
+.vs-submit:disabled { opacity: 0.65; cursor: progress; }
+.vs-fine { font-size: 0.78rem; color: var(--text-muted, #9890b0); text-align: center; margin: 0; }
+.vs-fine a { color: #ff6b35; }
+
+.vs-status { margin-top: 0.9rem; padding: 0.75rem 0.9rem; border-radius: 10px; font-size: 0.9rem; line-height: 1.5; }
+.vs-status[hidden] { display: none; }
+.vs-status.is-error { background: rgba(220, 38, 38, 0.12); border: 1px solid rgba(220, 38, 38, 0.35); color: #fca5a5; }
+[data-theme="light"] .vs-status.is-error { color: #b91c1c; }
+
+.vs-done { text-align: center; padding: 1rem 0 0.5rem; }
+.vs-done i { font-size: 2.6rem; color: #22c55e; margin-bottom: 0.75rem; display: block; }
+.vs-done p { color: var(--text-muted, #9890b0); margin: 0.35rem 0 1.25rem; }
+
+html.vs-lock, html.vs-lock body { overflow: hidden; }
+
+@media (max-width: 600px) {
+  /* Phone: a bottom sheet, the native pattern for a form this size. */
+  .vs-overlay { align-items: flex-end; padding: 0; }
+  .vs-card {
+    max-width: none; border-radius: 20px 20px 0 0; margin: 0;
+    padding: 1.4rem 1.1rem calc(1.2rem + env(safe-area-inset-bottom, 0px));
+    max-height: 92vh; max-height: 92dvh; overflow-y: auto;
+    transform: translateY(100%);
+  }
+  .vs-grid { grid-template-columns: 1fr; }
+  .vs-title { font-size: 1.3rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vs-overlay, .vs-card { transition: none; }
+}

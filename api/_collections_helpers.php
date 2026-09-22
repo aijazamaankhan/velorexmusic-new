@@ -101,6 +101,56 @@ function collections_artist_products(PDO $pdo, string $slug): array {
     return array_values(array_filter(collections_products($pdo), static fn($p) => velorex_product_artist_slug($p) === $slug));
 }
 
+// Label names as a reader should see them. The admin field is free text and the
+// catalogue holds "Universal", "Universal Music", "Universl Music Group",
+// "saregama", "T Series" … — normalised for DISPLAY only; the data is untouched
+// (fixing it is on the owner's list in PRODUCT-CONTENT-PRIORITY.md).
+function collections_label_display(string $raw): string {
+    $k = preg_replace('/[^a-z]/', '', strtolower($raw)) ?? '';
+    $map = [
+        'universal' => 'Universal Music', 'universl' => 'Universal Music', 'saregama' => 'Saregama',
+        'sony' => 'Sony Music', 'tseries' => 'T-Series', 'zee' => 'Zee Music', 'tips' => 'Tips',
+        'ishtar' => 'Ishtar', 'yrf' => 'YRF Music', 'shemaroo' => 'Shemaroo', 'sonotek' => 'Sonotek',
+        'timemusic' => 'Time Music',
+    ];
+    foreach ($map as $prefix => $name) if (str_starts_with($k, $prefix)) return $name;
+    return '';   // unknown / junk values are never displayed
+}
+
+// One factual sentence about a composer's shelf, computed from the database:
+// how many records, in stock, pre-owned, and the labels that pressed them.
+// Returned by /api/collections.php so the SPA prints the server's exact words.
+function collections_artist_shelf(PDO $pdo, string $slug): string {
+    $products = collections_artist_products($pdo, $slug);
+    if (!$products) return '';
+    $ids = array_map(static fn($p) => (int)$p['id'], $products);
+    $labels = [];
+    try {
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        $st = $pdo->prepare("SELECT specs FROM products WHERE id IN ($in)");
+        $st->execute($ids);
+        foreach ($st->fetchAll() as $r) {
+            $s = json_decode((string)($r['specs'] ?? ''), true);
+            $name = collections_label_display((string)($s['label'] ?? ''));
+            if ($name !== '') $labels[$name] = ($labels[$name] ?? 0) + 1;
+        }
+    } catch (Throwable $e) { /* labels are optional */ }
+    arsort($labels);
+    $n = count($products);
+    $inStock = count(array_filter($products, static fn($p) => (int)$p['stock'] > 0));
+    $used = count(array_filter($products, static fn($p) => ($p['condition'] ?? 'new') === 'pre-owned'));
+    $formats = array_unique(array_map(static fn($p) => velorex_format_label_for_key((string)$p['category']), $products));
+    $fmt = count($formats) === 1 && $formats[0] !== '' ? strtolower($formats[0]) . 's' : 'records';
+    $out = 'On the Velorex shelf: ' . $n . ' ' . ($n === 1 ? rtrim($fmt, 's') : $fmt)
+         . ', ' . $inStock . ' in stock' . ($used ? ', ' . $used . ' pre-owned' : '') . '.';
+    $top = array_slice(array_keys($labels), 0, 4);
+    if ($top) {
+        $last = array_pop($top);
+        $out .= ' Pressed by ' . ($top ? implode(', ', $top) . ' and ' : '') . $last . '.';
+    }
+    return $out;
+}
+
 // ---- Link candidates ---------------------------------------------------------
 //
 // Anchor text is written per destination and varies by context, so the site

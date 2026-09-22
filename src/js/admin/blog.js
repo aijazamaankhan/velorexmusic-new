@@ -36,11 +36,78 @@
         if (!res.ok) throw new Error('HTTP ' + res.status);
         BLOG_POSTS = await res.json();
         renderBlogTable();
+        loadJournalImport();
       } catch (e) {
         if (tbody) {
           tbody.innerHTML = '<tr><td colspan="5" style="padding:2rem;text-align:center;color:var(--danger);">'
             + 'Could not load posts: ' + escapeHTML(e.message) + '</td></tr>';
         }
+      }
+    }
+
+    // ------------------------------------------------ prepared articles ---
+    // Articles written in the repository (content/journal/) are brought in
+    // here as DRAFTS — once. From then on they are ordinary posts: edited,
+    // updated and published in this panel. The box lists each article's
+    // "check before publishing" notes and disappears once every prepared
+    // article has been published. Server side: api/_journal_import.php.
+
+    async function loadJournalImport() {
+      var box = document.getElementById('journal-import');
+      if (!box) return;
+      try {
+        var res = await fetch(API_BASE + '/admin/journal-import.php', { headers: blogAuthHeaders(), cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        renderJournalImport(await res.json());
+      } catch (e) {
+        box.style.display = 'none';
+      }
+    }
+
+    function renderJournalImport(r) {
+      var box = document.getElementById('journal-import');
+      if (!box || !r || !Array.isArray(r.articles)) return;
+      var statusBySlug = {};
+      BLOG_POSTS.forEach(function (p) { statusBySlug[p.slug] = p.status; });
+      // Still relevant while anything is un-imported or imported-but-draft.
+      var open = r.articles.filter(function (a) {
+        return a.status !== 'exists' || statusBySlug[a.slug] !== 'published';
+      });
+      if (!open.length) { box.style.display = 'none'; return; }
+      var toCreate = r.articles.filter(function (a) { return a.status === 'would-create'; }).length;
+
+      box.innerHTML = '<div style="border:1px solid var(--border);border-radius:12px;padding:1rem 1.1rem;background:rgba(255,107,53,0.05);">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">'
+        + '<div><strong>Prepared articles</strong><div style="color:var(--text-muted);font-size:0.82rem;margin-top:0.2rem;">'
+        + 'Written for the Journal and ready to review. They are imported as drafts — nothing is published until you open each one and press Publish.</div></div>'
+        + (toCreate ? '<button type="button" class="btn btn-primary btn-sm" style="width:auto;" onclick="importJournalDrafts(this)">'
+          + '<i class="fas fa-file-import"></i> Import ' + toCreate + ' as drafts</button>' : '')
+        + '</div><ul style="list-style:none;margin:0.9rem 0 0;padding:0;display:grid;gap:0.7rem;">'
+        + open.map(function (a) {
+          var state = a.status === 'would-create' ? 'Not imported yet'
+            : a.status === 'error' ? 'Problem' : 'Draft — review, then publish';
+          var notes = (a.reviewNotes || []).concat(a.notes || []);
+          return '<li style="border-top:1px solid var(--border);padding-top:0.6rem;">'
+            + '<div style="display:flex;justify-content:space-between;gap:0.75rem;flex-wrap:wrap;"><span style="font-weight:600;">' + escapeHTML(a.title) + '</span>'
+            + '<span style="font-size:0.75rem;color:var(--text-muted);">' + state + '</span></div>'
+            + (notes.length ? '<details style="margin-top:0.3rem;font-size:0.8rem;color:var(--text-muted);"><summary style="cursor:pointer;">Check before publishing (' + notes.length + ')</summary>'
+              + '<ul style="margin:0.4rem 0 0 1.1rem;">' + notes.map(function (n) { return '<li>' + escapeHTML(n) + '</li>'; }).join('') + '</ul></details>' : '')
+            + '</li>';
+        }).join('') + '</ul></div>';
+      box.style.display = 'block';
+    }
+
+    async function importJournalDrafts(btn) {
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importing…'; }
+      try {
+        var res = await fetch(API_BASE + '/admin/journal-import.php', { method: 'POST', headers: blogAuthHeaders() });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+        showToast(data.created + ' draft' + (data.created === 1 ? '' : 's') + ' created — review and publish each one', 'success');
+        await loadBlogPosts();
+      } catch (e) {
+        showToast('Import failed: ' + e.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = 'Retry import'; }
       }
     }
 

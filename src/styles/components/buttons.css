@@ -23,7 +23,13 @@
 .btn::after { content: ''; position: absolute; inset: 0; background: rgba(255, 255, 255, 0.1); opacity: 0; transition: opacity 0.2s; }
 .btn:hover::after { opacity: 1; }
 
-.btn-primary { background: var(--orange-gradient); color: white; box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4); }
+/* Deeper than --orange-gradient on purpose. White on #ff6b35 → #ff3a00 is
+   2.8–3.6:1, below the 4.5:1 a 14px label needs, and this is the colour of
+   Add, View Combo, All Products, Sign in and Subscribe — the buttons that
+   matter most. #d4430c → #c2410c is 4.6–5.2:1 and reads as the same orange.
+   Only the fill behind white text changes; --orange-gradient itself (badges,
+   back-to-top, the active era pill with dark ink) is untouched. */
+.btn-primary { background: linear-gradient(135deg, #d4430c, #c2410c); color: white; box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4); }
 .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(255, 107, 53, 0.5); }
 
 .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
@@ -32,7 +38,8 @@
 .btn-outline-primary { background: transparent; border: 2px solid var(--secondary); color: var(--secondary); }
 .btn-outline-primary:hover { background: var(--secondary); color: white; }
 
-.btn-danger { background: linear-gradient(135deg, var(--danger), #cc0000); color: white; }
+/* Was var(--danger) (#ff4757) → #cc0000: white on the start stop was 3.3:1. */
+.btn-danger { background: linear-gradient(135deg, #d63031, #b91c1c); color: white; }
 .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(255, 71, 87, 0.4); }
 
 .btn-success { background: linear-gradient(135deg, var(--success), #00a884); color: white; }
@@ -48,8 +55,11 @@
 .btn-lg { padding: 1rem 2.5rem; font-size: 1rem; }
 .btn-block { width: 100%; justify-content: center; }
 
-@media (max-width: 480px) {
-  /* 44px touch-target floor on phone */
-  .btn { min-height: 44px; }
-  .btn-sm { min-height: 38px; }
+/* Touch sizes on phones AND tablets. The same button type measured 42, 44,
+   47 and 49px tall depending on where it sat; a floor plus a matched vertical
+   padding makes each size one height. 44px is the touch-target minimum. */
+@media (max-width: 1100px) {
+  .btn { min-height: 44px; padding-top: 0.6rem; padding-bottom: 0.6rem; justify-content: center; }
+  .btn-lg { min-height: 52px; padding-top: 0.8rem; padding-bottom: 0.8rem; }
+  .btn-sm { min-height: 38px; padding-top: 0.4rem; padding-bottom: 0.4rem; }
 }

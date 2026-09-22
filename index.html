@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'self' https: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data:; font-src 'self' https: data:;">
   <meta name="referrer" content="strict-origin-when-cross-origin">
@@ -117,6 +117,13 @@
   <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="icon" href="/favicon-16.png" sizes="16x16" type="image/png">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <!-- Installable as a home-screen app on phones (standalone, no browser chrome).
+       The bottom tab bar that makes it feel like one is src/js/storefront/app-shell.js. -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Velorex">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <!-- ================== /SEO ==================== -->
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -202,37 +209,44 @@
   <script src="src/js/storefront/newsletter.js?v=ee512e2d" defer></script>
   <!-- Collection graph: related links, composer pages. Must load before
        router.js, whose initPage calls initPageArtist() and CollectionLinks. -->
-  <script src="src/js/storefront/collections.js?v=55ccb3ce" defer></script>
-  <script src="src/js/storefront/router.js?v=635ea023" defer></script>
+  <script src="src/js/storefront/collections.js?v=19b0115b" defer></script>
+  <script src="src/js/storefront/router.js?v=c35f2ff3" defer></script>
+  <!-- Phone tab bar + menu accordion. Presentation only; see its header. -->
+  <script src="src/js/storefront/app-shell.js?v=939b2cea" defer></script>
+  <!-- Footer credit popup (Velorex Studio enquiry, emailed; nothing stored). -->
+  <script src="src/js/storefront/studio-enquiry.js?v=20ec9dd0" defer></script>
   <script src="src/js/storefront/checkout.js?v=f539fe43" defer></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
        they can be shared between the storefront pages without duplication.
        See src/styles/tokens.css and src/styles/base.css. -->
   <link rel="stylesheet" href="src/styles/tokens.css?v=3fdd4211">
   <link rel="stylesheet" href="src/styles/base.css?v=45f8212c">
-  <link rel="stylesheet" href="src/styles/components/buttons.css?v=cef36620">
+  <link rel="stylesheet" href="src/styles/components/buttons.css?v=0b46c3e5">
   <link rel="stylesheet" href="src/styles/components/forms.css?v=75a50a70">
   <link rel="stylesheet" href="src/styles/components/modal.css?v=6d89eb5d">
   <link rel="stylesheet" href="src/styles/components/payment-modal.css?v=02096d61">
   <link rel="stylesheet" href="src/styles/components/toast.css?v=1b13f717">
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
-  <link rel="stylesheet" href="src/styles/components/hero-carousel.css?v=cc74d33e">
+  <link rel="stylesheet" href="src/styles/components/hero-carousel.css?v=5c155565">
   <link rel="stylesheet" href="src/styles/components/cursor.css?v=fb46709c">
   <link rel="stylesheet" href="src/styles/components/search.css?v=046a8aed">
   <link rel="stylesheet" href="src/styles/components/trust-band.css?v=8edcca10">
   <link rel="stylesheet" href="src/styles/components/announcement.css?v=7b03a99d">
-  <link rel="stylesheet" href="src/styles/components/coupon.css?v=bce683e9">
+  <link rel="stylesheet" href="src/styles/components/coupon.css?v=b93368bf">
   <link rel="stylesheet" href="src/styles/components/ads.css?v=e52c803f">
-  <link rel="stylesheet" href="src/styles/components/music-history.css?v=6e18fb90">
+  <link rel="stylesheet" href="src/styles/components/music-history.css?v=4d557c98">
   <link rel="stylesheet" href="src/styles/components/recent-sales.css?v=066910e1">
   <link rel="stylesheet" href="src/styles/components/label-band.css?v=58b6bd4e">
-  <link rel="stylesheet" href="src/styles/components/page-banner.css?v=db852962">
-  <link rel="stylesheet" href="src/styles/components/collection-links.css?v=7916300b">
+  <link rel="stylesheet" href="src/styles/components/page-banner.css?v=df20b665">
+  <link rel="stylesheet" href="src/styles/components/collection-links.css?v=0ccfcaf5">
   <link rel="stylesheet" href="src/styles/components/about-velorex.css?v=4e39af50">
   <link rel="stylesheet" href="src/styles/components/catalog-empty.css?v=8c30b8f4">
   <!-- Page-specific styles (hero, products, cart, profile, footer, etc.).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=c5d7dae2">
+  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=11e0b6bd">
+  <!-- After storefront.css: its touch rules cancel storefront hover lifts. -->
+  <link rel="stylesheet" href="src/styles/components/app-shell.css?v=da11d49f">
+  <link rel="stylesheet" href="src/styles/components/studio-enquiry.css?v=bf527980">
 </head>
 
 <body>
@@ -291,6 +305,10 @@
           <span class="aurora-1"></span><span class="aurora-2"></span><span class="aurora-3"></span>
         </div>
         <div class="hero-grid-lines" aria-hidden="true"></div>
+        <!-- Photographic backdrop for the brand slide (decorative, CSS background,
+             so it adds no crawlable text and nothing to the DOM order). Fades
+             out while a product slide is showing; see hero-carousel.css. -->
+        <div class="hero-photo" aria-hidden="true"></div>
 
         <div class="hero-track" data-hero-track>
           <article class="hero-slide hero-slide-brand is-active" role="group" aria-label="Velorex Music">
@@ -943,8 +961,8 @@
     <div id="page-product" class="page-section">
       <div class="page-hero">
         <div class="container">
-          <!-- A <p>, not an <h1>: the product name inside the detail block
-               below is the page's single <h1>. Two visible <h1>s with the same
+          <!-- A paragraph, not a heading: the product name inside the detail
+               block below is the page's single H1. Two visible H1s with the same
                text split the page's main heading in two. -->
           <p class="page-hero-title" id="detail-title">Product Details</p>
         </div>

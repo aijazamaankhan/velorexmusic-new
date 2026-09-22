@@ -220,7 +220,21 @@
   .page-banner-desc { font-size: 0.9rem; }
   /* Two across on a phone: three in a row wraps unevenly and a lone item on
      its own line reads as an afterthought. */
-  .page-banner-features { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Only the NON-variant rows get display here. `.page-banner-features` and
+     `.page-banner-variant` are the same specificity, so a bare
+     `display: grid` on the former came later and beat the variant's
+     `display: none` — on phones every department's feature row rendered at
+     once (stats + Merchandise + Vinyl Care on /products), tripling the banner.
+     The variant rows get their display from the data-banner rules below. */
+  .page-banner-features { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .page-banner-features:not(.page-banner-variant) { display: grid; }
+  /* Stats are three short counts — one row of three, icon over number, rather
+     than two-plus-an-orphan. */
+  .page-banner-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
+  .page-banner-stats .page-banner-feature { flex-direction: column; align-items: flex-start; gap: 0.4rem; }
+  .page-banner-stats .page-banner-feature > i { width: 2.2rem; height: 2.2rem; font-size: 0.9rem; }
+  .page-banner-inner { padding-block: 1.5rem; }
+  .page-banner { margin-bottom: 1.25rem; }
   .page-banner[data-banner="music"]       .page-banner-variant[data-for="music"],
   .page-banner[data-banner="merchandise"] ul.page-banner-variant[data-for="merchandise"],
   .page-banner[data-banner="vinyl-care"]  ul.page-banner-variant[data-for="vinyl-care"] { display: grid; }

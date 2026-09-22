@@ -27,6 +27,9 @@
 [data-theme="light"] .coupon-input { background: #ffffff; }
 
 .coupon-btn { flex: 0 0 auto; padding-inline: 1.1rem; }
+/* One height for the pair, so the field and its button read as one control. */
+.coupon-input, .coupon-btn { min-height: 44px; }
+.coupon-form { align-items: stretch; }
 
 .coupon-error {
   font-size: 0.75rem;

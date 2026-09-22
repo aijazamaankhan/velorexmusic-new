@@ -23,7 +23,7 @@
        See src/styles/admin/tokens.css and src/styles/admin/base.css. -->
   <link rel="stylesheet" href="src/styles/admin/tokens.css?v=4af9230f">
   <link rel="stylesheet" href="src/styles/admin/base.css?v=875f13f9">
-  <link rel="stylesheet" href="src/styles/admin/components/buttons.css?v=2e544cc4">
+  <link rel="stylesheet" href="src/styles/admin/components/buttons.css?v=a0b1e4ea">
   <link rel="stylesheet" href="src/styles/admin/components/forms.css?v=03e0888c">
   <link rel="stylesheet" href="src/styles/admin/components/modal.css?v=b1c80662">
   <link rel="stylesheet" href="src/styles/admin/components/cropper.css?v=74b9e16a">
@@ -31,11 +31,13 @@
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
   <!-- Page-specific styles (sidebar, header, panels, tables, drawer, dashboard).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/admin/pages/admin.css?v=af5e303a">
+  <link rel="stylesheet" href="src/styles/admin/pages/admin.css?v=21752faf">
   <link rel="stylesheet" href="src/styles/admin/pages/dashboard.css?v=ef59ea1f">
   <link rel="stylesheet" href="src/styles/admin/pages/settings.css?v=1424a29b">
   <link rel="stylesheet" href="src/styles/admin/pages/coupons.css?v=5d57fc72">
   <link rel="stylesheet" href="src/styles/admin/pages/policies.css?v=95601739">
+  <!-- Phone/tablet bottom tab bar; see src/js/admin/tabbar.js. -->
+  <link rel="stylesheet" href="src/styles/admin/components/tabbar.css?v=401340f7">
   <!-- Admin JS modules extracted in PR 4. Plain scripts (not type="module") so
        the existing inline <script> + onclick= handlers resolve them via
        script-scope. Order: leaves first. -->
@@ -54,7 +56,7 @@
   <script src="src/js/admin/invoice.js?v=bdbd72dd"></script>
   <script src="src/js/admin/image-cropper.js?v=0dfdbe4f"></script>
   <script src="src/js/admin/inventory.js?v=a37fd7f7"></script>
-  <script src="src/js/admin/blog.js?v=9ee875ac"></script>
+  <script src="src/js/admin/blog.js?v=88245888"></script>
   <script src="src/js/admin/combos.js?v=de76275c"></script>
   <!-- Abandoned carts + newsletter subscribers. Loaded after main.js because
        both panels call adminAuthHeaders() at runtime. -->
@@ -65,6 +67,7 @@
   <script src="src/js/admin/seo.js?v=016a02b4"></script>
   <script src="src/js/admin/policies.js?v=e5841fa0"></script>
   <script src="src/js/admin/toast.js?v=9a4bf3e8"></script>
+  <script src="src/js/admin/tabbar.js?v=5c905c76" defer></script>
 </head>
 
 <body>
@@ -109,7 +112,11 @@
            Two variants swapped by [data-theme] — the hidden one is display:none
            and so also leaves the accessibility tree, which is why both can
            carry the same alt without it being announced twice. -->
-      <a href="index.html" class="sidebar-logo" aria-label="Velorex Music — back to the storefront">
+      <!-- The logo opens the admin Dashboard, like an app's home icon — it used
+           to leave the admin for the storefront, which lost the admin's place
+           on one mis-tap. "View Store" in the header is the way to the site. -->
+      <a href="#" class="sidebar-logo" aria-label="Velorex Music admin — Dashboard"
+         onclick="switchPanel('overview', document.querySelector('.sidebar .nav-link[data-nav=overview]')); return false;">
         <img src="src/img/logo-lockup-dark.png" class="sidebar-logo-img sidebar-logo-dark"
              alt="Velorex Music" width="420" height="96">
         <img src="src/img/logo-lockup-light.png" class="sidebar-logo-img sidebar-logo-light"
@@ -212,7 +219,7 @@
             style="background:none; border:none; padding:0.5rem; color:var(--text-muted); cursor:pointer; font-size: 1.1rem;">
             <i class="fas fa-moon"></i>
           </button>
-          <a href="index.html" class="btn-view-store">
+          <a href="index.html" class="btn-view-store" aria-label="View Store" title="View Store">
             <i class="fas fa-external-link-alt"></i> View Store
           </a>
           <div class="profile-card">
@@ -445,6 +452,10 @@
               <i class="fas fa-plus"></i> New Post
             </button>
           </div>
+          <!-- Prepared articles (content/journal/). Filled by
+               renderJournalImport() in src/js/admin/blog.js; hidden once every
+               prepared article has been imported and published. -->
+          <div id="journal-import" style="display:none;margin-bottom:1.25rem;"></div>
           <div class="table-wrapper">
             <table class="data-table">
               <thead>

@@ -48,7 +48,7 @@ ErrorDocument 404 /seo-render.php
   #
   # "old.admin" — the directory name contains a literal space; "." matches it
   # whether the request arrives raw, plus-encoded or %20-encoded.
-  RewriteRule ^(scripts|node_modules|test-results|old.admin)/ - [F,L]
+  RewriteRule ^(scripts|node_modules|test-results|old.admin|content)/ - [F,L]
 
   # Dev/test files that live at the repo root and so get deployed. Found
   # publicly downloadable in the September 2026 SEO QA: test-admin-login.js
@@ -190,6 +190,12 @@ ErrorDocument 404 /seo-render.php
 #
 # HTML is deliberately short-lived — it must pick up new deploys quickly.
 # -----------------------------------------------------------------------------
+# Web app manifest (install-to-home-screen). Browsers want this media type;
+# served as text/plain some of them ignore the file. It has no ?v= hash, so it
+# falls through to the short default cache below — fine, it rarely changes.
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+</IfModule>
 <IfModule mod_expires.c>
   ExpiresActive On
   ExpiresByType text/css                "access plus 1 year"

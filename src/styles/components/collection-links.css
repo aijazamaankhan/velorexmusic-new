@@ -67,3 +67,12 @@
   .collection-links { padding: 1.1rem; margin-top: 2rem; }
   .collection-links-title { font-size: 1.15rem; }
 }
+
+/* The computed shelf summary on a composer page — facts, set apart from the
+   written context above it. */
+.artist-about .artist-shelf {
+  color: var(--text);
+  font-weight: 600;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+}

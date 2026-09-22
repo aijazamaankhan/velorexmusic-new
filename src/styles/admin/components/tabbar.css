@@ -1,0 +1,81 @@
+/* =============================================================================
+   Admin — phone/tablet bottom tab bar ("app" navigation)
+   Built by src/js/admin/tabbar.js. Presentation only: each tab calls the
+   existing switchPanel() with its sidebar link, and "More" opens the existing
+   sidebar drawer for the other panels. Hidden above 1024px, where the sidebar
+   is always visible.
+   ============================================================================= */
+
+.admin-tabbar { display: none; }
+
+@media (max-width: 1024px) {
+  :root { --admin-tabbar-h: 62px; }
+
+  .admin-tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    /* Under EVERYTHING that opens over a panel: modals (1000), the customer
+       drawer (1100), the sidebar (1040/1050), the toast. At 1030 it sat on top
+       of every modal and covered its Save button. */
+    z-index: 990;
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    height: calc(var(--admin-tabbar-h) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-inline: max(0px, calc((100vw - 640px) / 2));
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.25);
+  }
+  .admin-tab {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    min-width: 0; padding: 0; border: 0; background: none; cursor: pointer;
+    font-family: inherit; font-size: 0.68rem; font-weight: 600; color: var(--text-muted);
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+    -webkit-user-select: none; user-select: none;
+  }
+  .admin-tab-icon {
+    display: grid; place-items: center; width: 52px; height: 28px; border-radius: 14px;
+    transition: background-color 0.25s ease;
+  }
+  .admin-tab i { font-size: 1.1rem; transition: transform 0.15s ease; }
+  .admin-tab:active i { transform: scale(0.86); }
+  .admin-tab.is-active { color: var(--secondary); }
+  /* Light theme: #ff6b35 on the white bar is 2.8:1; the deeper orange is 5.2:1. */
+  [data-theme="light"] .admin-tab.is-active { color: #c2410c; }
+  .admin-tab.is-active .admin-tab-icon { background: rgba(255, 107, 53, 0.16); }
+  .admin-tab.is-active i { animation: adminTabPop 0.42s cubic-bezier(0.3, 1.6, 0.5, 1); }
+  @keyframes adminTabPop {
+    0% { transform: scale(0.7) translateY(3px); }
+    60% { transform: scale(1.18) translateY(-2px); }
+    100% { transform: scale(1) translateY(0); }
+  }
+
+  /* Room under the last row of every panel, and the toast above the bar. */
+  #admin-layout.has-admin-tabbar .main-content { padding-bottom: calc(var(--admin-tabbar-h) + env(safe-area-inset-bottom, 0px) + 1rem); }
+  #admin-layout.has-admin-tabbar ~ .toast,
+  body:has(.has-admin-tabbar) .toast { bottom: calc(var(--admin-tabbar-h) + env(safe-area-inset-bottom, 0px) + 12px); }
+
+  /* The panel header stays pinned while a long table scrolls, like an app's
+     title bar — the hamburger and panel name are always one tap away.
+     .main-content is overflow:auto, which made IT the sticky container — and
+     it never scrolls (the window does), so the header rode away with the page.
+     `clip` still clips wide content but is not a scroll container. */
+  /* min-width:0 is required with clip: a grid item that is not a scroll
+     container gets a min-content minimum, so the 600px table widened the
+     whole layout to 720px and pushed the tab bar and header off-screen. */
+  #admin-layout.has-admin-tabbar .main-content { overflow-x: clip; overflow-y: visible; min-width: 0; }
+  #admin-layout.has-admin-tabbar .header {
+    position: sticky; top: 0; z-index: 900;
+    background: var(--bg);
+    margin-left: -1rem; margin-right: -1rem; padding-left: 1rem; padding-right: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 480px) {
+  #admin-layout.has-admin-tabbar .header { margin-left: -0.75rem; margin-right: -0.75rem; padding-left: 0.75rem; padding-right: 0.75rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-tab i, .admin-tab-icon { transition: none; }
+  .admin-tab.is-active i { animation: none; }
+}

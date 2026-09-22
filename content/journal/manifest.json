@@ -1,0 +1,74 @@
+{
+  "_readme": "Journal articles prepared in the repository (SEO Phase 4). Imported into blog_posts as DRAFTS by scripts/import-journal-drafts.php — nothing here is published until someone reviews it in Admin -> Blog and presses Publish. Product links are written as /product/<id> and rewritten to the current canonical URL at import. Order matters: later articles link to earlier ones.",
+  "articles": [
+    {
+      "slug": "how-to-check-used-vinyl-record-condition",
+      "file": "how-to-check-used-vinyl-record-condition.html",
+      "title": "How to Check a Used Vinyl Record Before You Buy",
+      "metaTitle": "How to Check a Used Vinyl Record's Condition",
+      "metaDescription": "What to check on a pre-owned LP before you buy: sleeve wear, scratches vs scuffs, warps, and what grades like NM, VG+ and VG actually mean.",
+      "excerpt": "Sleeve, disc, labels, grading terms and the questions to ask a seller — a practical checklist for buying pre-owned vinyl in India.",
+      "cover": "/src/img/banners/pre-owned-records-banner.jpg",
+      "relatedCollections": ["/pre-owned", "/vinyl-records/hindi"],
+      "relatedProducts": [53, 1787373295, 1789063618, 38, 12, 63],
+      "cluster": "Record collecting",
+      "reviewNotes": [
+        "Grading scale is described as 'based on the Goldmine grading standard' — widely used; wording kept general.",
+        "Says pre-owned copies are 'checked before listed and dispatched' — matches the site's existing claim; confirm it is still true.",
+        "Suggests asking the seller for angled photos — make sure Velorex can provide them if a customer asks."
+      ]
+    },
+    {
+      "slug": "vinyl-pressings-explained-editions-180g-gatefold-coloured-vinyl",
+      "file": "vinyl-pressings-explained-editions-180g-gatefold-coloured-vinyl.html",
+      "title": "Vinyl Pressings Explained: Editions, 180g, Gatefolds and Coloured Vinyl",
+      "metaTitle": "Vinyl Pressings Explained: Editions, 180g, Gatefold",
+      "metaDescription": "What 1st edition, reissue, 180g, gatefold, 2LP, splatter and picture disc mean on a record listing — and which of them actually affect the sound.",
+      "excerpt": "Reissue or original, 180g or standard, gatefold, 2LP, coloured or picture disc — what each term on a record listing means and what it changes.",
+      "cover": "/src/img/banners/music-vinyl-records-banner.jpg",
+      "relatedCollections": ["/vinyl-records", "/vinyl-records/hindi", "/pre-owned"],
+      "relatedProducts": [1789063625, 1789063597, 1789063618, 65, 19, 39, 1789063601, 1789063614],
+      "cluster": "Record collecting",
+      "reviewNotes": [
+        "'A standard 12-inch LP typically weighs around 120-140 grams' — commonly cited range; verify if you want a precise figure.",
+        "Explains '1st/2nd edition' on modern reissues as reissue production runs — confirm this matches how Velorex uses the labels (e.g. Rocky 1st vs 2nd edition).",
+        "Picture discs described as often considered noisier 'by many listeners' — deliberately hedged.",
+        "Jersey is described as a 10-inch release, taken from the product title."
+      ]
+    },
+    {
+      "slug": "how-to-store-vinyl-records-india-heat-humidity-monsoon",
+      "file": "how-to-store-vinyl-records-india-heat-humidity-monsoon.html",
+      "title": "How to Store Vinyl Records in India's Heat, Humidity and Monsoon",
+      "metaTitle": "How to Store Vinyl Records in India's Heat and Humidity",
+      "metaDescription": "Keep records flat, clean and mould-free in Indian conditions: upright storage, the right sleeves, where not to keep a collection, and monsoon care.",
+      "excerpt": "Heat warps records and damp grows mould. How to store a collection in Indian conditions: upright shelving, sleeves, the right room and monsoon checks.",
+      "cover": "/src/img/banners/vinyl-care-banner.jpg",
+      "relatedCollections": ["/vinyl-records", "/pre-owned"],
+      "relatedProducts": [],
+      "cluster": "Vinyl care & storage",
+      "reviewNotes": [
+        "No specific temperature or humidity numbers are given on purpose — archival figures vary by source. Add one only with a cited source.",
+        "Once /vinyl-care has stock, tag it under Related collections and add a line linking to sleeves and cleaning products."
+      ]
+    },
+    {
+      "slug": "r-d-burman-vinyl-records-listening-guide",
+      "file": "r-d-burman-vinyl-records-listening-guide.html",
+      "title": "R. D. Burman on Vinyl: A Listener's Guide to His Soundtracks",
+      "metaTitle": "R. D. Burman on Vinyl: A Listener's Guide",
+      "metaDescription": "Where to start with R. D. Burman on vinyl — Hare Rama Hare Krishna, Aandhi, Ijaazat, Rocky, Saagar and more, with the songs each record is known for.",
+      "excerpt": "Where to start with R. D. Burman on record: the soundtracks, the songs each is known for, and which reissues are on the Velorex shelf now.",
+      "cover": "/src/img/banners/velorex-journal-blog-banner.jpg",
+      "relatedCollections": ["/artists/r-d-burman", "/vinyl-records/hindi"],
+      "relatedProducts": [43, 32, 30, 4, 13, 1789063605, 63, 1788894182],
+      "cluster": "Artists & soundtracks",
+      "reviewNotes": [
+        "Film years used: Baharon Ke Sapne 1967, Hare Rama Hare Krishna 1971, Buddha Mil Gaya 1971, Gomti Ke Kinare 1972, Aandhi 1975, Sholay 1975, The Great Gambler 1979, Alibaba Aur 40 Chor 1980, Abdullah 1980, Rocky 1981, Yeh Vaada Raha 1982, Saagar 1985, Ijaazat 1987 — double-check any you are unsure of.",
+        "'Mera Kuchh Samaan' National Film Awards for Asha Bhosle (singing) and Gulzar (lyrics) — well documented; keep.",
+        "Song names are taken from each product's own track listing in the catalogue, except Dum Maro Dum singer (Asha Bhosle) and Abdullah's 'Maine Poochha Chand Se' singer (Mohammed Rafi).",
+        "Links to specific records: if one sells out, its card still shows 'Out of stock' — consider swapping it for an in-stock title when that happens."
+      ]
+    }
+  ]
+}

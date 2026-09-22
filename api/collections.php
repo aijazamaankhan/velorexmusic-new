@@ -66,6 +66,7 @@ try {
                 'title'       => $a['title'],
                 'description' => $a['description'],
                 'about'       => $a['about'],
+                'shelf'       => collections_artist_shelf($pdo, $slug),
                 'indexable'   => $status === 'index',
             ],
             'products' => array_map(static fn($q) => (int)$q['id'], collections_artist_products($pdo, $slug)),

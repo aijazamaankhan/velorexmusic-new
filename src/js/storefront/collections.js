@@ -126,7 +126,10 @@ async function initPageArtist(params) {
   // server's line rather than printing "0 records".
   if (c && products.length) c.textContent = Seo.artistCountLine(products.length, inStock);
   var about = document.getElementById('artist-about');
-  if (about) about.innerHTML = a.about.map(function (p) { return '<p>' + Utils.escape(p) + '</p>'; }).join('');
+  // The shelf sentence comes from the server (collections_artist_shelf) so both
+  // renders print identical words; markup mirrors velorex_artist_shelf_html().
+  if (about) about.innerHTML = a.about.map(function (p) { return '<p>' + Utils.escape(p) + '</p>'; }).join('')
+    + (a.shelf ? '<p class="artist-shelf">' + Utils.escape(a.shelf) + '</p>' : '');
   if (grid && products.length) grid.innerHTML = products.map(createProductCard).join('');
   var rel = document.getElementById('artist-related');
   if (rel) rel.innerHTML = CollectionLinks.html(d.related);

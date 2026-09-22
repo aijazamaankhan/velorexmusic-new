@@ -398,3 +398,118 @@ h1.hero-badge { line-height: 1.35; border-radius: 1.1rem; max-width: 100%; }
 @media (prefers-reduced-motion: reduce) {
   .hero-float-card { animation: none !important; }
 }
+
+/* Touch targets for the dots. A 6px-tall pill is a near-impossible tap on a
+   phone. A transparent border widens the hit area to ~24px while
+   background-clip keeps the visible pill (and the progress fill, which is
+   inset:0 against the padding box) exactly as drawn. The row's gap is folded
+   into the borders so the dots keep their spacing. */
+@media (max-width: 640px) {
+  .hero-dots { gap: 0; }
+  .hero-dot { box-sizing: content-box; border: 9px solid transparent; border-left-width: 4px; border-right-width: 4px; background-clip: padding-box; }
+}
+
+/* ---- Brand-slide photograph ---------------------------------------------- */
+/* A real turntable photo behind the brand slide (the Music banner's image,
+   already cached by anyone who has opened a category). It sits under the
+   track and over the aurora, and fades out while a product slide is showing —
+   those slides carry their own album art. Browsers without :has() simply keep
+   it behind every slide, which still reads fine.
+
+   Overlays keep the headline legible: on desktop the photo lives on the right
+   and fades out under the copy; on a phone, where the copy is centred over it,
+   the whole photo is dimmed. Phones get the 960px file (21 KB). */
+.hero-photo {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    linear-gradient(90deg, var(--primary) 0%, rgba(10, 9, 14, 0.9) 30%, rgba(10, 9, 14, 0.35) 62%, rgba(10, 9, 14, 0.15) 100%),
+    linear-gradient(0deg, var(--primary) 0%, rgba(10, 9, 14, 0) 30%),
+    url("../../img/banners/music-vinyl-records-banner.jpg") right center / cover no-repeat;
+  opacity: 0.9;
+  transition: opacity 0.6s ease;
+}
+.hero:has(.hero-slide-product.is-active) .hero-photo { opacity: 0; }
+
+/* Light theme: the ground is pale, so the photo is a soft tint on the right
+   rather than a dark scene under dark text. */
+[data-theme="light"] .hero-photo {
+  background:
+    linear-gradient(90deg, #fdfbff 0%, rgba(253, 251, 255, 0.92) 35%, rgba(253, 251, 255, 0.55) 70%, rgba(253, 251, 255, 0.35) 100%),
+    url("../../img/banners/music-vinyl-records-banner.jpg") right center / cover no-repeat;
+  opacity: 0.8;
+}
+
+@media (max-width: 968px) {
+  .hero-photo {
+    background:
+      linear-gradient(180deg, rgba(10, 9, 14, 0.25) 0%, rgba(10, 9, 14, 0.62) 38%, rgba(10, 9, 14, 0.85) 70%, var(--primary) 100%),
+      url("../../img/banners/music-vinyl-records-banner-960.jpg") 70% top / cover no-repeat;
+  }
+  [data-theme="light"] .hero-photo {
+    background:
+      linear-gradient(180deg, rgba(253, 251, 255, 0.7) 0%, rgba(253, 251, 255, 0.9) 50%, #fdfbff 100%),
+      url("../../img/banners/music-vinyl-records-banner-960.jpg") 70% top / cover no-repeat;
+  }
+}
+@media (prefers-reduced-motion: reduce) { .hero-photo { transition: none; } }
+
+/* ---- Floating vinyl cards on phones --------------------------------------- */
+/* Above 968px they drift around the record. Below it the whole brand-slide
+   visual used to be hidden — the record AND the cards — because drifting
+   panels over a phone-width hero would cover the copy. The cards are worth
+   keeping (they name real records in stock), so on phones they come back as a
+   row UNDER the copy instead: the record stays hidden, the cards sit side by
+   side, scroll sideways if they do not fit, and keep their gentle bob. The
+   hero track already reserves more height than this adds (min-height above),
+   so nothing below shifts. */
+@media (max-width: 968px) {
+  /* minmax(0,1fr) + min-width:0: the nowrap card row must scroll inside its
+     own box, not widen the grid column (which pushed the headline and CTAs
+     off the right edge of the phone). */
+  .hero-container { grid-template-columns: minmax(0, 1fr); }
+  .hero-content { min-width: 0; }
+  .hero-slide-brand .hero-visual { display: block; width: 100%; min-width: 0; }
+  .hero-slide-brand .vinyl-showcase { display: none; }
+  .hero-slide-brand .hero-float-cards {
+    position: static; inset: auto;
+    display: flex; gap: 0.6rem; justify-content: center;
+    overflow-x: auto; scrollbar-width: none; padding: 0.35rem 0.25rem 0.75rem;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+            mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+  }
+  .hero-slide-brand .hero-float-cards::-webkit-scrollbar { display: none; }
+  .hero-slide-brand .hero-float-card {
+    position: relative; inset: auto !important;
+    flex: 0 0 auto; text-align: left;
+    padding: 0.55rem 0.85rem;
+  }
+}
+@media (max-width: 480px) {
+  .hero-slide-brand .hero-float-cards { justify-content: flex-start; }
+}
+
+/* ---- Desktop: the hero fills the screen ----------------------------------- */
+/* Was min(88vh, 780px), which left a band of the next section showing on a
+   tall monitor and an uneven gap at the bottom. On desktop it now fills the
+   viewport under the 70px fixed navbar together with the trust band below
+   it, with the slide centred.
+   svh (small viewport height) where supported, so it never grows under a
+   collapsing browser bar. Phones keep their own reserved height (the CLS rule
+   above) — a full-screen hero on a phone would hide everything below it. */
+@media (min-width: 969px) {
+  /* 70px navbar + the ~75px trust band, so the first screen shows the hero
+     AND the band under it (--trust-band-h is the measured band height). */
+  .hero {
+    min-height: calc(100vh - 70px - var(--trust-band-h, 4.7rem));
+    min-height: calc(100svh - 70px - var(--trust-band-h, 4.7rem));
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .hero-track { width: 100%; }
+}
+/* Short desktop screens (768–800px-tall laptops): the slide's own padding was
+   taller than the space left, pushing the trust band below the fold. */
+@media (min-width: 969px) and (max-height: 820px) {
+  .hero-container { padding-top: 1.5rem; padding-bottom: 4rem; }
+  .hero-title { font-size: clamp(2.6rem, 4.6vw, 3.6rem); }
+  .hero-desc { margin-bottom: 1.25rem; }
+}

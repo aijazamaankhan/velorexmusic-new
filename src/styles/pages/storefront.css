@@ -365,6 +365,8 @@ body { padding-top: 70px; }
 }
 .view-btn:hover { color: var(--text); border-color: var(--secondary); }
 .view-btn.is-active { border-color: var(--secondary); color: var(--secondary); background: rgba(255, 107, 53, 0.1); box-shadow: 0 0 0 1px var(--secondary) inset; }
+/* Light theme: #ff4d00 on the pale tint was 3.2:1 for the grid/list icon. */
+[data-theme="light"] .view-btn.is-active { border-color: #c2410c; color: #c2410c; box-shadow: 0 0 0 1px #c2410c inset; }
 .active-filters { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .active-filters:empty { display: none; }
 .filter-tag { display: inline-flex; align-items: center; gap: 0.45rem; background: rgba(255, 107, 53, 0.08); border: 1px solid rgba(255, 107, 53, 0.55); color: var(--text); padding: 0.35rem 0.5rem 0.35rem 0.85rem; border-radius: 50px; font-size: 0.85rem; font-weight: 500; }
@@ -491,9 +493,10 @@ body { padding-top: 70px; }
 .summary-row { display: flex; justify-content: space-between; padding: 0.6rem 0; font-size: 0.9rem; color: var(--text-muted); }
 .summary-row.total { font-size: 1.1rem; font-weight: 700; color: var(--text); border-top: 1px solid var(--border); margin-top: 0.5rem; padding-top: 1rem; }
 .summary-row.total .amount { color: var(--accent); font-size: 1.25rem; }
-.coupon-input { display: flex; gap: 0.5rem; margin: 1.5rem 0; }
-.coupon-input input { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 0.6rem 1rem; font-size: 0.875rem; }
-.coupon-input input:focus { outline: none; border-color: var(--secondary); }
+/* The old .coupon-input WRAPPER rules lived here. The cart field is now
+   built by coupon.js and styled in components/coupon.css, whose <input> reuses
+   that class name — so this later file added flex + 1.5rem margins to the
+   input itself, and the Apply button stretched to 86px beside a 38px field. */
 .coupon-input input::placeholder { color: var(--text-muted); }
 .empty-cart { text-align: center; padding: 5rem 2rem; grid-column: 1 / -1; }
 .empty-cart-icon { font-size: 4rem; margin-bottom: 1rem; opacity: 0.4; }
@@ -805,6 +808,19 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   .nav-item { width: 100%; }
   .nav-link { width: 100%; font-size: 1rem; padding: 0.75rem 1rem; }
   .dropdown-menu { position: static; opacity: 1; visibility: visible; transform: none; box-shadow: none; background: var(--surface2); margin-top: 0.25rem; }
+  /* Drawer accordion. The rule above forced every dropdown open, so the
+     drawer was ~30 links long with Music, Merchandise and Vinyl Care all
+     expanded and no way to fold them. Collapsed by default now; the chevron
+     is its own tap target (src/js/storefront/app-shell.js toggles
+     .sub-open) and the label still navigates to the section as before. */
+  .navbar-nav .dropdown-menu { display: none; }
+  .navbar-nav .nav-item.sub-open > .dropdown-menu { display: block; }
+  .navbar-nav .nav-link .arrow {
+    margin-left: auto; width: 44px; height: 44px; margin-block: -0.6rem; margin-right: -0.75rem;
+    display: grid; place-items: center; border-radius: 8px;
+  }
+  .navbar-nav .nav-item:hover .arrow { transform: none; }
+  .navbar-nav .nav-item.sub-open > .nav-link .arrow { transform: rotate(180deg); }
   .navbar-brand .brand-name { font-size: 1.15rem; }
   .navbar-brand .brand-lockup { height: 44px; }
 }
@@ -843,6 +859,63 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   .footer { padding: 2.5rem 0 1.5rem; }
   .products-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; }
   .page-hero-title { font-size: 1.5rem; }
+
+  /* Navbar must fit the phone. Logo (155px) + five 40px buttons + gaps came
+     to 413px, so on a 390px phone the hamburger — the ONLY way into the menu
+     at this width — sat half off-screen, and at 360px Sign in went too.
+     Shrink the logo and buttons in steps; every button stays ≥34px. */
+  .navbar { padding: 0 0.75rem; gap: 0.5rem; }
+  .navbar-brand .brand-lockup { height: 38px; }
+  .navbar-actions { gap: 2px; }
+  .nav-action-btn, .nav-action-signin { width: 38px; height: 38px; }
+  .hamburger { padding: 8px; width: 38px; height: 38px; justify-content: center; align-items: center; }
+
+  /* Product cards: 1.25rem of padding inside a 170px card left ~130px for the
+     title and pushed the Add button onto its minimum. */
+  .product-card-body { padding: 0.85rem; }
+  .product-card-footer { padding: 0 0.85rem 0.85rem; gap: 0.45rem; }
+
+  /* Category cards: 16:9 at full width made six cards ~1,350px of scroll
+     before anything buyable. Shorter, same art. */
+  .category-card { aspect-ratio: 2 / 1; }
+  .category-card-content { padding: 1rem 1.1rem; }
+  .category-card-title { font-size: 1.3rem; }
+
+  /* Page-level selects with a class (0,1,0) beat the bare `select` iOS-zoom
+     guard in forms.css, so they zoomed the page on focus. */
+  .sort-select, .newsletter-form input[type="email"] { font-size: 16px; }
+  .filter-tag-remove { min-width: 28px; min-height: 28px; }
+}
+
+/* Footer on a phone. One column made it ~1,100px of scroll: three link
+   groups stacked plus 11 Help links one per line. Shop and Account now sit
+   side by side and Help runs in two columns. Every link stays in the DOM —
+   they are real <a href>s crawlers follow (CLAUDE.md §15). Placed after the
+   768px block so it wins over `.footer-grid { grid-template-columns: 1fr }`. */
+@media (max-width: 768px) {
+  .footer { padding: 2rem 0 1.25rem; }
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: 1.5rem 1rem; margin-bottom: 1.5rem; }
+  .footer-grid > .footer-brand,
+  .footer-grid > div:last-child { grid-column: 1 / -1; }
+  .footer-grid > div:last-child .footer-links { display: grid; grid-template-columns: 1fr 1fr; gap: 0.1rem 1rem; }
+  .footer-lockup { height: 52px; margin-bottom: 0.6rem; }
+  .footer-desc { margin-bottom: 1rem; line-height: 1.6; }
+  .footer-col-title { margin-bottom: 0.5rem; }
+  .footer-links { gap: 0.1rem; }
+  /* Rows are the tap target, so they get the height rather than the gap. */
+  .footer-link { display: block; padding: 0.45rem 0; }
+  .footer-bottom { justify-content: center; text-align: center; gap: 0.25rem; padding-top: 1rem; }
+}
+
+@media (max-width: 380px) {
+  .navbar-brand .brand-lockup { height: 34px; }
+  .nav-action-btn, .nav-action-signin, .hamburger { width: 36px; height: 36px; }
+}
+
+@media (max-width: 340px) {
+  .navbar { padding: 0 0.5rem; }
+  .navbar-brand .brand-lockup { height: 30px; }
+  .nav-action-btn, .nav-action-signin, .hamburger { width: 34px; height: 34px; }
 }
 
 /* ---- Products page filter CHIP STRIP (≤1023px) -----------------------------
@@ -1213,7 +1286,8 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   white-space: nowrap;
 }
 .preowned-chip:hover { border-color: var(--secondary); color: var(--text); }
-.preowned-chip.active { background: var(--secondary); border-color: var(--secondary); color: #fff; }
+/* #c2410c, not var(--secondary): white on #ff6b35 / #ff4d00 was 2.8–3.3:1. */
+.preowned-chip.active { background: #c2410c; border-color: #c2410c; color: #fff; }
 
 /* Below 1024px the products page hides its sidebar in favour of the chip
    strip. Pre-owned has no chip strip for price and stock, so its sidebar stays
@@ -1670,3 +1744,103 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   .combo-detail-actions .btn { flex: 1; }
 }
 
+
+/* ---- Product grid: explicit rows and columns ------------------------------
+   Last in the file so it settles the four earlier auto-fill rules (base,
+   768, 480, 380) that fought each other: at 320px the 380px rule's 150px
+   minimum no longer fit two across and the grid fell to ONE 259px column,
+   while at 1280px the 240px minimum gave only three oversized cards beside the
+   filter sidebar. Column counts are now stated, not derived:
+
+     phones ≤600      2      tablets 601–1023   3
+     products page ≥1024 (beside the sidebar)   auto-fill at 200px → 4 at 1280
+
+   `grid-auto-rows: auto` replaces `1fr`. 1fr made EVERY row as tall as the
+   tallest card in the whole grid, so one long title opened a gap between
+   rating and price on every card; now each row matches its own tallest card,
+   and cards in a row still line up (grid items stretch within their row).
+   `.is-list` keeps its single column — it is (0,2,0) and wins. */
+.products-grid { grid-auto-rows: auto; }
+.products-layout .products-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+@media (max-width: 1023px) {
+  .products-grid,
+  .products-layout .products-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+}
+@media (max-width: 600px) {
+  .products-grid,
+  .products-layout .products-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+}
+@media (max-width: 360px) {
+  .products-grid,
+  .products-layout .products-grid { gap: 0.5rem; }
+  .product-card-body { padding: 0.7rem; }
+  .product-card-footer { padding: 0 0.7rem 0.7rem; gap: 0.35rem; }
+}
+
+/* ---- Desktop navbar between the hamburger and wide screens ---------------
+   From 1101px (hamburger off) to ~1400px the full row did not fit: at 1280
+   and 1366 the Sign in button ended at x=1371, partly off-screen, and up to
+   ~1500 the search field was squeezed until its placeholder read "Searc".
+   Drop the Sign in label (the person icon + title stay), tighten link
+   padding, and give search a floor so it stays a usable field. */
+@media (min-width: 1101px) and (max-width: 1520px) {
+  .navbar { padding: 0 1.25rem; gap: 1rem; }
+  .nav-link { padding: 0.5rem 0.6rem; }
+  .nav-action-signin { width: 40px; padding: 0; border: 0; font-size: 1.1rem; }
+  .nav-action-signin .nav-action-label { display: none; }
+}
+
+/* ---- Card "Add to Cart" at four across ------------------------------------
+   .btn carries 1.75rem side padding. In a 210px card that left 117px for a
+   123px label, so "Add to Cart" was clipped at every desktop width. The button
+   already centres its label and fills its track; the padding bought nothing. */
+.product-card-cart { padding-left: 0.6rem; padding-right: 0.6rem; }
+
+/* ---- Large and 4K screens ---------------------------------------------------
+   Everything above was tuned for ≤1920px. On a 2560px (4K at 150%) or 3840px
+   (4K at 100%) viewport the 1280px container sat in a sea of empty space with
+   16px text read from across a desk.
+
+   Two levers, both proportional so nothing needs per-component overrides:
+   1. The root font size grows past 1920px — every rem-based size (type,
+      padding, the grid's card minimum below) scales with it: 16px at 1920,
+      20px at 2560, 28px at 3840.
+   2. The content column widens in rem, so it grows with the type rather
+      than turning into longer and longer lines.
+   The fixed-px navbar height is deliberately left alone: seven rules key off
+   its 70px (drawer offsets, sticky chip strip), and it reads fine as-is. */
+@media (min-width: 1600px) {
+  .container { max-width: 90rem; }
+  .breadcrumbs-container { max-width: 90rem; }
+  .products-layout .products-grid { grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); }
+}
+@media (min-width: 1921px) {
+  html { font-size: calc(16px + (100vw - 1920px) * 0.00625); }
+  body { font-size: 1rem; }
+  .products-layout { grid-template-columns: 17rem minmax(0, 1fr); }
+  .products-grid { grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); }
+}
+@media (min-width: 3000px) {
+  .container, .breadcrumbs-container { max-width: 100rem; }
+}
+
+/* Footer credit line: the link sits inline in the sentence (the ≤768px rule
+   makes .footer-link a padded block for tap size, which would break the line). */
+.footer-credit .footer-link { display: inline; padding: 0; color: var(--text); font-weight: 600; }
+.footer-credit .footer-link:hover { color: var(--secondary); }
+@media (max-width: 768px) { .footer-credit { width: 100%; } }
+
+/* ---- Desktop navbar, narrow end (1101–1250px) -----------------------------
+   Just above the hamburger breakpoint the full row still did not fit: at
+   1101px the last action button ended at x=1217. Tighten links, logo and gaps
+   in this band only. The search field gets a floor everywhere above 1100 so it
+   never collapses to a clipped "Searc". */
+@media (min-width: 1101px) { .navbar-search { min-width: 9rem; } }
+@media (min-width: 1101px) and (max-width: 1250px) {
+  .navbar { gap: 0.6rem; padding: 0 0.9rem; }
+  .navbar-nav { gap: 0; }
+  .nav-link { padding: 0.45rem 0.4rem; font-size: 0.82rem; }
+  .navbar-brand .brand-lockup { height: 46px; }
+  .navbar-actions { gap: 0.2rem; }
+  .navbar-search .search-kbd { display: none; }
+}

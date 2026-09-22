@@ -521,6 +521,7 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 | GET/POST | `/api/unsubscribe.php?token=<32hex>` | — | HTML page. **GET only shows a confirm button; POST performs the opt-out** — link scanners fetch every URL in an email, and a GET that unsubscribed would silently opt people out. Also the RFC 8058 one-click endpoint (`List-Unsubscribe-Post`). |
 | POST | `/api/cart-sync.php` | `{ cartKey, items: [{id, qty}] }` | `{ ok, itemCount, subtotal }` — mirrors the browser cart to `carts`. Re-prices every line from the DB; **never accepts prices, and never accepts an email from an anonymous caller** (§26). An empty `items` array deletes the row. |
 | GET | `/api/recover-cart.php?token=<32hex>` | — | `{ ok, source, items, subtotal, partial }` — the `?recover=` link target. Matches `carts.recovery_token` or `payment_orders.recovery_token`; re-prices against today's catalogue. Returns `{ ok: false, reason: 'already_purchased' }` for a completed order. |
+| POST | `/api/studio-enquiry.php` | `{ name, email, phone, company?, projectType?, budget?, message, website? }` | `{ ok, message }` — Velorex Studio project enquiry from the footer-credit popup. **Emailed to velorexdesign@gmail.com, stored nowhere.** Fixed recipient; `website` is a honeypot; 5/hour per IP via a temp file. See §46. |
 
 ### Customer-authenticated endpoints (require `Authorization: Bearer <token>`)
 
@@ -3491,3 +3492,82 @@ What this pass changed, in one place:
 - **Admin → SEO** (`src/js/admin/seo.js`, `api/admin/seo.php`): product
   scorecard sorted by a stated priority, plus the measurement guide. Read-only.
 - Static info pages link home as `/`, not `index.html` (which now 301s).
+
+## 46. Mobile app shell, responsive and large screens (September 2026)
+
+Layout/presentation work only — no routing, pricing, cart, auth or payment
+logic changed. Everything below is CSS, plus small presentation scripts that
+call the functions the UI already used.
+
+| Piece | File |
+|---|---|
+| Storefront tab bar + drawer accordion + badge bump | [src/js/storefront/app-shell.js](src/js/storefront/app-shell.js), [src/styles/components/app-shell.css](src/styles/components/app-shell.css) |
+| Admin tab bar (Home / Orders / Products / Customers / More) | [src/js/admin/tabbar.js](src/js/admin/tabbar.js), [src/styles/admin/components/tabbar.css](src/styles/admin/components/tabbar.css) |
+| Installable web app | [manifest.webmanifest](manifest.webmanifest), icons in [src/img/app/](src/img/app/) (rendered from `favicon.svg`) |
+| Velorex Studio credit + enquiry popup | [velorex-studio.html](velorex-studio.html), [src/js/storefront/studio-enquiry.js](src/js/storefront/studio-enquiry.js), [src/styles/components/studio-enquiry.css](src/styles/components/studio-enquiry.css), [api/studio-enquiry.php](api/studio-enquiry.php) |
+
+**Tab bars are presentation only.** Every storefront tab is a real `<a href>`
+calling the same `navigate()` / `VelorexSearch.open()` as the navbar; the
+active tab is read from `location.pathname`, the cart count is mirrored from
+`#cartBadge` (which `CartHelpers.updateBadge()` already maintains), and it
+re-syncs through a MutationObserver on `#navbar-placeholder` — no router
+function is wrapped. The admin bar calls `switchPanel(panel, sidebarLink)` and
+reads the sidebar's own `.nav-link.active`. The storefront bar shows at
+≤1100px and the admin bar at ≤1024px, where each header already collapses.
+
+The admin sidebar logo opens the Dashboard (`switchPanel('overview')`) rather
+than leaving for the storefront; "View Store" in the header is the way out.
+
+Things that were bugs, not taste — don't reintroduce them:
+
+- **The navbar did not fit a phone.** Logo + five 40px buttons was 413px at
+  390px, putting the hamburger half off-screen. Now shrunk in steps down to
+  320px, and with the tab bar the header holds only logo + theme + menu. The
+  desktop navbar also overflowed between 1101 and ~1400px; compact bands
+  (1101–1250, 1101–1520) fix that and search has a 9rem floor.
+- **`.page-banner-features { display: grid }` at ≤560px beat
+  `.page-banner-variant { display: none }`** (same specificity, later), so
+  every department's feature row rendered on /products at once.
+- **`.navbar` has `backdrop-filter`, so it is the containing block for the
+  fixed mobile drawer.** Size the drawer by `height`, never by `bottom`. The
+  drawer's dropdowns are an accordion (`.sub-open`, toggled by the chevron).
+- **Grid items need `min-width: 0`** wherever a nowrap child can appear (hero
+  vinyl-card row, admin `.main-content` with `overflow-x: clip`, admin modal
+  `.form-grid`). Without it the column grows to min-content and the page goes
+  wider than the phone — which is what made the admin tab bar "vanish".
+- **The admin never had `.btn-secondary` / `.btn-sm`** — they existed only in
+  the storefront CSS, so ~60 admin buttons rendered as browser-default grey.
+- **An old `.coupon-input` wrapper rule** in storefront.css hit the new coupon
+  input (same class name) and stretched Apply to 86px. Removed.
+- **Class-styled inputs beat the bare `input { font-size: 16px }` iOS guard.**
+  Each is named explicitly (sort select, newsletter, admin searches,
+  `.spec-field`, drawer fields). New input styles need 16px at ≤1024px.
+- **White on the old orange (#ff6b35 → #ff3a00) was 2.8–3.6:1.** Primary
+  buttons (both stylesheets) are `#d4430c → #c2410c` (4.6–5.2:1), danger is
+  `#d63031 → #b91c1c`. `--orange-gradient` itself is unchanged; only fills
+  behind white text moved. Light-theme active tabs use `#c2410c` too.
+- **Admin tab bar is z-index 990** — under modals (1000) and drawers (1100).
+  At 1030 it covered every modal's Save button.
+
+**Product grid columns are explicit**: 2 on phones (including 320px), 3 on
+tablets, auto-fill at 200px beside the sidebar (4 at 1280). `grid-auto-rows:
+auto`, not `1fr` — 1fr made every row as tall as the tallest card anywhere.
+
+**Large / 4K screens:** past 1920px the root font grows (20px at 2560, 28px
+at 3840) and containers widen in rem, so everything scales together. The
+70px navbar height is deliberately left fixed (seven rules key off it).
+
+**Desktop hero** fills `100svh − 70px navbar − trust band`, so the first
+screen is hero + band; a short-screen rule trims padding at ≤820px tall. The
+brand slide has a photographic backdrop (`.hero-photo`, the Music banner
+image) that fades out behind product slides. On phones the floating vinyl
+cards come back as a row under the copy instead of being hidden.
+
+**Animation rule:** motion only answers a user action (tab pop, cart-badge
+bump on a count increase, press scale) and never loops. All of it is off
+under `prefers-reduced-motion`.
+
+**Studio enquiry is email-only by request** — nothing is stored. The
+endpoint's recipient is a constant, so it cannot be used to mail a third party
+(§26's concern does not arise). The credit page is `noindex` and not in the
+sitemap.
