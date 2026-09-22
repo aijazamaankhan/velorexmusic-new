@@ -24,7 +24,6 @@
         announcement_text:     '',
         announcement_link:     '',
         intro_splash_enabled:  true,
-        recently_sold_enabled: true,
         low_stock_threshold:   3,
         contact_email:         '',
         contact_phone:         '',
@@ -67,12 +66,6 @@
       apply() {
         this.renderAnnouncement();
 
-        // Recently Sold: hide on request. RecentSales does its own hiding when
-        // there is nothing to show, so this only ever removes.
-        if (this.values.recently_sold_enabled === false) {
-          const strip = document.getElementById('recent-sales');
-          if (strip) strip.style.display = 'none';
-        }
       },
 
       renderAnnouncement() {

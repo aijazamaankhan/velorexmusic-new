@@ -52,19 +52,6 @@ function settings_schema(): array {
             'consumer' => 'initSplash() in src/js/storefront/router.js',
         ],
 
-        // ---- Recently Sold --------------------------------------------------
-        'recently_sold_enabled' => [
-            'type' => 'bool', 'default' => true, 'public' => true,
-            'group' => 'Recently Sold', 'label' => 'Show the Recently Sold strip',
-            'consumer' => 'src/js/storefront/recent-sales.js',
-        ],
-        'recently_sold_filler' => [
-            'type' => 'bool', 'default' => true, 'public' => false,
-            'group' => 'Recently Sold', 'label' => 'Top the strip up with filler',
-            'help'  => 'OFF means the strip shows ONLY genuine sales, and hides itself entirely until there are at least four. This is the switch that turns off the synthesised rows described in CLAUDE.md §27.',
-            'consumer' => 'api/recent-sales.php',
-        ],
-
         // ---- Commerce -------------------------------------------------------
         'low_stock_threshold' => [
             'type' => 'int', 'min' => 1, 'max' => 50, 'default' => 3, 'public' => true,

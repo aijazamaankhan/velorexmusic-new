@@ -18,6 +18,11 @@ try {
         // the filter degrade — it made every one of its checkboxes count 0 and
         // match nothing.
         //
+        // `specs` is fetched for ONE field: the record label, which the
+        // homepage label band and the products-page label filter read off the
+        // list cache. It is a small JSON object (format/label/year…), not a
+        // LONGTEXT; row_to_product_lean() publishes only `label` from it.
+        //
         // Selecting an explicit column list (rather than `SELECT *`) means
         // MySQL doesn't ship the multi-MB LONGTEXT columns over the
         // DB → PHP wire either. Without this, even though we'd drop them
@@ -38,7 +43,7 @@ try {
         $shipCol = products_has_shipping_columns($pdo) ? 'free_shipping, shipping_charge, ' : '';
         $stmt = $pdo->query(
             'SELECT id, title, artist, category, language, price, original_price, '
-          . 'image, rating, reviews, badge, stock, people, '
+          . 'image, rating, reviews, badge, stock, people, specs, '
           . $condCol . $subCol . $shipCol . 'music_director '
           . 'FROM products ORDER BY id'
         );

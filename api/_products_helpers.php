@@ -297,5 +297,17 @@ function row_to_product_lean(array $r): array {
         // caller that hasn't selected the column still gets [] rather than a
         // PHP 8 undefined-key warning.
         'people' => isset($r['people']) && $r['people'] ? json_decode($r['people'], true) : [],
+        // Record label (specs.label) for the homepage label band and the
+        // products-page label filter. Only this one field leaves specs.
+        'label' => products_lean_label($r['specs'] ?? null),
     ];
+}
+
+/** The record label from a specs JSON value, trimmed and entity-decoded; null when absent. */
+function products_lean_label($specs): ?string {
+    if ($specs === null || $specs === '') return null;
+    $s = is_array($specs) ? $specs : json_decode((string)$specs, true);
+    if (!is_array($s) || !isset($s['label']) || !is_string($s['label'])) return null;
+    $label = trim(products_decode_text($s['label']));
+    return $label === '' ? null : $label;
 }

@@ -68,6 +68,9 @@
   <script src="src/js/admin/policies.js?v=e5841fa0"></script>
   <script src="src/js/admin/toast.js?v=9a4bf3e8"></script>
   <script src="src/js/admin/tabbar.js?v=5c905c76" defer></script>
+  <!-- Label field suggestions: the labels already in the catalogue, so the
+       homepage label band (built from them) is not split by spelling. -->
+  <script src="src/js/admin/label-suggest.js?v=67789736" defer></script>
 </head>
 
 <body>
@@ -916,7 +919,7 @@
                 </div>
                 <div class="spec-field">
                   <label for="f-label">Label</label>
-                  <input type="text" id="f-label" placeholder="Record label">
+                  <input type="text" id="f-label" placeholder="Record label" list="vlx-label-options" autocomplete="off">
                 </div>
                 <div class="spec-field">
                   <label for="f-year">Year</label>
@@ -1319,7 +1322,7 @@
                 </div>
                 <div class="spec-field">
                   <label for="e-label">Label</label>
-                  <input type="text" id="e-label" placeholder="Record label">
+                  <input type="text" id="e-label" placeholder="Record label" list="vlx-label-options" autocomplete="off">
                 </div>
                 <div class="spec-field">
                   <label for="e-year">Year</label>

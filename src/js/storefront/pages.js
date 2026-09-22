@@ -463,12 +463,10 @@
       if (typeof HeroCarousel !== 'undefined') {
         try { HeroCarousel.init(); } catch (e) { console.warn('hero carousel failed:', e); }
       }
-      // Recently Sold reads its own endpoint, not the product cache, so like
-      // the combo strip it runs above the cold-cache early return below. It
-      // fetches once per page load and hides its own section when there is not
-      // enough to show.
-      if (typeof RecentSales !== 'undefined') {
-        try { RecentSales.init(); } catch (e) { console.warn('recent sales failed:', e); }
+      // Label band: rebuilt from the catalogue's record labels (idempotent —
+      // skips the rebuild when the labels and counts have not changed).
+      if (typeof LabelBand !== 'undefined') {
+        try { LabelBand.render(); } catch (e) { console.warn('label band failed:', e); }
       }
       var products = Storage.getProducts();
       var bsg = document.getElementById('best-selling-grid'), nrg = document.getElementById('new-releases-grid'), ug = document.getElementById('upcoming-grid');
@@ -796,6 +794,14 @@
         filtered = filtered.filter(p => facetVal(p.subcategory) === facetVal(currentParams.sub));
       }
 
+      // Record label — from the homepage label band (/products?label=saregama).
+      // URL-driven like the subcategory; matched through Seo.labelKey() so every
+      // spelling of one label in the admin ("Sony" / "Sony Music") is one label.
+      if (currentParams && currentParams.label) {
+        var wantLabel = Seo.labelKey(currentParams.label);
+        filtered = filtered.filter(p => p.label && Seo.labelKey(p.label) === wantLabel);
+      }
+
       // Language filter
       var selLangs = Array.from(document.querySelectorAll('#page-products input[name="lang"]:checked')).map(i => i.value);
       if (selLangs.length) filtered = filtered.filter(p => selLangs.indexOf(facetVal(p.language)) !== -1);
@@ -1040,6 +1046,9 @@
       if (currentParams && currentParams.search) {
         tags.push({ label: '🔍 ' + Utils.escape(currentParams.search), search: true });
       }
+      if (currentParams && currentParams.label) {
+        tags.push({ label: faIcon('fa-record-vinyl') + ' ' + Utils.escape(Seo.labelNameFor(currentParams.label)), recordLabel: true });
+      }
       container.innerHTML = tags.map((tag, idx) => `<span class="filter-tag">${tag.label}<button type="button" class="filter-tag-remove" onclick="removeFilterProduct(${idx})" aria-label="Remove filter"><i class="fas fa-xmark" aria-hidden="true"></i></button></span>`).join('');
       window._filterTags = tags;
       // Refresh the mobile/tablet chip strip too — count bubbles flip as
@@ -1158,6 +1167,7 @@
       var tag = window._filterTags && window._filterTags[idx];
       if (!tag) return;
       if (tag.search) { clearProductSearch(); return; }
+      if (tag.recordLabel) { clearProductLabel(); return; }
       tag.input.checked = false;
       applyFilters();
     }
@@ -1175,6 +1185,21 @@
           Seo.buildPath('products', currentParams || {})
         );
       } catch (e) { /* history is best-effort; the grid is the thing that matters */ }
+      applyFilters();
+    }
+
+    // Drop the label filter from the route and the URL together (same reason as
+    // clearProductSearch: a URL still asserting a filter the grid no longer
+    // applies is a lie in the address bar).
+    function clearProductLabel() {
+      if (currentParams) delete currentParams.label;
+      try {
+        window.history.replaceState(
+          { page: 'products', params: currentParams || {} },
+          '',
+          Seo.buildPath('products', currentParams || {})
+        );
+      } catch (e) { /* best-effort */ }
       applyFilters();
     }
 

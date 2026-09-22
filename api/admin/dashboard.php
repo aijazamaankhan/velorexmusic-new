@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 // Statuses that mean the money did not stay. Excluded from revenue, the same
-// way the storefront's recent-sales strip excludes them.
+// way a sales figure should.
 const DASH_DEAD_STATUSES = ['cancelled', 'canceled', 'refunded', 'returned', 'failed'];
 
 // A table may legitimately not exist yet (carts and subscribers are created on

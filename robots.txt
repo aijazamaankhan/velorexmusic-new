@@ -33,7 +33,6 @@ Allow: /api/combos.php
 Allow: /api/blog.php
 Allow: /api/music-history.php
 Allow: /api/settings.php
-Allow: /api/recent-sales.php
 Allow: /api/collections.php
 Disallow: /api/
 Disallow: /scripts/
@@ -58,6 +57,8 @@ Disallow: /*&search=
 Disallow: /*&sort=
 Disallow: /*?people=
 Disallow: /*&people=
+Disallow: /*?label=
+Disallow: /*&label=
 
 # --- Private one-time links --------------------------------------------------
 # Cart-recovery and coupon links from emails. They carry a token or a personal

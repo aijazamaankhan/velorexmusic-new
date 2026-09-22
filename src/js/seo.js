@@ -262,6 +262,7 @@ var Seo = (function () {
       // not destinations, and robots.txt keeps them out of the crawl.
       if (params.search) qs.push('search=' + encodeURIComponent(params.search));
       if (params.people) qs.push('people=' + encodeURIComponent(params.people));
+      if (params.label)  qs.push('label=' + encodeURIComponent(params.label));
       if (params.sort)   qs.push('sort=' + encodeURIComponent(params.sort));
       if (slug && params.lang && !LANGS[params.lang]) qs.push('lang=' + encodeURIComponent(params.lang));
       return path + (qs.length ? '?' + qs.join('&') : '');
@@ -295,6 +296,50 @@ var Seo = (function () {
 
   // Reverse of buildPath. Returns { page, params } or null when the path is
   // not one we own (in which case the caller falls back to hash parsing).
+  // ---- Record labels ----------------------------------------------------
+  // One label is often typed several ways in the admin ("Sony" / "Sony Music",
+  // "Universal" / "Universal Music Group" / a typo). labelKey() folds those
+  // onto one key, and BOTH the homepage label band and the products-page
+  // label filter go through it, so a chip always opens exactly its records.
+  // Add a line here when a new variant shows up; fixing the product's Label
+  // field in the admin is the better cure (the field now suggests existing
+  // labels to prevent new variants).
+  var LABEL_ALIASES = {
+    'sony': 'sony-music',
+    'universal': 'universal-music-group',
+    'universal-music': 'universal-music-group',
+    'universl-music-group': 'universal-music-group',
+    'zee': 'zee-music-co',
+    'zee-music': 'zee-music-co',
+    'tips': 'tips-music',
+    'saregama-india': 'saregama',
+    'hmv-saregama': 'saregama'
+  };
+  // The name shown for a merged label (otherwise the most common spelling wins).
+  var LABEL_NAMES = {
+    'sony-music': 'Sony Music',
+    'universal-music-group': 'Universal Music Group',
+    'zee-music-co': 'Zee Music Co.',
+    'tips-music': 'Tips Music',
+    't-series': 'T-Series'
+  };
+  function labelKey(name) {
+    var k = slugify(String(name || '').trim());
+    return LABEL_ALIASES[k] || k;
+  }
+
+  // Display name for a label slug, from the product cache ("saregama" →
+  // "Saregama"). Falls back to the slug itself when nothing is cached yet.
+  function labelNameFor(slug) {
+    var want = labelKey(slug);
+    if (LABEL_NAMES[want]) return LABEL_NAMES[want];
+    var all = cachedProducts();
+    for (var i = 0; i < all.length; i++) {
+      if (all[i] && all[i].label && labelKey(all[i].label) === want) return all[i].label;
+    }
+    return want.replace(/-/g, ' ').replace(/w/g, function (c) { return c.toUpperCase(); });
+  }
+
   function parsePath(pathname, search) {
     var path = String(pathname || '/').replace(/\/+$/, '') || '/';
     var params = {};
@@ -651,7 +696,7 @@ var Seo = (function () {
     // A filtered or searched listing is a permutation of a canonical page, not
     // a page in its own right. Point the canonical at the clean version so
     // ranking signals consolidate there instead of fragmenting across facets.
-    if (page === 'products' && (params.search || params.people || params.sort)) {
+    if (page === 'products' && (params.search || params.people || params.sort || params.label)) {
       var clean = { cat: params.cat, lang: params.lang };
       canonical = ORIGIN + buildPath('products', clean);
     }
@@ -685,13 +730,16 @@ var Seo = (function () {
         });
         return;
       }
+      // A label filter (/products?label=saregama) is a permutation like search:
+      // canonical to /products, noindex — robots.txt also keeps it out.
+      var labelName = params.label ? labelNameFor(params.label) : '';
       applyTags({
         title: params.search
           ? 'Search: ' + params.search + ' | Velorex Music'
-          : PAGE_META.products.title,
+          : labelName ? labelName + ' Records | Velorex Music' : PAGE_META.products.title,
         description: PAGE_META.products.description,
         canonical: canonical,
-        robots: params.search ? 'noindex, follow' : undefined
+        robots: (params.search || params.label) ? 'noindex, follow' : undefined
       });
       return;
     }
@@ -857,6 +905,9 @@ var Seo = (function () {
   return {
     ORIGIN: ORIGIN,
     slugify: slugify,
+    labelNameFor: labelNameFor,
+    labelKey: labelKey,
+    LABEL_NAMES: LABEL_NAMES,
     productTitle: productTitle,
     productDescription: productDescription,
     productImageAlt: productImageAlt,

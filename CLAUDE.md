@@ -508,7 +508,7 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 
 | Method | Path | Body / Query | Returns |
 |---|---|---|---|
-| GET | `/api/products.php` | — | `ProductLean[]` — listing shape only (id, title, artist, category, language, price, originalPrice, image, rating, reviews, badge, stock, musicDirector, condition, subcategory, freeShipping, shippingCharge, people). Heavy fields (description, full gallery, track listing, specs) are NOT included; fetch them via `/api/product.php?id=N`. This drops the list payload from ~27 MB to ~30 KB on a 66-product catalog. `people` is in the lean shape despite being a JSON column — it is a short slug array the products-page People filter reads off this payload. |
+| GET | `/api/products.php` | — | `ProductLean[]` — listing shape only (id, title, artist, category, language, price, originalPrice, image, rating, reviews, badge, stock, musicDirector, condition, subcategory, freeShipping, shippingCharge, people, label). `label` is the record label pulled from `specs.label` in PHP (`products_lean_label()`); the rest of specs is not sent. Heavy fields (description, full gallery, track listing, specs) are NOT included; fetch them via `/api/product.php?id=N`. This drops the list payload from ~27 MB to ~30 KB on a 66-product catalog. `people` is in the lean shape despite being a JSON column — it is a short slug array the products-page People filter reads off this payload. |
 | GET | `/api/product.php?id=N` | — | Full `Product` for that id (or 404 if missing). Heavy fields included. Called on the product-detail page only. |
 | GET | `/api/categories.php` | — | `string[]` (sorted by `sort_order`) |
 | GET | `/api/combos.php` | — | `Combo[]` — published combos with their products resolved live, plus the real `total` of current prices, `itemCount` and `inStock`. Combos whose products have all been deleted are omitted. |
@@ -2400,17 +2400,19 @@ will ever be sent about it, and the admin panel's window is shorter still.
 Keeping them forever would mean holding a growing record of what strangers
 browsed, for no reason worth defending.
 
-## 27. Homepage bands: trust, recently sold, labels
+## 27. Homepage bands: trust and labels
 
-Three strips now sit between the hero and the curated product grids. All three
+Two strips sit between the hero and the curated product grids. All three
 are **static markup in `index.html`** wherever they can be, for the reason in
 §15: `/` is served as plain `index.html` and never reaches `seo-render.php`, so
 anything a non-executing crawler should read has to be in the file.
 
+The record-label band sits directly under **Shop by Category**, in the slot a
+`#recent-sales` "Recently Sold" strip used to hold.
+
 | Band | Markup | Styles | Data |
 |---|---|---|---|
 | Trust band | `.trust-band` in [index.html](index.html) | [trust-band.css](src/styles/components/trust-band.css) | Static |
-| Recently Sold | `#recent-sales` in [index.html](index.html) | [recent-sales.css](src/styles/components/recent-sales.css) | [api/recent-sales.php](api/recent-sales.php) via [recent-sales.js](src/js/storefront/recent-sales.js) |
 | Record labels | `.label-band` in [index.html](index.html) | [label-band.css](src/styles/components/label-band.css) | Static |
 
 ### The trust band was moved OUT of the hero
@@ -2431,33 +2433,37 @@ the same four claims twice) and is `display: none` under
 `prefers-reduced-motion`, where the band becomes a static centred row. It also
 pauses on hover and on focus-within — same rule as the carousel (§21).
 
-### Recently Sold mixes real sales with filler, and says which is which
+### Recently Sold was removed (September 2026)
 
-Rows come from `orders`, newest first, **de-duplicated by product** so one
-record selling five times is one card. Cancelled/refunded orders are excluded —
-showing one as a recent sale is a straightforwardly false claim.
+The homepage used to carry a "Recently Sold" strip fed by
+`api/recent-sales.php`. When there were too few real sales it topped itself up
+with **synthesised** rows — a real product with an invented city and time — the
+one place the site rendered something it had not observed. The owner replaced it
+with the record-label band. The endpoint, its JS/CSS and the two Settings
+switches (`recently_sold_enabled`, `recently_sold_filler`) were deleted with
+it. Don't bring back invented sales: §20's rule (a value we cannot derive shows
+as an em dash) now holds everywhere.
 
-**Privacy is the constraint on this endpoint.** It is public and unauthenticated
-and it reads the order book, so it returns only *what* was bought, for how much,
-and the buyer's **city/state**. Never a name, email, phone, street address,
-order id or payment id. Extend the `SELECT` only after re-reading the header
-comment in [api/recent-sales.php](api/recent-sales.php).
+### The label band is built from the catalogue and links into it
 
-When there are fewer real sales than the strip needs, it is topped up with
-**filler**: a real, in-stock catalogue product with a *synthesised* city and
-timestamp, flagged `demo: true` in the payload. The filler is seeded per
-calendar day, so it is stable on refresh and moves on tomorrow — a "sale" that
-reshuffles on every reload is obviously fake.
+[src/js/storefront/label-band.js](src/js/storefront/label-band.js) rebuilds the
+chips from the record labels products carry (`label` in the lean product list),
+ordered by record count. Each chip links to `/products?label=<slug>`, which the
+products page filters on (`currentParams.label`, a removable tag, canonical →
+`/products`, `noindex`, and `Disallow: /*?label=` in robots.txt). A label the
+admin types on a product appears here with no code change; the admin Label
+field suggests existing labels ([src/js/admin/label-suggest.js](src/js/admin/label-suggest.js))
+so one label is not entered two ways.
 
-This is **the one place in the codebase that renders something we did not
-observe**, and it is here because the owner asked for it. Everywhere else the
-rule in §20 stands: a value we cannot derive shows as an em dash. Prices are ₹
-and locations are Indian because checkout is India-only (§12); a card reading
-"United Kingdom · $58" would advertise a lane the shop cannot serve.
+**Spelling variants fold through `Seo.labelKey()`** in [src/js/seo.js](src/js/seo.js)
+(`LABEL_ALIASES` → e.g. "Sony" → `sony-music`, "Universal" / "Universl Music
+Group" → `universal-music-group`; `LABEL_NAMES` gives the display name). The
+band AND the filter both go through it, so a chip always opens exactly the
+records it counts. Add a line there for a new variant — or better, fix the
+product's Label field.
 
-The section ships `display:none` and reveals itself only at four or more rows —
-a heading over an empty box reads as a broken shop, and a failed fetch must not
-leave one.
+The six static chips in `index.html` stay as the crawlable fallback (§15): if
+the product list carries no labels the band is left as served, never emptied.
 
 ### The label band takes logos it does not have yet
 
@@ -3400,8 +3406,7 @@ view instead of showing the homepage. Missing assets get a plain-text 404.
 Trailing slashes and external `/index.html` requests 301 to the clean URL.
 
 **robots.txt allows the read-only API endpoints the SPA renders from**
-(products, product, categories, combos, blog, music-history, settings,
-recent-sales); `api/.htaccess` sends `X-Robots-Tag: noindex` so the JSON never
+(products, product, categories, combos, blog, music-history, settings); `api/.htaccess` sends `X-Robots-Tag: noindex` so the JSON never
 enters the index. Blocking all of `/api/` left the homepage grids empty in
 Google's render.
 

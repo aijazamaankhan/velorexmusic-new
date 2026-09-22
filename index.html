@@ -160,7 +160,7 @@
   <script src="src/js/analytics.js?v=85ee1923" defer></script>
   <!-- URL vocabulary + live metadata. Must load before router.js and pages.js,
        both of which call Seo.buildPath()/Seo.productPath() to render hrefs. -->
-  <script src="src/js/seo.js?v=430cf03a" defer></script>
+  <script src="src/js/seo.js?v=57de9492" defer></script>
   <script src="src/js/constants.js?v=b0f974a1" defer></script>
   <script src="src/js/storage.js?v=7d4b11c3" defer></script>
   <script src="src/js/auth.js?v=b09358ad" defer></script>
@@ -187,7 +187,7 @@
        end up in script-scope; the inline <script> at the bottom of <body>
        just bootstraps DOMContentLoaded. -->
   <script src="src/js/storefront/carriers.js?v=488bf189" defer></script>
-  <script src="src/js/storefront/pages.js?v=7887963c" defer></script>
+  <script src="src/js/storefront/pages.js?v=46e148ec" defer></script>
   <!-- Blog views. Must load before router.js, whose initPage dispatcher calls
        initPageBlog / initPageBlogPost. -->
   <!-- Homepage hero carousel. Must load before router.js: its initPage
@@ -201,8 +201,7 @@
   <script src="src/js/storefront/blog.js?v=2ffce2ff" defer></script>
   <script src="src/js/storefront/music-history.js?v=45f7aa17" defer></script>
     <script src="src/js/storefront/music-history-audio.js?v=7b77bb14" defer></script>
-  <script src="src/js/storefront/recent-sales.js?v=956fc5e9" defer></script>
-  <script src="src/js/storefront/site-settings.js?v=159a6208" defer></script>
+  <script src="src/js/storefront/site-settings.js?v=609ed945" defer></script>
   <script src="src/js/storefront/coupon.js?v=bcf00ad5" defer></script>
   <!-- Newsletter signup. Bound from router.js's boot and from the inline
        onclick on the homepage form. -->
@@ -210,12 +209,15 @@
   <!-- Collection graph: related links, composer pages. Must load before
        router.js, whose initPage calls initPageArtist() and CollectionLinks. -->
   <script src="src/js/storefront/collections.js?v=19b0115b" defer></script>
+  <!-- Label band built from the catalogue; must load before router.js,
+       whose initPage calls initPageIndex → LabelBand.render(). -->
+  <script src="src/js/storefront/label-band.js?v=b3c7cb0f" defer></script>
   <script src="src/js/storefront/router.js?v=c35f2ff3" defer></script>
   <!-- Phone tab bar + menu accordion. Presentation only; see its header. -->
   <script src="src/js/storefront/app-shell.js?v=939b2cea" defer></script>
   <!-- Footer credit popup (Velorex Studio enquiry, emailed; nothing stored). -->
   <script src="src/js/storefront/studio-enquiry.js?v=20ec9dd0" defer></script>
-  <script src="src/js/storefront/effects.js?v=7e7f5d2f" defer></script>
+  <script src="src/js/storefront/effects.js?v=88ec3bd8" defer></script>
   <!-- Card button reads "In Cart" once that record is in the cart. -->
   <script src="src/js/storefront/card-cart-state.js?v=84d18bcf" defer></script>
   <script src="src/js/storefront/checkout.js?v=f539fe43" defer></script>
@@ -238,8 +240,7 @@
   <link rel="stylesheet" href="src/styles/components/coupon.css?v=b93368bf">
   <link rel="stylesheet" href="src/styles/components/ads.css?v=e52c803f">
   <link rel="stylesheet" href="src/styles/components/music-history.css?v=4d557c98">
-  <link rel="stylesheet" href="src/styles/components/recent-sales.css?v=066910e1">
-  <link rel="stylesheet" href="src/styles/components/label-band.css?v=58b6bd4e">
+  <link rel="stylesheet" href="src/styles/components/label-band.css?v=1dae659a">
   <link rel="stylesheet" href="src/styles/components/page-banner.css?v=df20b665">
   <link rel="stylesheet" href="src/styles/components/collection-links.css?v=0ccfcaf5">
   <link rel="stylesheet" href="src/styles/components/about-velorex.css?v=4e39af50">
@@ -538,72 +539,9 @@
         </div>
       </section>
 
-      <!-- ==================== RECENTLY SOLD ====================
-           Filled by RecentSales.init() from /api/recent-sales.php. Ships
-           display:none and is revealed only when the endpoint returns enough
-           rows — same rule as the combo strip below: a heading over an empty
-           box reads as a broken shop, and a failed fetch must not leave one.
-
-           Nothing here is server-rendered, and that is fine: this is social
-           proof, not content worth ranking, and the products it links to all
-           have their own indexable pages reached from the grids further down. -->
-      <section class="section section-alt" id="recent-sales" style="display:none;">
-        <div class="container">
-          <div class="section-header">
-            <div>
-              <h2 class="section-title">Recently <span>Sold</span></h2>
-              <p class="section-subtitle">What collectors across India picked up lately</p>
-            </div>
-            <a href="/products" onclick="navigate('products'); return false;" class="btn btn-secondary">Shop All →</a>
-          </div>
-          <div class="recent-sales-strip">
-            <div class="recent-sales-row" id="recent-sales-row"></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Combo strip. Hidden by initHomeCombos() when there are none, the same
-           way the curated Best Selling / New Releases strips behave. -->
-      <section class="section" id="home-combos" style="display:none;">
-        <div class="container">
-          <div class="section-header">
-            <div><h2 class="section-title">🎁 Combo <span>Offers</span></h2><p class="section-subtitle">Bundles that belong together</p></div>
-            <a href="/combos" onclick="navigate('combos'); return false;" class="btn btn-secondary">View All →</a>
-          </div>
-          <div class="combo-grid" id="home-combos-grid"></div>
-        </div>
-      </section>
-
-      <section class="section section-alt" id="best-selling">
-        <div class="container">
-          <div class="section-header">
-            <div><h2 class="section-title">🔥 Best <span>Selling</span></h2><p class="section-subtitle">Our most popular picks this month</p></div>
-            <a href="#" onclick="navigate('products'); return false;" class="btn btn-secondary">View All →</a>
-          </div>
-          <div class="products-grid" id="best-selling-grid"><div class="loading-spinner"></div></div>
-        </div>
-      </section>
-
-      <section class="section" id="new-releases">
-        <div class="container">
-          <div class="section-header">
-            <div><h2 class="section-title">✨ New <span>Releases</span></h2><p class="section-subtitle">Fresh arrivals just landed in our store</p></div>
-            <a href="#" onclick="navigate('products'); return false;" class="btn btn-secondary">View All →</a>
-          </div>
-          <div class="products-grid" id="new-releases-grid"><div class="loading-spinner"></div></div>
-        </div>
-      </section>
-
-      <section class="section section-alt" id="upcoming">
-        <div class="container">
-          <div class="section-header">
-            <div><h2 class="section-title">⏳ <span>Upcoming</span></h2><p class="section-subtitle">Pre-order before they're gone</p></div>
-          </div>
-          <div class="products-grid" id="upcoming-grid"><div class="loading-spinner"></div></div>
-        </div>
-      </section>
-
       <!-- ==================== RECORD LABELS ====================
+           Sits where the Recently Sold strip used to be (removed Sept 2026 —
+           it mixed real sales with synthesised filler, see CLAUDE.md §27).
            The labels whose pressings we stock. Static markup for the same
            reason the hero's brand slide is (CLAUDE.md §15): `/` never reaches
            seo-render.php, so anything a non-executing crawler should read has
@@ -651,6 +589,47 @@
               <span class="label-chip-name">Zee Music Co.</span>
             </li>
           </ul>
+        </div>
+      </section>
+
+      <!-- Combo strip. Hidden by initHomeCombos() when there are none, the same
+           way the curated Best Selling / New Releases strips behave. -->
+      <section class="section" id="home-combos" style="display:none;">
+        <div class="container">
+          <div class="section-header">
+            <div><h2 class="section-title">🎁 Combo <span>Offers</span></h2><p class="section-subtitle">Bundles that belong together</p></div>
+            <a href="/combos" onclick="navigate('combos'); return false;" class="btn btn-secondary">View All →</a>
+          </div>
+          <div class="combo-grid" id="home-combos-grid"></div>
+        </div>
+      </section>
+
+      <section class="section section-alt" id="best-selling">
+        <div class="container">
+          <div class="section-header">
+            <div><h2 class="section-title">🔥 Best <span>Selling</span></h2><p class="section-subtitle">Our most popular picks this month</p></div>
+            <a href="#" onclick="navigate('products'); return false;" class="btn btn-secondary">View All →</a>
+          </div>
+          <div class="products-grid" id="best-selling-grid"><div class="loading-spinner"></div></div>
+        </div>
+      </section>
+
+      <section class="section" id="new-releases">
+        <div class="container">
+          <div class="section-header">
+            <div><h2 class="section-title">✨ New <span>Releases</span></h2><p class="section-subtitle">Fresh arrivals just landed in our store</p></div>
+            <a href="#" onclick="navigate('products'); return false;" class="btn btn-secondary">View All →</a>
+          </div>
+          <div class="products-grid" id="new-releases-grid"><div class="loading-spinner"></div></div>
+        </div>
+      </section>
+
+      <section class="section section-alt" id="upcoming">
+        <div class="container">
+          <div class="section-header">
+            <div><h2 class="section-title">⏳ <span>Upcoming</span></h2><p class="section-subtitle">Pre-order before they're gone</p></div>
+          </div>
+          <div class="products-grid" id="upcoming-grid"><div class="loading-spinner"></div></div>
         </div>
       </section>
 

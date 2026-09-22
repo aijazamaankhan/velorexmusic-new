@@ -137,7 +137,7 @@
 
   /* ---- 6. Scroll reveals -------------------------------------------------------- */
   var REVEAL = '#page-index .section-header, #page-index .category-card, #page-index .combo-card,' +
-    ' #page-index .products-grid > .product-card, .newsletter-card, .about-velorex, .label-band, .recent-sales';
+    ' #page-index .products-grid > .product-card, .newsletter-card, .about-velorex, .label-band';
   var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (entries) {
     entries.forEach(function (en) {
       if (!en.isIntersecting) return;
