@@ -407,6 +407,11 @@ h1.hero-badge { line-height: 1.35; border-radius: 1.1rem; max-width: 100%; }
 @media (max-width: 640px) {
   .hero-dots { gap: 0; }
   .hero-dot { box-sizing: content-box; border: 9px solid transparent; border-left-width: 4px; border-right-width: 4px; background-clip: padding-box; }
+  /* The active, hover and light-theme dot rules set the `background`
+     SHORTHAND, which resets background-clip to border-box — so the active dot
+     painted its grey track across the whole 24px tap area as a big pill. */
+  .hero-dot, .hero-dot:hover, .hero-dot.is-active,
+  [data-theme="light"] .hero-dot, [data-theme="light"] .hero-dot.is-active { background-clip: padding-box; }
 }
 
 /* ---- Brand-slide photograph ---------------------------------------------- */

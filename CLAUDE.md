@@ -3571,3 +3571,40 @@ under `prefers-reduced-motion`.
 endpoint's recipient is a constant, so it cannot be used to mail a third party
 (§26's concern does not arise). The credit page is `noindex` and not in the
 sitemap.
+
+## 47. Storefront effects layer and cart feedback (September 2026)
+
+| Piece | File |
+|---|---|
+| Effects (vinyl cursor, card hover, page fade, reveals, record drop, remove) | [src/js/storefront/effects.js](src/js/storefront/effects.js), [src/styles/components/effects.css](src/styles/components/effects.css) |
+| Card button "Add to Cart" → "Added!" → "In Cart" | [src/js/storefront/card-cart-state.js](src/js/storefront/card-cart-state.js) |
+
+**Decoration only — read the header of effects.css before adding to it.**
+Everything is behind `html.fx-on`, which is never set under
+`prefers-reduced-motion`; hover effects also need a fine pointer. Nothing wraps
+`navigate()` or a cart function: the record drop and the "Added!" flash fire
+when `#cartBadge`'s count goes UP, so an add refused by the stock guard shows
+nothing. Motion only answers the user (hover, add, remove) and never loops idle.
+
+- **Card hover:** the card leans toward the pointer, a spotlight + edge glow
+  follow it in the cover's colour (sampled via canvas; brand orange if the
+  image is cross-origin), and a CSS-drawn record slides out from behind the
+  sleeve. Grid view only.
+- **Remove from cart:** the row is cloned in the click's capture phase (the
+  real removal re-renders synchronously), then the copy flashes red and flips
+  away, the record slides out and falls, sparks leave the bin, and the lines
+  below glide up (FLIP). The removal code is untouched.
+- **"In Cart" opens the cart** instead of adding another copy; quantity is
+  changed in the cart. State is read from `Storage.getCart()` and re-applied
+  when grids re-render.
+- **Page fade** uses `.fx-enter`, added only on NAVIGATION — never the section
+  shown at load, so LCP is not delayed. Opacity only (a transform would make
+  the section the containing block for the fixed filter popover).
+- Cards hide the star row when `reviews` is 0 (`data-reviews="0"`), matching
+  the detail page (§43), and the artist line is clamped to one line.
+
+Two layout rules found while doing this: `.products-grid.is-list` must be
+re-asserted after the explicit column counts (§46), and its cover is sized by
+width, not `height: 100%` (which grew sideways over the text). The hero dots'
+tap-area border needs `background-clip: padding-box` restated on every state
+that sets the `background` shorthand.

@@ -187,7 +187,7 @@
        end up in script-scope; the inline <script> at the bottom of <body>
        just bootstraps DOMContentLoaded. -->
   <script src="src/js/storefront/carriers.js?v=488bf189" defer></script>
-  <script src="src/js/storefront/pages.js?v=2558d415" defer></script>
+  <script src="src/js/storefront/pages.js?v=7887963c" defer></script>
   <!-- Blog views. Must load before router.js, whose initPage dispatcher calls
        initPageBlog / initPageBlogPost. -->
   <!-- Homepage hero carousel. Must load before router.js: its initPage
@@ -215,6 +215,9 @@
   <script src="src/js/storefront/app-shell.js?v=939b2cea" defer></script>
   <!-- Footer credit popup (Velorex Studio enquiry, emailed; nothing stored). -->
   <script src="src/js/storefront/studio-enquiry.js?v=20ec9dd0" defer></script>
+  <script src="src/js/storefront/effects.js?v=7e7f5d2f" defer></script>
+  <!-- Card button reads "In Cart" once that record is in the cart. -->
+  <script src="src/js/storefront/card-cart-state.js?v=84d18bcf" defer></script>
   <script src="src/js/storefront/checkout.js?v=f539fe43" defer></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
        they can be shared between the storefront pages without duplication.
@@ -227,7 +230,7 @@
   <link rel="stylesheet" href="src/styles/components/payment-modal.css?v=02096d61">
   <link rel="stylesheet" href="src/styles/components/toast.css?v=1b13f717">
   <link rel="stylesheet" href="src/styles/components/skeleton.css?v=eeaff7e5">
-  <link rel="stylesheet" href="src/styles/components/hero-carousel.css?v=5c155565">
+  <link rel="stylesheet" href="src/styles/components/hero-carousel.css?v=a4a82660">
   <link rel="stylesheet" href="src/styles/components/cursor.css?v=fb46709c">
   <link rel="stylesheet" href="src/styles/components/search.css?v=046a8aed">
   <link rel="stylesheet" href="src/styles/components/trust-band.css?v=8edcca10">
@@ -243,10 +246,12 @@
   <link rel="stylesheet" href="src/styles/components/catalog-empty.css?v=8c30b8f4">
   <!-- Page-specific styles (hero, products, cart, profile, footer, etc.).
        Must load AFTER components so page-level rules override defaults. -->
-  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=11e0b6bd">
+  <link rel="stylesheet" href="src/styles/pages/storefront.css?v=7cae142d">
   <!-- After storefront.css: its touch rules cancel storefront hover lifts. -->
   <link rel="stylesheet" href="src/styles/components/app-shell.css?v=da11d49f">
   <link rel="stylesheet" href="src/styles/components/studio-enquiry.css?v=bf527980">
+  <!-- Decorative motion layer; off under reduced motion. See its header. -->
+  <link rel="stylesheet" href="src/styles/components/effects.css?v=29790364">
 </head>
 
 <body>

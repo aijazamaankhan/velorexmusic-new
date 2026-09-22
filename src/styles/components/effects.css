@@ -1,0 +1,241 @@
+/* =============================================================================
+   Velorex Music — storefront effects ("the futuristic layer")
+   Driven by src/js/storefront/effects.js. Seven effects, all decoration:
+
+     1. Vinyl cursor        — the cursor ring becomes a spinning record
+     2. Visualiser          — equaliser bars rise on a hovered cover
+     3. Sleeve tilt         — covers tilt toward the pointer with a gloss
+     4. Page transitions    — sections fade in; the detail cover grows in
+     5. Cover glow          — dark theme: hovered card glows in its cover colour
+     6. Scroll reveals      — homepage blocks rise in once as they arrive
+     7. Record drop         — a mini record flies into the cart on Add
+     8. Remove swipe        — a removed cart line swipes away, a record rolls off
+
+   RULES THAT KEEP THIS SAFE
+   - Everything is gated behind `html.fx-on`, which effects.js adds only when
+     `prefers-reduced-motion` is NOT set. No script → no effects, full site.
+   - Pointer effects (1–3, 5) additionally need (hover: hover) and
+     (pointer: fine); a touch screen gets none of them.
+   - Motion answers the user and stops: nothing here loops while the visitor
+     is doing nothing. The cursor record spins only while the mouse moves; the
+     visualiser plays only while a cover is hovered (and once on a phone).
+   - Nothing hides content until JS has decided it is below the fold, so a
+     crawler or a failed script always sees the page.
+   ============================================================================= */
+
+/* ---- 1. Vinyl cursor ------------------------------------------------------ */
+/* The ring's transform is written inline every frame by cursor.js, so the spin
+   lives on a pseudo-element inside it (an inline transform would override a
+   stylesheet one on the ring itself). */
+.fx-on.vlx-cursor-on .vlx-cursor-ring {
+  border-color: rgba(237, 44, 21, 0.85);
+  overflow: hidden;
+}
+/* A HOLLOW record: the grooves live only on the outer band and the middle is
+   masked fully transparent, so the text, button or icon under the pointer
+   stays readable. (It was a solid disc and hid whatever it sat on — worst over
+   buttons, where the ring swells to 58px.) The red dot marks the exact point. */
+.fx-on.vlx-cursor-on .vlx-cursor-ring::before {
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  background: repeating-radial-gradient(circle, rgba(237, 44, 21, 0.55) 0 1px, transparent 1px 3px);
+  -webkit-mask: radial-gradient(circle, transparent 0 58%, #000 62%);
+          mask: radial-gradient(circle, transparent 0 58%, #000 62%);
+  opacity: 0.8;
+  animation: fxSpin 1.8s linear infinite paused;
+}
+/* A light sheen on the band so the rotation reads (grooves alone are symmetric). */
+.fx-on.vlx-cursor-on .vlx-cursor-ring::after {
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(from 20deg, transparent 0 18%, rgba(255, 255, 255, 0.55) 24%, transparent 30% 68%, rgba(255, 255, 255, 0.35) 74%, transparent 80%);
+  -webkit-mask: radial-gradient(circle, transparent 0 58%, #000 62%);
+          mask: radial-gradient(circle, transparent 0 58%, #000 62%);
+  animation: fxSpin 1.8s linear infinite paused;
+}
+/* Over something clickable the ring is at its biggest — keep it lightest. */
+.fx-on.vlx-cursor-on.is-pointing .vlx-cursor-ring::before { opacity: 0.45; }
+.fx-on.vlx-cursor-on.is-pointing .vlx-cursor-ring { background-color: transparent !important; }
+.fx-on.fx-cursor-moving .vlx-cursor-ring::before,
+.fx-on.fx-cursor-moving .vlx-cursor-ring::after { animation-play-state: running; }
+.fx-on.is-pointing .vlx-cursor-ring::before,
+.fx-on.is-pointing .vlx-cursor-ring::after { animation-duration: 0.6s; animation-play-state: running; }
+@keyframes fxSpin { to { transform: rotate(360deg); } }
+
+/* ---- 2. Visualiser --------------------------------------------------------- */
+.fx-eq {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+  height: 34%; padding: 0 10% 6%;
+  display: flex; align-items: flex-end; gap: 4%;
+  pointer-events: none;
+  background: linear-gradient(0deg, rgba(10, 8, 16, 0.75), transparent);
+  opacity: 0; transition: opacity 0.25s ease;
+}
+.fx-eq i {
+  flex: 1; height: 100%; border-radius: 3px 3px 0 0;
+  background: linear-gradient(0deg, #ed2c15, #ff8a3d 70%, #ffd166);
+  transform-origin: bottom; transform: scaleY(0.12);
+}
+.fx-eq.is-playing { opacity: 1; }
+.fx-eq.is-playing i { animation: fxEq 0.9s ease-in-out infinite alternate; }
+.fx-eq.is-once i { animation-iteration-count: 4; }
+.fx-eq i:nth-child(3n)   { animation-duration: 0.7s; }
+.fx-eq i:nth-child(3n+1) { animation-duration: 1.1s; animation-delay: -0.3s; }
+.fx-eq i:nth-child(4n)   { animation-duration: 0.55s; animation-delay: -0.5s; }
+.fx-eq i:nth-child(5n)   { animation-duration: 1.3s; animation-delay: -0.2s; }
+@keyframes fxEq {
+  0%   { transform: scaleY(0.12); }
+  35%  { transform: scaleY(0.85); }
+  60%  { transform: scaleY(0.35); }
+  100% { transform: scaleY(0.7); }
+}
+
+/* ---- 3. Sleeve tilt --------------------------------------------------------- */
+/* effects.js writes --fx-rx / --fx-ry / --fx-gx / --fx-gy on the cover. */
+.fx-on .fx-tilt {
+  position: relative;
+  transform: perspective(700px) rotateX(var(--fx-rx, 0deg)) rotateY(var(--fx-ry, 0deg));
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+.fx-on .fx-tilt.is-tilting { transition-duration: 0.08s; }
+.fx-on .fx-tilt::after {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: radial-gradient(circle at var(--fx-gx, 50%) var(--fx-gy, 50%), rgba(255, 255, 255, 0.35), transparent 55%);
+  mix-blend-mode: soft-light;
+  opacity: 0; transition: opacity 0.3s ease;
+}
+.fx-on .fx-tilt.is-tilting::after { opacity: 1; }
+
+/* ---- 3b. Product cards: lean + spotlight + vinyl pull-out ------------------- */
+/* effects.js adds .fx-card on first hover and writes --fx-rx/--fx-ry (lean)
+   and --fx-gx/--fx-gy (pointer position, %) on the card. --fx-glow-rgb is the
+   cover's own colour (section 5), orange until it has been sampled. */
+@media (hover: hover) and (pointer: fine) {
+  .fx-on .product-card.fx-card {
+    --fx-glow-rgb: 255, 107, 53;
+    transform: perspective(1100px) rotateX(var(--fx-rx, 0deg)) rotateY(var(--fx-ry, 0deg));
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease, border-color 0.4s ease;
+    transform-style: preserve-3d;
+  }
+  .fx-on .product-card.fx-card:hover {
+    transform: perspective(1100px) rotateX(var(--fx-rx, 0deg)) rotateY(var(--fx-ry, 0deg)) translateY(-8px);
+  }
+  .fx-on .product-card.fx-card.is-tilting { transition-duration: 0.12s, 0.4s, 0.4s; }
+
+  /* Spotlight: a soft light that follows the pointer across the card… */
+  .fx-on .product-card.fx-card::before {
+    content: ''; position: absolute; inset: 0; z-index: 3; pointer-events: none; border-radius: inherit;
+    background: radial-gradient(420px circle at var(--fx-gx, 50%) var(--fx-gy, 50%), rgba(var(--fx-glow-rgb), 0.16), transparent 45%);
+    opacity: 0; transition: opacity 0.35s ease;
+  }
+  /* …and lights up the card's edge nearest to it (a 1.5px masked border). */
+  .fx-on .product-card.fx-card::after {
+    content: ''; position: absolute; inset: 0; z-index: 4; pointer-events: none; border-radius: inherit;
+    padding: 1.5px;
+    background: radial-gradient(260px circle at var(--fx-gx, 50%) var(--fx-gy, 50%), rgba(var(--fx-glow-rgb), 0.95), transparent 60%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+    opacity: 0; transition: opacity 0.35s ease;
+  }
+  .fx-on .product-card.fx-card.is-hot::before,
+  .fx-on .product-card.fx-card.is-hot::after { opacity: 1; }
+
+  /* Vinyl pull-out: the sleeve slides left and shrinks a touch, and a record
+     slides out from behind it and spins. The record is a CSS drawing, so it
+     costs no download. Grid view only — list-view covers are too small. */
+  .fx-on .product-card-image > .fx-vinyl {
+    position: absolute; z-index: 0; top: 9%; left: 9%; width: 82%; height: 82%; border-radius: 50%;
+    background:
+      radial-gradient(circle, #0b0b0b 0 3.5%, #ed2c15 4% 17%, #7a1609 17.5% 18.5%, transparent 19%),
+      conic-gradient(from 0deg, rgba(255,255,255,0) 0 10%, rgba(255,255,255,0.18) 14%, rgba(255,255,255,0) 20% 60%, rgba(255,255,255,0.12) 64%, rgba(255,255,255,0) 70%),
+      repeating-radial-gradient(circle, #121212 0 1px, #1f1f1f 1px 2.5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+    transform: translateX(0) rotate(0deg);
+    transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .fx-on .product-card-image > a { position: relative; z-index: 1; transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.6s ease; }
+  .fx-on .product-card-image > .product-badge,
+  .fx-on .product-card-image > .badge-preowned { z-index: 2; }
+  .fx-on .product-card.fx-card:hover .product-card-image > a {
+    transform: translateX(-13%) scale(0.84);
+    box-shadow: 14px 0 30px rgba(0, 0, 0, 0.55);
+  }
+  .fx-on .product-card.fx-card:hover .product-card-image > .fx-vinyl {
+    transform: translateX(22%) rotate(200deg);
+    animation: fxVinylSpin 3.2s linear 0.7s infinite;
+  }
+  @keyframes fxVinylSpin { from { transform: translateX(22%) rotate(200deg); } to { transform: translateX(22%) rotate(560deg); } }
+  /* The card's own image zoom would fight the pull-out; the pull-out replaces it. */
+  .fx-on .product-card.fx-card:hover .product-card-image img { transform: none; }
+  .fx-on .products-grid.is-list .product-card-image > .fx-vinyl { display: none; }
+}
+
+/* ---- 4. Page transitions --------------------------------------------------- */
+/* effects.js puts .fx-enter on a section when a NAVIGATION shows it — never on
+   the section showing at load, so the first paint is never faded (that would
+   delay LCP). Opacity only on the section: a transform would briefly make it
+   the containing block for the fixed filter popover inside it. */
+.fx-enter { animation: fxPageIn 0.32s ease both; }
+@keyframes fxPageIn { from { opacity: 0; } to { opacity: 1; } }
+/* The product cover grows into place — on each product the detail view
+   renders after a navigation (the element is new, so the animation replays). */
+.fx-enter .product-detail-main-image { animation: fxGrow 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes fxGrow { from { opacity: 0; transform: scale(0.9) translateY(12px); } to { opacity: 1; transform: none; } }
+
+/* ---- 5. Cover glow (dark theme) -------------------------------------------- */
+@media (hover: hover) and (pointer: fine) {
+  html.fx-on:not([data-theme="light"]) .product-card.fx-glow:hover {
+    border-color: rgba(var(--fx-glow-rgb), 0.35);
+    box-shadow: 0 24px 60px -12px rgba(var(--fx-glow-rgb), 0.5),
+                0 0 80px -24px rgba(var(--fx-glow-rgb), 0.55);
+  }
+  /* Light theme: a softer, neutral lift — a coloured bloom on white looks dirty. */
+  html.fx-on[data-theme="light"] .product-card.fx-card:hover {
+    box-shadow: 0 24px 50px -16px rgba(15, 23, 42, 0.28);
+  }
+}
+
+/* ---- 6. Scroll reveals ------------------------------------------------------ */
+.fx-on .fx-reveal { opacity: 0; transform: translateY(26px); transition: opacity 0.6s ease, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+.fx-on .fx-reveal.fx-in { opacity: 1; transform: none; }
+
+/* ---- 7. Record drop ---------------------------------------------------------- */
+.fx-drop {
+  position: fixed; left: 0; top: 0; z-index: 99990; pointer-events: none;
+  width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%;
+  background:
+    radial-gradient(circle, #1a1414 0 8%, #ed2c15 9% 30%, #111 31% 34%, transparent 35%),
+    repeating-radial-gradient(circle, #151212 0 1.5px, #3a3434 1.5px 2.5px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.fx-cart-catch { animation: fxCatch 0.45s cubic-bezier(0.3, 1.6, 0.5, 1); }
+@keyframes fxCatch { 0% { transform: scale(1); } 45% { transform: scale(1.3); } 100% { transform: scale(1); } }
+
+/* ---- 8. Removing from the cart ---------------------------------------------- */
+.fx-ghost { background: var(--card-bg, var(--surface)); border-radius: var(--radius-lg, 16px); box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35); backface-visibility: hidden; }
+/* The record that slides out of a removed line: bigger than the add-to-cart
+   one, with the album's own cover as its centre label (--fx-label, set by
+   effects.js; falls back to the brand red). */
+.fx-drop.fx-drop-lg {
+  width: 64px; height: 64px; margin: -32px 0 0 -32px;
+  background:
+    repeating-radial-gradient(circle, #151212 0 1.5px, #3a3434 1.5px 2.5px);
+}
+.fx-drop-label {
+  position: absolute; inset: 30%; border-radius: 50%;
+  background: var(--fx-label, #ed2c15) center / cover no-repeat, #ed2c15;
+  box-shadow: 0 0 0 2px #111;
+}
+.fx-drop-label::after { content: ""; position: absolute; inset: 42%; border-radius: 50%; background: #111; }
+.fx-spark {
+  position: fixed; left: 0; top: 0; z-index: 99985; pointer-events: none;
+  width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%;
+  background: #ff6b35; box-shadow: 0 0 8px #ff6b35;
+}
+.fx-spark:nth-child(odd) { background: #f87171; box-shadow: 0 0 8px #ef4444; }
+.fx-cart-shake { animation: fxShake 0.5s ease; }
+@keyframes fxShake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-4px) rotate(-8deg); } 45% { transform: translateX(4px) rotate(6deg); } 70% { transform: translateX(-2px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-reveal { opacity: 1 !important; transform: none !important; }
+}

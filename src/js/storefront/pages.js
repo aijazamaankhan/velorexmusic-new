@@ -136,7 +136,7 @@
           <div class="product-category-tag">${catLabel}${langLabel ? ' · ' + langLabel : ''}</div>
           <h3 class="product-title"><a href="${href}" onclick="navigate('product',{id:${product.id}});return false;">${Utils.escape(product.title)}</a></h3>
           <p class="product-artist">${Utils.escape(product.artist)}</p>
-          <div class="product-rating"><span class="stars">${stars}</span><span class="rating-count">(${product.reviews})</span></div>
+          <div class="product-rating" data-reviews="${Number(product.reviews) || 0}"><span class="stars">${stars}</span><span class="rating-count">(${product.reviews})</span></div>
           <div class="product-price-row">
             <div>${priceHtml}</div>
           </div>
@@ -1494,7 +1494,7 @@
             <button class="cart-qty-btn" onclick="updateCartQtySPA(${item.id},${item.qty - 1})">−</button>
             <span class="cart-qty-num">${item.qty}</span>
             <button class="cart-qty-btn" onclick="updateCartQtySPA(${item.id},${item.qty + 1})">+</button>
-            <span class="cart-item-remove" onclick="removeCartSPA(${item.id})" style="cursor:pointer;">🗑</span>
+            <button type="button" class="cart-item-remove" onclick="removeCartSPA(${item.id})" aria-label="Remove from cart" title="Remove"><i class="fas fa-trash-can"></i></button>
           </div>
         </div>
         <div class="cart-item-price"><div class="price">₹${(item.price * item.qty).toLocaleString()}</div><div class="unit-price">₹${item.price.toLocaleString()} each</div></div>
