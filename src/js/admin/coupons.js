@@ -31,12 +31,14 @@
       first_order:  { label: 'Has never ordered before',                needs: null,     hint: 'The classic welcome code.' },
       repeat_order: { label: 'Has ordered before',                      needs: 'orders', hint: 'How many completed orders they need.' },
       min_items:    { label: 'Cart holds at least N items',             needs: 'items',  hint: 'Counted in units, not distinct products.' },
+      min_vinyl:    { label: 'Cart holds at least N vinyl records',     needs: 'items',  hint: 'Counts vinyl units only — "10% off with 2+ LPs".' },
     };
 
     function couponTriggerSummary(c) {
       const t = c.triggerEvent || 'none';
       if (t === 'none') return '';
       if (t === 'min_items')    return 'Needs ' + (c.triggerValue || 2) + '+ items';
+      if (t === 'min_vinyl')    return 'Needs ' + (c.triggerValue || 1) + '+ vinyl';
       if (t === 'repeat_order') return 'After ' + (c.triggerValue || 1) + ' order' + ((c.triggerValue || 1) === 1 ? '' : 's');
       if (t === 'signup')       return c.triggerValue ? ('New accounts, ' + c.triggerValue + 'd') : 'Account holders';
       if (t === 'subscribe')    return 'Subscribers';

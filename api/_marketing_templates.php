@@ -288,9 +288,9 @@ function personal_coupon_email(array $c, string $email, string $unsubToken, stri
     $code  = (string)$c['code'];
 
     $value = (int)$c['value'];
-    $offer = ((string)$c['type'] === 'percent')
-        ? $value . '% off'
-        : _vv_money($value) . ' off';
+    $type  = (string)$c['type'];
+    $offer = $type === 'free_shipping' ? 'Free delivery'
+        : ($type === 'percent' ? $value . '% off' : _vv_money($value) . ' off');
 
     $subject = 'Your ' . $offer . ' code at Velorex Music';
     $hello   = $firstName !== '' ? ('Hi ' . $firstName . ',') : 'Hi,';
@@ -298,11 +298,16 @@ function personal_coupon_email(array $c, string $email, string $unsubToken, stri
     // Conditions, stated plainly. Only the ones that actually apply.
     $terms = [];
     if (!empty($c['min_order']))    $terms[] = 'Valid on orders over ' . _vv_money((int)$c['min_order']) . '.';
+    if ((string)($c['trigger_event'] ?? '') === 'min_vinyl' && !empty($c['trigger_value'])) {
+        $terms[] = 'Needs ' . (int)$c['trigger_value'] . ' or more vinyl records in the cart.';
+    }
     if (!empty($c['max_discount']) && (string)$c['type'] === 'percent') {
         $terms[] = 'Maximum discount ' . _vv_money((int)$c['max_discount']) . '.';
     }
     if (!empty($c['expires_at']))   $terms[] = 'Use it by ' . date('j F Y', strtotime((string)$c['expires_at'])) . '.';
-    $terms[] = 'Reserved for this email address, and applies to items only — delivery is charged as usual.';
+    $terms[] = $type === 'free_shipping'
+        ? 'Reserved for this email address. Waives the delivery charge on one order.'
+        : 'Reserved for this email address, and applies to items only — delivery is charged as usual.';
 
     $termsHtml = '<ul style="margin:0;padding-left:18px;font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#666;line-height:1.7;">'
         . implode('', array_map(function ($t) { return '<li>' . _vv_esc($t) . '</li>'; }, $terms))

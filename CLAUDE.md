@@ -94,6 +94,8 @@ velorexmusic-new/
 │       │                        # order-value free threshold — see §16. PHP mirror in
 │       │                        # api/_shipping_helpers.php — keep both files in sync.
 │       ├── storefront/newsletter.js # The homepage signup block. Was markup with no handler.
+│       ├── storefront/spin-wheel.js # Spin & Win welcome wheel. Homepage only; the SERVER
+│       │                        # draws the prize. See §48.
        ├── storefront/search.js # Global search — ranked suggestions off the product
 │       │                        # cache, inline on desktop, full-screen sheet below
 │       │                        # 1100px. See §24.
@@ -142,6 +144,7 @@ velorexmusic-new/
 │           ├── orders.js        # Orders panel + order detail modal + status taxonomy +
 │           │                    # inline shipment edit + patchOrder + print invoice
 │           ├── combos.js        # Combo Offers panel — list, editor, product picker
+│           ├── spin-wheel.js    # Spin Wheel panel — prizes, odds, results. See §48.
 │           ├── marketing.js     # Abandoned panel (carts + checkouts, dismiss, manual send) and
            │                    # Subscribers panel (consent split, Brevo sync, CSV export)
            ├── inventory.js     # Dashboard + products table + product modal (new + edit) +
@@ -191,6 +194,8 @@ velorexmusic-new/
 │   │   ├── customer-detail.php  # GET ?userId=N → orders, addresses, sessions (batched for the admin drawer)
 │   │   └── guest-customers.php  # GET → rolled-up guest checkouts grouped by email (admin Guests filter)
 │   ├── combos.php               # GET (public/?all=1 admin/?id=N) / POST (admin upsert) / DELETE (admin)
+│   ├── spin-wheel.php           # Spin & Win: GET status / POST spin (Bearer). See §48.
+│   ├── _spin_helpers.php        # Wheel config, eligibility, the server-side draw, code minting.
 │   ├── _combo_helpers.php       # combo_offers bootstrap + live product resolution. Auto-creates
 │   │                            # the table, like the blog. NO price column — read the header.
 │   ├── _address_helpers.php     # Shared address validation + snapshot helpers (addresses.php + create-order.php)
@@ -521,6 +526,7 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 | GET/POST | `/api/unsubscribe.php?token=<32hex>` | — | HTML page. **GET only shows a confirm button; POST performs the opt-out** — link scanners fetch every URL in an email, and a GET that unsubscribed would silently opt people out. Also the RFC 8058 one-click endpoint (`List-Unsubscribe-Post`). |
 | POST | `/api/cart-sync.php` | `{ cartKey, items: [{id, qty}] }` | `{ ok, itemCount, subtotal }` — mirrors the browser cart to `carts`. Re-prices every line from the DB; **never accepts prices, and never accepts an email from an anonymous caller** (§26). An empty `items` array deletes the row. |
 | GET | `/api/recover-cart.php?token=<32hex>` | — | `{ ok, source, items, subtotal, partial }` — the `?recover=` link target. Matches `carts.recovery_token` or `payment_orders.recovery_token`; re-prices against today's catalogue. Returns `{ ok: false, reason: 'already_purchased' }` for a completed order. |
+| GET | `/api/spin-wheel.php` | — | `{ ok, enabled, prizes:[{id,color,label,sub}], delaySec, signedIn, eligible, reason }` — the wheel's slices (no odds). `enabled:false` and nothing else while the wheel is off. See §48. |
 | POST | `/api/studio-enquiry.php` | `{ name, email, phone, company?, projectType?, budget?, message, website? }` | `{ ok, message }` — Velorex Studio project enquiry from the footer-credit popup. **Emailed to velorexdesign@gmail.com, stored nowhere.** Fixed recipient; `website` is a honeypot; 5/hour per IP via a temp file. See §46. |
 
 ### Customer-authenticated endpoints (require `Authorization: Bearer <token>`)
@@ -535,6 +541,7 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 | ~~POST `/api/orders.php`~~ | — | — | **Disabled** — returns 410. Order creation runs through the verified payment flow below; direct POSTs were a security hole. |
 | POST | `/api/payments/create-order.php` | Registered: `{ items: [{id, qty}], addressId }`. Guest (no Bearer token): `{ items: [{id, qty}], contact: {email, phone}, shippingAddress: {fullName, phone, line1, line2?, landmark?, city, state?, postalCode?, countryCode, gstin?, label?} }`. | `{ ok, keyId, razorpayOrderId, amount, currency, mode, subtotal, shipping, total }` — server recomputes the total from DB prices and mints a Razorpay order bound to that amount. For guest payloads the contact + address are validated inline; the snapshot is persisted on `payment_orders` and copied into `orders.order_data` at finalize time. **India-only:** non-IN `countryCode` returns 400 with `code: 'intl_not_supported'` — intl orders go via email enquiry (see [shipping.html](shipping.html) policy + `checkout-intl-block` in [index.html](index.html)). |
 | POST | `/api/payments/verify.php` | `{ razorpay_order_id, razorpay_payment_id, razorpay_signature }` | `{ ok, orderId, alreadyFinalized }` — verifies HMAC, decrements stock, creates the internal `orders` row. Idempotent. Works for both registered and guest payments — for guest rows (where `payment_orders.user_id IS NULL`) the HMAC signature alone is the gate (only Razorpay and the paying browser ever see it), so no Bearer-token session is required. |
+| POST | `/api/spin-wheel.php` | `{}` | `{ ok, prizeId, win, title, cond, code?, expiresAt? }` — the SERVER draws the slice and mints a single-use code reserved to the caller. 409 `{ reason: 'spun'\|'ordered'\|'busy'\|'disabled' }` when not eligible. See §48. |
 | GET | `/api/addresses.php` | — | `Address[]` (caller's saved addresses, default first) |
 | POST | `/api/addresses.php` | `{ id?, fullName, phone, line1, line2?, landmark?, city, state?, postalCode?, countryCode, label?, gstin?, isDefault? }` | `{ ok, address }` — `id` present = update, absent = create. Max 10 per user. |
 | DELETE | `/api/addresses.php?id=N` | — | `{ ok }` — hard delete; promotes the next address to default if needed |
@@ -551,6 +558,8 @@ All responses are JSON. All responses set `Cache-Control: no-store` (see [§10 L
 | GET | `/api/combos.php?all=1` | — | `Combo[]` including drafts |
 | POST | `/api/combos.php` | `{ id?, title, description?, image?, productIds: number[], status?, sortOrder? }` | `{ ok, combo }` — `id` present = update. Requires 2–12 product ids and every one must exist. |
 | DELETE | `/api/combos.php?id=N` | — | `{ ok }` |
+| GET | `/api/admin/spin-wheel.php` | — | `{ ok, config, stats, recent }` — Spin & Win settings, totals and the last 50 spins. |
+| POST | `/api/admin/spin-wheel.php` | `{ config }` | `{ ok, config }` — validated by `spin_validate_config()`; 422 with `errors[]` otherwise. |
 | GET | `/api/orders.php` | — | `Order[]` (all orders, joined with user info) |
 | GET | `/api/admin/users.php` | — | `User[]` (each row includes `orderCount`, `totalSpent`, `activeSessionCount`, `addressCount`, `notes`) |
 | POST | `/api/admin/users.php` | `{ action: "reset-password", userId, newPassword? }` | `{ ok, generated, newPassword? }` — if `newPassword` is omitted the server generates a strong temp password and returns it once. Always invalidates all sessions for the user. |
@@ -3613,3 +3622,75 @@ re-asserted after the explicit column counts (§46), and its cover is sized by
 width, not `height: 100%` (which grew sideways over the text). The hero dots'
 tap-area border needs `background-clip: padding-box` restated on every state
 that sets the `background` shorthand.
+
+## 48. Spin & Win welcome wheel
+
+A prize wheel for new members, on the homepage only. Admin → **Spin Wheel**
+edits the prizes and odds and shows who won what.
+
+| Piece | File |
+|---|---|
+| Config, eligibility, the draw, code minting | [api/_spin_helpers.php](api/_spin_helpers.php) |
+| Storefront endpoint (status + spin) | [api/spin-wheel.php](api/spin-wheel.php) |
+| Admin endpoint | [api/admin/spin-wheel.php](api/admin/spin-wheel.php) |
+| Storefront tab + modal | [src/js/storefront/spin-wheel.js](src/js/storefront/spin-wheel.js), [spin-wheel.css](src/styles/components/spin-wheel.css) |
+| Admin panel | [src/js/admin/spin-wheel.js](src/js/admin/spin-wheel.js), [spin-wheel.css](src/styles/admin/pages/spin-wheel.css) |
+| Guards | [tests/spin-wheel.php](tests/spin-wheel.php) |
+
+**The server draws the prize.** `POST /api/spin-wheel.php` picks the slice with
+`random_int` against the configured weights, mints the coupon, and only then
+does the browser animate the wheel to the slice it was told. A wheel that
+decided in the browser would let anyone land the jackpot from the console. The
+storefront is never sent the weights.
+
+**A win is an ordinary coupon.** One row in `coupons` per winner: single use,
+`customer_email` = the account's email, `expires_at` = today + validDays,
+`source = "spin"`. It is priced by the same `coupon_evaluate()` as every other
+code (§34), so there is no second discount path. `source = "spin"` keeps these
+codes out of the Coupons list and the rewards feed — they would otherwise bury
+the handful of codes the owner manages.
+
+**Two coupon capabilities were added for the prizes, and both are general:**
+
+- `type = 'free_shipping'` — discounts nothing; `create-order.php` sets shipping
+  to 0 when the evaluator returns `freeShipping`. This is the one deliberate
+  exception to "coupons never touch delivery" (§34), and it only exists as a
+  coupon type, never as a percentage that eats into shipping. `finalize_payment()`
+  now records a redemption for ANY bound code, not only one with a discount —
+  otherwise a single-use free-delivery code would never be used up.
+- `trigger_event = 'min_vinyl'` — N vinyl units in the cart ("10% off with 2+
+  LPs"). Counted by `coupon_vinyl_count()` from DB categories at every call site
+  (quote, create-order, rewards feed). Also selectable in the Coupons editor.
+
+**Who may spin** (`spin_eligibility()`): signed in; never spun (`spin_entries.user_id`
+is UNIQUE — also the lock against a double click); never completed an order as a
+member OR as a guest under the same email. So both brand-new signups and older
+members who have never bought qualify. Plus a per-IP cap
+(`SPIN_IP_DAILY_LIMIT`, 5/day) against throwaway accounts — generous on
+purpose, because Indian mobile carriers put many people behind one IP. Every
+failed lookup refuses, same asymmetry as the coupon triggers (§38).
+
+**What the customer reads is generated, never typed.** `spin_describe()` builds
+the slice text and the conditions line from the numbers, so the wheel cannot
+promise what the coupon does not enforce. `spinDescribe()` in the admin JS
+mirrors it for the live preview only; the test compares the two.
+
+**Placement follows §15 and §34:** homepage only (`SpinWheel.onPage()` from
+`initPage()` hides it everywhere else — do not relax this), a tab on the right
+edge rather than a popup, opened only by a click. After one spin — win or lose
+— the tab is gone for that account (server) and that browser
+(`localStorage.vv_spin_done`).
+
+**It ships disabled.** `spin_default_config()` has `enabled: false`, so a deploy
+changes nothing on the storefront until the owner has reviewed the prizes and
+switched it on. Saving a change affects future spins only; codes already won
+keep their terms, because the terms are on the coupon row.
+
+The prize email reuses `personal_coupon_email()` (now aware of free delivery
+and min-vinyl), goes through `marketing_contact_token()` so an unsubscribe is
+honoured, and is sent after the commit — a failed email never undoes a prize
+that is already on screen.
+
+Tables `spin_config` (one JSON row) and `spin_entries` are created on first
+use, and the `coupons.source` column and the `free_shipping` enum value are
+added on demand — no phpMyAdmin step.

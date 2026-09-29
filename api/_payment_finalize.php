@@ -189,7 +189,9 @@ function finalize_payment(PDO $pdo, string $razorpayOrderId, string $razorpayPay
         // redemption, and used_count cannot drift above the orders that
         // actually exist. INSERT IGNORE on order_id makes the verify+webhook
         // double-fire idempotent here too.
-        if ($couponCode !== '' && $couponDiscount > 0) {
+        // Any bound code, including a free-delivery one whose discount is 0 —
+        // otherwise a single-use free-delivery code would never be used up.
+        if ($couponCode !== '') {
             try {
                 $cRow = coupon_find($pdo, $couponCode);
                 if ($cRow) {

@@ -1536,6 +1536,9 @@
         var couponDiscount = (typeof Coupon !== 'undefined') ? Coupon.discount() : 0;
         var couponCode     = (typeof Coupon !== 'undefined') ? Coupon.code() : '';
         if (couponDiscount > subtotal) couponDiscount = subtotal;
+        // A free-delivery code shows delivery as FREE here; the server applies
+        // the same flag when it prices the order.
+        if (typeof Coupon !== 'undefined' && Coupon.freeShipping()) quote = Object.assign({}, quote, { freeShipping: true, shipping: 0 });
         var cartTotal = Math.max(0, total - couponDiscount);
         if (typeof Coupon !== 'undefined') Coupon.refresh();
         // A code parked by the email link (arrived with an empty cart, or

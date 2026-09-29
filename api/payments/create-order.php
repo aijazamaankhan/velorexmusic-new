@@ -247,10 +247,15 @@ try {
             array_filter($itemsSnapshot, 'is_array')
         ));
         $evald = coupon_evaluate($pdo, $couponCode, (int)$subtotal, $userId, $couponEmail,
-                                 ['itemCount' => $couponItemCount]);
+                                 ['itemCount'  => $couponItemCount,
+                                  'vinylCount' => coupon_vinyl_count($pdo, $quantities)]);
         if ($evald['ok']) {
             $couponDiscount = (int)$evald['discount'];
             $couponRow      = $evald['coupon'];
+            // Free-delivery code (spin-wheel prize). Waives shipping and
+            // nothing else; decided here, from the evaluator, never from the
+            // browser.
+            if (!empty($evald['freeShipping'])) $shipping = 0;
         } else {
             $couponError = $evald['error'];
         }
@@ -338,6 +343,7 @@ try {
         'mode'            => $creds['mode'],
         'subtotal'        => $subtotal,
         'shipping'        => $shipping,
+        'freeShipping'    => $couponRow !== null && (string)$couponRow['type'] === 'free_shipping',
         'discount'        => $couponDiscount,
         'couponCode'      => $couponRow !== null ? (string)$couponRow['code'] : null,
         // Present only when a code was sent and refused, so the cart can say

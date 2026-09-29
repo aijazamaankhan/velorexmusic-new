@@ -411,6 +411,7 @@
         abandoned: { t: 'Abandoned Carts', s: 'Baskets and checkouts that were walked away from' },
         subscribers: { t: 'Newsletter Subscribers', s: 'The mailing list, split by consent' },
         coupons:  { t: 'Discount Coupons', s: 'Codes customers can apply at checkout' },
+        spin:     { t: 'Spin & Win', s: 'The welcome wheel for new members' },
         policies: { t: 'Policy Pages', s: 'Shipping, returns, terms and privacy' },
         settings: { t: 'Store Configuration', s: 'Settings that actually change the shop' }
       };
@@ -442,6 +443,7 @@
       // panel is worse than a round trip.
       if (panelId === 'settings') loadSettings();
       if (panelId === 'coupons')  loadCoupons();
+      if (panelId === 'spin')     loadSpinWheel();
       if (panelId === 'policies') loadPolicies();
       if (panelId === 'seo') loadSeoPanel();
 

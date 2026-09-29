@@ -47,6 +47,14 @@
         return a && a.discount ? Number(a.discount) || 0 : 0;
       },
 
+      // A free-delivery code (spin-wheel prize) discounts nothing and waives
+      // shipping instead. DISPLAY only, like discount(): create-order.php
+      // decides the real shipping from the same evaluator.
+      freeShipping() {
+        const a = this.applied();
+        return !!(a && a.freeShipping);
+      },
+
       clear(silent) {
         this._store(null);
         if (!silent && typeof showToast === 'function') showToast('Coupon removed', 'info');
@@ -91,7 +99,7 @@
             return false;
           }
 
-          this._store({ code: data.code, discount: Number(data.discount) || 0, label: data.label || '' });
+          this._store({ code: data.code, discount: Number(data.discount) || 0, label: data.label || '', freeShipping: !!data.freeShipping });
           showToast(data.label ? (data.label + ' applied') : 'Coupon applied', 'success');
           this._repaintCart();
           // Returned so callers that ANNOUNCE the result — the reward card —
@@ -129,7 +137,7 @@
             body: JSON.stringify({ code: a.code, items: items }),
           });
           const data = await res.json().catch(function () { return {}; });
-          const before = this.discount();
+          const before = this.discount() + (this.freeShipping() ? 0.5 : 0);
           if (!data.ok) {
             // It no longer applies (cart dropped below the minimum, expired
             // while they shopped). Drop it and say so — a summary quietly
@@ -138,9 +146,9 @@
             this._store(null);
             if (typeof showToast === 'function') showToast(data.error || 'Coupon no longer applies', 'error');
           } else {
-            this._store({ code: data.code, discount: Number(data.discount) || 0, label: data.label || '' });
+            this._store({ code: data.code, discount: Number(data.discount) || 0, label: data.label || '', freeShipping: !!data.freeShipping });
           }
-          if (before !== this.discount()) this._repaintCart();
+          if (before !== this.discount() + (this.freeShipping() ? 0.5 : 0)) this._repaintCart();
         } catch (e) {
           /* leave the last known quote; checkout re-checks anyway */
         } finally {

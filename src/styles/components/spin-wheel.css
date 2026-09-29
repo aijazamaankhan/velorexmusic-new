@@ -1,0 +1,205 @@
+/* =============================================================================
+   Velorex Music — Spin & Win welcome wheel
+   Used by: index.html, driven by src/js/storefront/spin-wheel.js
+
+   Owns every .spin-* class. The modal is dark in BOTH themes — it is a
+   game surface built around a black record — so its colours are literals,
+   not tokens (the same reasoning as the page banners, CLAUDE.md §42).
+   ============================================================================= */
+
+/* ---- Launcher: a tab on the right edge, never a popup on arrival ---- */
+.spin-launcher {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  writing-mode: vertical-rl;
+  padding: 1rem 0.6rem;
+  border: 0;
+  border-radius: 12px 0 0 12px;
+  background: linear-gradient(180deg, #ed2c15, #b91c1c);
+  color: #fff;
+  font: 600 0.9rem var(--font-body, 'Poppins', sans-serif);
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: -6px 0 24px rgba(237, 44, 21, 0.35);
+  transform: translate(110%, -50%);
+  transition: transform 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+.spin-launcher.is-in { transform: translate(0, -50%); }
+.spin-launcher i { transform: rotate(90deg); }
+.spin-launcher:focus-visible { outline: 3px solid #ffd700; outline-offset: 2px; }
+
+/* ---- Overlay + modal ---- */
+.spin-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(5, 3, 9, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.spin-overlay[hidden] { display: none !important; }
+.spin-overlay.is-open { opacity: 1; }
+
+.spin-modal {
+  position: relative;
+  width: min(880px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 8px;
+  padding: 28px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #17121f;
+  color: #f4f1f8;
+  font-family: var(--font-body, 'Poppins', sans-serif);
+  text-align: left;
+}
+.spin-modal > * { min-width: 0; }
+
+.spin-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 3;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  color: #a79fb4;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.spin-close:hover { color: #fff; }
+
+/* ---- The wheel ---- */
+.spin-wheel-wrap { position: relative; display: grid; place-items: center; padding: 10px; }
+.spin-wheel {
+  width: 100%;
+  max-width: 380px;
+  font-family: var(--font-body, 'Poppins', sans-serif);
+  transition: transform 5.2s cubic-bezier(0.12, 0.72, 0.08, 1);
+  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.55));
+}
+.spin-pointer {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 2;
+  transform: translateX(-50%);
+  border-left: 16px solid transparent;
+  border-right: 16px solid transparent;
+  border-top: 30px solid #ffd700;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
+}
+.spin-hub {
+  position: absolute;
+  width: 22%;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 3px solid #ffd700;
+  background: radial-gradient(circle at 35% 30%, #3a2c4d, #0d0a14 70%);
+}
+.spin-hub img { width: 86%; height: 86%; display: block; }
+
+/* ---- Side column ---- */
+.spin-side { display: flex; flex-direction: column; justify-content: center; padding: 8px 8px 8px 4px; }
+.spin-step { display: flex; flex-direction: column; gap: 12px; }
+.spin-step[hidden] { display: none !important; }
+.spin-eyebrow { color: #ffd700; font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; overflow-wrap: anywhere; }
+.spin-title { margin: 0; font-size: 1.7rem; line-height: 1.2; color: #f4f1f8; }
+.spin-title em { font-style: normal; color: #ff5a42; }
+.spin-lead { margin: 0; color: #a79fb4; font-size: 0.92rem; line-height: 1.55; }
+.spin-field {
+  width: 100%;
+  padding: 13px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0f0b16;
+  color: #fff;
+  font: 16px var(--font-body, 'Poppins', sans-serif);   /* 16px: no iOS zoom on focus */
+}
+.spin-field:focus { outline: 2px solid #ed2c15; outline-offset: 1px; }
+.spin-check { display: flex; gap: 10px; align-items: flex-start; font-size: 0.8rem; color: #a79fb4; cursor: pointer; }
+.spin-check input { margin-top: 3px; accent-color: #ed2c15; }
+.spin-error { min-height: 1em; color: #ff8a7a; font-size: 0.82rem; }
+.spin-error:empty { min-height: 0; }
+.spin-btn { width: 100%; justify-content: center; }
+.spin-fine { margin: 0; font-size: 0.74rem; color: #a79fb4; line-height: 1.5; }
+.spin-fine a { color: #f4f1f8; }
+
+/* ---- Result ---- */
+.spin-prize { font-size: 1.9rem; font-weight: 800; line-height: 1.15; }
+.spin-cond { color: #a79fb4; font-size: 0.92rem; line-height: 1.5; }
+.spin-code {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 2px dashed #ffd700;
+  border-radius: 12px;
+  background: rgba(255, 215, 0, 0.05);
+}
+.spin-code[hidden] { display: none; }
+.spin-code code { font: 700 1.2rem ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: 0.12em; color: #ffd700; }
+.spin-code button {
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #ffd700;
+  color: #1a0a2e;
+  font: 600 0.85rem var(--font-body, 'Poppins', sans-serif);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.spin-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.spin-actions .btn { flex: 1 1 10rem; justify-content: center; }
+.spin-actions .btn[hidden] { display: none; }
+
+.spin-confetti {
+  position: fixed;
+  top: -14px;
+  z-index: 1300;
+  width: 9px;
+  height: 14px;
+  pointer-events: none;
+  animation: spin-confetti-fall linear forwards;
+}
+@keyframes spin-confetti-fall { to { transform: translateY(105vh) rotate(720deg); } }
+
+/* ---- Phones: wheel on top, form below ---- */
+@media (max-width: 760px) {
+  .spin-modal { grid-template-columns: 1fr; padding: 22px 16px 18px; gap: 4px; }
+  .spin-wheel { max-width: 250px; }
+  .spin-side { padding: 0; }
+  .spin-title { font-size: 1.35rem; }
+  .spin-prize { font-size: 1.55rem; }
+  .spin-launcher { padding: 0.85rem 0.5rem; font-size: 0.82rem; }
+}
+/* A short phone in landscape: the wheel would push the form off screen. */
+@media (max-height: 520px) and (max-width: 1024px) {
+  .spin-wheel { max-width: 170px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin-wheel { transition-duration: 0.6s; }
+  .spin-launcher, .spin-overlay { transition: none; }
+  .spin-confetti { display: none; }
+}

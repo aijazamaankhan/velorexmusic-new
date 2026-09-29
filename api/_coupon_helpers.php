@@ -36,7 +36,9 @@ function coupons_ensure_tables(PDO $pdo): void {
             'CREATE TABLE IF NOT EXISTS coupons (
                 id            INT PRIMARY KEY AUTO_INCREMENT,
                 code          VARCHAR(40) NOT NULL,
-                type          ENUM("percent","fixed") NOT NULL DEFAULT "percent",
+                -- free_shipping waives delivery and discounts nothing; issued by
+                -- the spin wheel (api/_spin_helpers.php), not by the admin form.
+                type          ENUM("percent","fixed","free_shipping") NOT NULL DEFAULT "percent",
                 -- percent: 1..90. fixed: whole RUPEES (never paise — the money
                 -- crossing the Razorpay wire is paise, but everything a human
                 -- types here is rupees, and mixing the two is how you ship a
@@ -63,6 +65,11 @@ function coupons_ensure_tables(PDO $pdo): void {
                 -- assert would be no trigger at all.
                 trigger_event VARCHAR(24) NOT NULL DEFAULT "none",
                 trigger_value INT NULL,
+                -- "admin" = typed into the Coupons panel. "spin" = minted by the
+                -- spin wheel, one per winner; kept out of the Coupons list and
+                -- the rewards feed so thousands of personal codes do not bury
+                -- the handful the owner actually manages.
+                source        VARCHAR(16) NOT NULL DEFAULT "admin",
                 created_at    TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at    TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 UNIQUE KEY uq_coupon_code (code),
@@ -109,6 +116,25 @@ function coupons_ensure_tables(PDO $pdo): void {
             // Degrades to "no coupon has a trigger", which is exactly how the
             // feature behaved before it existed.
             error_log('[coupons] trigger columns unavailable: ' . $e->getMessage());
+        }
+        try {
+            $has = $pdo->query("SHOW COLUMNS FROM coupons LIKE 'source'")->fetchAll();
+            if (!$has) {
+                $pdo->exec('ALTER TABLE coupons ADD COLUMN source VARCHAR(16) NOT NULL DEFAULT "admin"');
+            }
+        } catch (Throwable $e) {
+            error_log('[coupons] source column unavailable: ' . $e->getMessage());
+        }
+        try {
+            $col = $pdo->query("SHOW COLUMNS FROM coupons LIKE 'type'")->fetch();
+            if ($col && strpos((string)($col['Type'] ?? ''), 'free_shipping') === false) {
+                $pdo->exec('ALTER TABLE coupons MODIFY COLUMN type
+                              ENUM("percent","fixed","free_shipping") NOT NULL DEFAULT "percent"');
+            }
+        } catch (Throwable $e) {
+            // Without it the wheel's free-delivery prize cannot be minted; the
+            // spin endpoint then refuses that prize rather than inventing one.
+            error_log('[coupons] free_shipping type unavailable: ' . $e->getMessage());
         }
         $done = true;
     } catch (Throwable $e) {
@@ -194,6 +220,10 @@ function coupon_find(PDO $pdo, string $code): ?array {
 //   min_items     The cart holds at least trigger_value units. This is the one
 //                 the CART satisfies rather than the customer, so it is
 //                 re-checked on every quote and again at create-order time.
+//   min_vinyl     The cart holds at least trigger_value units whose category is
+//                 vinyl ("10% off with 2+ LPs"). Cart-shaped like min_items; the
+//                 count is context['vinylCount'], derived by the caller from the
+//                 same DB rows it priced.
 //
 // A guest with no email cannot satisfy an identity trigger, and is told to sign
 // in rather than "invalid" — the code is real, they just are not yet someone we
@@ -207,6 +237,7 @@ function coupon_trigger_labels(): array {
         'first_order'  => 'Has not ordered before',
         'repeat_order' => 'Has ordered before',
         'min_items'    => 'Cart holds enough items',
+        'min_vinyl'    => 'Cart holds enough vinyl records',
     ];
 }
 
@@ -233,6 +264,16 @@ function coupon_trigger_check(PDO $pdo, array $c, ?int $userId, ?string $email, 
         if ($have < $need) {
             $short = $need - $have;
             return 'Add ' . $short . ' more item' . ($short === 1 ? '' : 's') . ' to use this coupon';
+        }
+        return '';
+    }
+
+    if ($trigger === 'min_vinyl') {
+        $need = max(1, $n);
+        $have = (int)($context['vinylCount'] ?? 0);
+        if ($have < $need) {
+            $short = $need - $have;
+            return 'Add ' . $short . ' more vinyl record' . ($short === 1 ? '' : 's') . ' to use this coupon';
         }
         return '';
     }
@@ -416,6 +457,12 @@ function coupon_evaluate(PDO $pdo, string $code, int $subtotal, ?int $userId, ?s
     $type  = (string)$c['type'];
     $value = (int)$c['value'];
 
+    if ($type === 'free_shipping') {
+        // Waives delivery, discounts no goods. create-order.php sets shipping
+        // to zero when it sees freeShipping; nothing else changes the charge.
+        return ['ok' => true, 'discount' => 0, 'freeShipping' => true, 'coupon' => $c, 'label' => 'Free delivery'];
+    }
+
     if ($type === 'percent') {
         $discount = (int)floor($subtotal * $value / 100);
         $cap = $c['max_discount'] !== null ? (int)$c['max_discount'] : 0;
@@ -433,7 +480,41 @@ function coupon_evaluate(PDO $pdo, string $code, int $subtotal, ?int $userId, ?s
 
     if ($discount <= 0) return $fail('This coupon does not apply to your cart');
 
-    return ['ok' => true, 'discount' => $discount, 'coupon' => $c, 'label' => $label];
+    return ['ok' => true, 'discount' => $discount, 'freeShipping' => false, 'coupon' => $c, 'label' => $label];
+}
+
+// Vinyl units in a cart, for the min_vinyl trigger. $qtyById is the id => qty
+// map the caller built; categories are read from the DB, never the request.
+function coupon_vinyl_count(PDO $pdo, array $qtyById): int {
+    if (!$qtyById) return 0;
+    try {
+        $ph = implode(',', array_fill(0, count($qtyById), '?'));
+        $st = $pdo->prepare("SELECT id, category FROM products WHERE id IN ($ph)");
+        $st->execute(array_keys($qtyById));
+        $n = 0;
+        foreach ($st->fetchAll() as $r) {
+            if (strtolower((string)$r['category']) === 'vinyl') $n += (int)($qtyById[(int)$r['id']] ?? 0);
+        }
+        return $n;
+    } catch (Throwable $e) {
+        // 0 fails a min_vinyl trigger, which is the safe direction.
+        error_log('[coupons] vinyl count failed: ' . $e->getMessage());
+        return 0;
+    }
+}
+
+// Spin-wheel codes are excluded from the admin list and the rewards feed.
+// Only filter when the column exists, so an install whose ALTER failed keeps
+// working exactly as before.
+function coupons_source_ready(PDO $pdo): bool {
+    static $ready = null;
+    if ($ready !== null) return $ready;
+    try {
+        $ready = (bool)$pdo->query("SHOW COLUMNS FROM coupons LIKE 'source'")->fetchAll();
+    } catch (Throwable $e) {
+        $ready = false;
+    }
+    return $ready;
 }
 
 // The public shape of a coupon — never the internal counters.

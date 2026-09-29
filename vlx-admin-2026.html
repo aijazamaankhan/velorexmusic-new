@@ -35,6 +35,7 @@
   <link rel="stylesheet" href="src/styles/admin/pages/dashboard.css?v=ef59ea1f">
   <link rel="stylesheet" href="src/styles/admin/pages/settings.css?v=1424a29b">
   <link rel="stylesheet" href="src/styles/admin/pages/coupons.css?v=5d57fc72">
+  <link rel="stylesheet" href="src/styles/admin/pages/spin-wheel.css?v=951b3d3a">
   <link rel="stylesheet" href="src/styles/admin/pages/policies.css?v=95601739">
   <!-- Phone/tablet bottom tab bar; see src/js/admin/tabbar.js. -->
   <link rel="stylesheet" href="src/styles/admin/components/tabbar.css?v=401340f7">
@@ -50,7 +51,7 @@
        script-scope. Load order: main first (defines shared helpers like
        adminAuthHeaders, switchPanel), then per-panel files, then toast last
        (the admin showToast — different shape from the storefront's). -->
-  <script src="src/js/admin/main.js?v=c418c1f2"></script>
+  <script src="src/js/admin/main.js?v=a3cc4411"></script>
   <script src="src/js/admin/customers.js?v=127735c1"></script>
   <script src="src/js/admin/orders.js?v=5f5e6bfb"></script>
   <script src="src/js/admin/invoice.js?v=bdbd72dd"></script>
@@ -63,7 +64,8 @@
   <script src="src/js/admin/marketing.js?v=cf88524c"></script>
   <script src="src/js/admin/dashboard.js?v=1e0ccbd7"></script>
   <script src="src/js/admin/settings.js?v=da6da734"></script>
-  <script src="src/js/admin/coupons.js?v=a50b3c38"></script>
+  <script src="src/js/admin/coupons.js?v=002f5d5b"></script>
+  <script src="src/js/admin/spin-wheel.js?v=80ce3014"></script>
   <script src="src/js/admin/seo.js?v=016a02b4"></script>
   <script src="src/js/admin/policies.js?v=e5841fa0"></script>
   <script src="src/js/admin/toast.js?v=9a4bf3e8"></script>
@@ -175,6 +177,11 @@
         <li class="nav-item">
           <a href="#" class="nav-link" data-nav="coupons" onclick="switchPanel('coupons', this)">
             <i class="fas fa-tags"></i> Coupons
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#" class="nav-link" data-nav="spin" onclick="switchPanel('spin', this)">
+            <i class="fas fa-dharmachakra"></i> Spin Wheel
           </a>
         </li>
         <li class="nav-item">
@@ -756,6 +763,15 @@
            (CLAUDE.md §17). -->
       <div id="panel-coupons" class="panel">
         <div id="coupons-body"></div>
+      </div>
+
+      <!-- ==================== SPIN WHEEL ====================
+           Rendered by renderSpinWheel() in src/js/admin/spin-wheel.js. The
+           prize is DRAWN on the server (api/spin-wheel.php) and each win is an
+           ordinary single-use row in `coupons`, reserved to the winner — so
+           checkout prices it exactly like any other code (CLAUDE.md §48). -->
+      <div id="panel-spin" class="panel">
+        <div id="spin-body"></div>
       </div>
 
       <!-- ==================== SETTINGS ====================
