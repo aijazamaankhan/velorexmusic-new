@@ -74,7 +74,12 @@ try {
     // number the server re-priced — never a count the browser sent alongside.
     $itemCount = array_sum(array_map('intval', $ids));
 
-    $res = coupon_evaluate($pdo, $code, (int)$subtotal, $userId, null, ['itemCount' => $itemCount]);
+    // Vinyl units, for a min_vinyl trigger ("10% off with 2+ LPs"). Same map,
+    // categories read from the DB.
+    $vinylCount = coupon_vinyl_count($pdo, $ids);
+
+    $res = coupon_evaluate($pdo, $code, (int)$subtotal, $userId, null,
+                           ['itemCount' => $itemCount, 'vinylCount' => $vinylCount]);
     if (!$res['ok']) {
         echo json_encode(['ok' => false, 'error' => $res['error'], 'subtotal' => $subtotal]);
         exit;
@@ -85,6 +90,9 @@ try {
         'code'     => coupon_normalize_code($code),
         'discount' => (int)$res['discount'],
         'label'    => (string)$res['label'],
+        // A free-delivery code discounts nothing; the cart shows delivery as
+        // FREE instead. create-order.php applies the same flag to the charge.
+        'freeShipping' => !empty($res['freeShipping']),
         'subtotal' => $subtotal,
     ]);
 } catch (Throwable $e) {

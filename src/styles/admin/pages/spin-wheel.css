@@ -1,0 +1,73 @@
+/* =============================================================================
+   Velorex Music — admin Spin Wheel panel (#panel-spin)
+   Used by: vlx-admin-2026.html, rendered by src/js/admin/spin-wheel.js
+
+   Owns every .spw-* class. Cards, panels and the table reuse the Dashboard
+   and Coupons styles (.dash-*, .admin-card, .admin-table, .cpn-*), so the
+   panel reads as the same product.
+   ============================================================================= */
+
+.spw-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.spw-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.spw-bar label { display: inline-flex; align-items: center; gap: 0.4rem; }
+.spw-live { margin: 0; }
+
+.spw-num {
+  width: 5.5rem;
+  min-width: 4.5rem;
+  padding: 0.45rem 0.55rem;
+}
+.spw-bar .spw-num { width: 4.5rem; }
+
+.spw-color {
+  width: 40px;
+  height: 34px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.spw-table { min-width: 980px; }
+.spw-table td { vertical-align: middle; }
+.spw-table select.form-control { min-width: 9.5rem; }
+.spw-off td { opacity: 0.45; }
+.spw-off td:first-child { opacity: 1; }
+
+.spw-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 1.25rem;
+  align-items: start;
+}
+.spw-layout > * { min-width: 0; }
+.spw-preview-wrap { display: grid; gap: 0.5rem; justify-items: center; }
+.spw-preview { width: 100%; max-width: 220px; font-family: inherit; }
+
+@media (max-width: 1280px) {
+  .spw-layout { grid-template-columns: minmax(0, 1fr); }
+  .spw-preview-wrap { order: -1; }
+  .spw-preview { max-width: 200px; }
+}
+
+/* iOS zooms any focused field under 16px. */
+@media (max-width: 1024px) {
+  .spw-num, .spw-table select.form-control { font-size: 16px; }
+}

@@ -105,14 +105,21 @@
       setCheckoutIntlBlocked(false);
 
       var quote = Shipping.calculate(subtotal, addr, Shipping.cartShippingItems());
-      var total = subtotal + quote.shipping;
+      // Applied coupon, for the PREVIEW. create-order.php re-derives both the
+      // discount and a free-delivery waiver; this only keeps the number shown
+      // here in step with the cart's Order Summary.
+      var hasCoupon = typeof Coupon !== 'undefined' && Coupon.code();
+      if (hasCoupon && Coupon.freeShipping()) quote = Object.assign({}, quote, { freeShipping: true, shipping: 0 });
+      var couponOff = hasCoupon ? Math.min(Coupon.discount(), subtotal) : 0;
+      var total = subtotal - couponOff + quote.shipping;
 
       var amtEl = document.getElementById('payment-amount-display');
       if (amtEl) amtEl.textContent = '₹' + total.toLocaleString();
 
       var lineEl = document.getElementById('payment-summary-line');
       if (!lineEl) return;
-      var subPart = 'Subtotal ₹' + subtotal.toLocaleString();
+      var subPart = 'Subtotal ₹' + subtotal.toLocaleString()
+        + (couponOff > 0 ? ' · Discount −₹' + couponOff.toLocaleString() : '');
       var shipPart;
       if (quote.freeShipping) {
         shipPart = ' · Shipping <span style="color:var(--success);font-weight:600;">FREE</span>';

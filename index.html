@@ -187,7 +187,7 @@
        end up in script-scope; the inline <script> at the bottom of <body>
        just bootstraps DOMContentLoaded. -->
   <script src="src/js/storefront/carriers.js?v=488bf189" defer></script>
-  <script src="src/js/storefront/pages.js?v=46e148ec" defer></script>
+  <script src="src/js/storefront/pages.js?v=faed4e73" defer></script>
   <!-- Blog views. Must load before router.js, whose initPage dispatcher calls
        initPageBlog / initPageBlogPost. -->
   <!-- Homepage hero carousel. Must load before router.js: its initPage
@@ -202,7 +202,10 @@
   <script src="src/js/storefront/music-history.js?v=45f7aa17" defer></script>
     <script src="src/js/storefront/music-history-audio.js?v=7b77bb14" defer></script>
   <script src="src/js/storefront/site-settings.js?v=609ed945" defer></script>
-  <script src="src/js/storefront/coupon.js?v=bcf00ad5" defer></script>
+  <script src="src/js/storefront/coupon.js?v=e4aa8cd9" defer></script>
+  <!-- Spin & Win welcome wheel. Homepage only; the SERVER draws the prize.
+       Off until switched on in Admin → Spin Wheel. See its header. -->
+  <script src="src/js/storefront/spin-wheel.js?v=c4e6511d" defer></script>
   <!-- Newsletter signup. Bound from router.js's boot and from the inline
        onclick on the homepage form. -->
   <script src="src/js/storefront/newsletter.js?v=ee512e2d" defer></script>
@@ -212,7 +215,7 @@
   <!-- Label band built from the catalogue; must load before router.js,
        whose initPage calls initPageIndex → LabelBand.render(). -->
   <script src="src/js/storefront/label-band.js?v=b3c7cb0f" defer></script>
-  <script src="src/js/storefront/router.js?v=c35f2ff3" defer></script>
+  <script src="src/js/storefront/router.js?v=9f8bd1d0" defer></script>
   <!-- Phone tab bar + menu accordion. Presentation only; see its header. -->
   <script src="src/js/storefront/app-shell.js?v=939b2cea" defer></script>
   <!-- Footer credit popup (Velorex Studio enquiry, emailed; nothing stored). -->
@@ -220,7 +223,7 @@
   <script src="src/js/storefront/effects.js?v=88ec3bd8" defer></script>
   <!-- Card button reads "In Cart" once that record is in the cart. -->
   <script src="src/js/storefront/card-cart-state.js?v=84d18bcf" defer></script>
-  <script src="src/js/storefront/checkout.js?v=f539fe43" defer></script>
+  <script src="src/js/storefront/checkout.js?v=12196807" defer></script>
   <!-- Design tokens + base reset are extracted to standalone CSS files so
        they can be shared between the storefront pages without duplication.
        See src/styles/tokens.css and src/styles/base.css. -->
@@ -238,6 +241,7 @@
   <link rel="stylesheet" href="src/styles/components/trust-band.css?v=8edcca10">
   <link rel="stylesheet" href="src/styles/components/announcement.css?v=7b03a99d">
   <link rel="stylesheet" href="src/styles/components/coupon.css?v=b93368bf">
+  <link rel="stylesheet" href="src/styles/components/spin-wheel.css?v=7c256907">
   <link rel="stylesheet" href="src/styles/components/ads.css?v=e52c803f">
   <link rel="stylesheet" href="src/styles/components/music-history.css?v=4d557c98">
   <link rel="stylesheet" href="src/styles/components/label-band.css?v=1dae659a">

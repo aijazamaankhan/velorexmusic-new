@@ -530,6 +530,12 @@
         try { AdSense.teardown(); } catch (e) {}
       }
 
+      // Spin & Win lives on the homepage only; every other navigation hides
+      // its tab and closes the wheel. See src/js/storefront/spin-wheel.js.
+      if (typeof SpinWheel !== 'undefined') {
+        try { SpinWheel.onPage(page); } catch (e) {}
+      }
+
       if (page === 'index') initPageIndex();
       else if (page === 'products') initPageProducts(params);
       else if (page === 'product') initPageProduct(params);

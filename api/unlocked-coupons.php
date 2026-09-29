@@ -65,6 +65,7 @@ try {
             $subtotal += ((int)$r['price']) * (int)$qty[(int)$r['id']];
         }
     }
+    $vinylCount = coupon_vinyl_count($pdo, $qty);
 
     $userId = current_user_id_or_null();
 
@@ -81,6 +82,7 @@ try {
                 AND (expires_at IS NULL OR expires_at >= NOW())
                 AND (usage_limit IS NULL OR used_count < usage_limit)
                 AND (customer_email IS NULL OR customer_email = "" OR customer_email = :me)
+                ' . (coupons_source_ready($pdo) ? 'AND source <> "spin"' : '') . '
               ORDER BY featured DESC, value DESC
               LIMIT 40'
         );
@@ -101,7 +103,7 @@ try {
         if ($trigger === '' || $trigger === 'none') continue;
 
         $res = coupon_evaluate($pdo, (string)$c['code'], (int)$subtotal, $userId, null,
-                               ['itemCount' => $itemCount]);
+                               ['itemCount' => $itemCount, 'vinylCount' => $vinylCount]);
         if (!$res['ok']) continue;
 
         $pub = coupon_public($c);

@@ -42,7 +42,7 @@ try {
     // Where the signup came from, for reporting. Constrained to a known set —
     // this string is rendered in the admin panel, and an allowlist is simpler
     // to reason about than escaping a free-text field on every read.
-    $allowedSources = ['newsletter', 'footer', 'checkout', 'signup', 'popup'];
+    $allowedSources = ['newsletter', 'footer', 'checkout', 'signup', 'popup', 'spin-wheel'];
     $source = (string)($body['source'] ?? 'newsletter');
     if (!in_array($source, $allowedSources, true)) $source = 'newsletter';
 

@@ -128,7 +128,10 @@ function coupon_admin_validate(array $in): array {
     // where it means something — a stray number against "subscribe" would be a
     // setting that silently does nothing.
     $tv = ($in['triggerValue'] ?? '') === '' ? null : (int)$in['triggerValue'];
-    if ($trigger === 'min_items') {
+    if ($trigger === 'min_vinyl') {
+        if ($tv === null || $tv < 1) $errors['triggerValue'] = 'Enter 1 or more records';
+        if ($tv !== null && $tv > 99) $errors['triggerValue'] = 'That is implausibly many';
+    } elseif ($trigger === 'min_items') {
         if ($tv === null || $tv < 2) $errors['triggerValue'] = 'Enter 2 or more items';
         if ($tv !== null && $tv > 99) $errors['triggerValue'] = 'That is implausibly many';
     } elseif ($trigger === 'repeat_order') {
@@ -157,7 +160,9 @@ try {
     coupons_ensure_tables($pdo);
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-        $rows = $pdo->query('SELECT * FROM coupons ORDER BY status ASC, updated_at DESC')->fetchAll();
+        // Spin-wheel codes (one per winner) live on the Spin Wheel panel.
+        $where = coupons_source_ready($pdo) ? ' WHERE source <> "spin"' : '';
+        $rows = $pdo->query('SELECT * FROM coupons' . $where . ' ORDER BY status ASC, updated_at DESC')->fetchAll();
         echo json_encode([
             'ok'      => true,
             'coupons' => array_map('coupon_admin_shape', $rows),
