@@ -1,37 +1,72 @@
 /* =============================================================================
-   Velorex Music — Spin & Win welcome wheel (storefront)
+   Velorex Music — Spin & Win welcome game (storefront controller)
    Used by: index.html, driven from initPage() in router.js (SpinWheel.onPage)
 
    WHAT THIS FILE DOES NOT DO: pick the prize.
-   POST /api/spin-wheel.php draws the winning slice on the server and mints
-   the coupon; this file then animates the wheel to the slice it was told.
-   The words on each slice come from the server too (spin_describe() in
-   api/_spin_helpers.php), so the wheel cannot advertise a condition the
-   coupon does not enforce. See CLAUDE.md §48.
+   POST /api/spin-wheel.php draws the result on the server and mints the
+   coupon; the game (src/js/storefront/spin-games.js) then animates towards
+   the answer it was given. The words on each prize come from the server too
+   (spin_describe() in api/_spin_helpers.php), so no game can advertise a
+   condition the coupon does not enforce. See CLAUDE.md §48.
+
+   This file owns the parts every game style shares: the launcher tab, the
+   modal, creating an account or signing in, the one POST, and the result.
 
    Constraints, all deliberate:
      - HOMEPAGE ONLY. Product and category URLs are what people land on from
        search; a game on those pages is an interruption (§15).
-     - A TAB, NOT A POPUP. The wheel opens only when the tab is clicked, so
-       nothing covers the page on arrival (Google's intrusive-interstitial
-       rule, the same one the promo card follows — §34).
-     - GONE AFTER ONE SPIN. Win or lose, the tab never comes back for that
+     - A TAB, NOT A POPUP. The game opens only when the tab is clicked, so
+       nothing covers the page on arrival (the intrusive-interstitial rule the
+       promo card also follows — §34).
+     - GONE AFTER ONE PLAY. Win or lose, the tab never comes back for that
        account (server) or that browser (localStorage flag).
 
    Cross-module touch points (resolved at runtime):
      - API_BASE, Auth, Utils.escape, showToast, Storage, Coupon, CouponLink,
-       injectNavbar, navigate
+       injectNavbar, navigate, SpinGames
    ============================================================================= */
+
+    // Per-style wording. Mirrors SPIN_GAME_STYLES in api/_spin_helpers.php.
+    const SPIN_STYLE_TEXT = {
+      wheel:    { tab: 'Spin & Win',    icon: 'fa-dharmachakra', eyebrow: 'Welcome gift · one spin',
+                  title: 'Your spin is<br><em>ready</em>', lead: 'One spin per member. Most slices win a reward — good luck!',
+                  btn: '<i class="fas fa-compact-disc"></i> Spin now' },
+      jackpot:  { tab: 'Play & Win',    icon: 'fa-bolt', eyebrow: 'Welcome gift · one pull',
+                  title: 'Pull the lever,<br><em>hit the jackpot</em>', lead: 'Three of a kind wins that prize. One pull per member.',
+                  btn: '<i class="fas fa-hand-pointer"></i> Pull the lever' },
+      scratch:  { tab: 'Scratch & Win', icon: 'fa-ticket', eyebrow: 'Welcome gift · one card',
+                  title: 'Scratch to<br><em>reveal your gift</em>', lead: 'Rub the gold foil with your finger or mouse to see what you won.',
+                  btn: '<i class="fas fa-hand-sparkles"></i> Reveal it for me' },
+      box:      { tab: 'Open & Win',    icon: 'fa-gift', eyebrow: 'Welcome gift · pick one',
+                  title: 'Choose a box,<br><em>open your gift</em>', lead: 'Tap any box — your gift is inside.',
+                  btn: '<i class="fas fa-gift"></i> Pick one for me' },
+      record:   { tab: 'Pick & Win',    icon: 'fa-record-vinyl', eyebrow: 'Welcome gift · pick a sleeve',
+                  title: 'Pick a record,<br><em>drop the needle</em>', lead: 'Your prize is printed on the label.',
+                  btn: '<i class="fas fa-record-vinyl"></i> Pick one for me' },
+      envelope: { tab: 'Open & Win',    icon: 'fa-envelope-open-text', eyebrow: 'Welcome gift · one envelope',
+                  title: 'Open your<br><em>lucky envelope</em>', lead: 'Tap the envelope to break the seal.',
+                  btn: '<i class="fas fa-envelope-open"></i> Open it' },
+    };
 
     const SpinWheel = {
       DONE_KEY: 'vv_spin_done',
+      TERMS_URL: '/offer-terms.html',
       state: null,
       _loading: null,
       _page: null,
       _shownOnce: false,
       _timer: null,
-      _rotation: 0,
-      _busy: false,
+      _game: null,
+      _playing: false,     // a play has been committed (button pressed / item picked)
+      _animating: false,   // the reveal animation is running; closing would hide it
+      _result: null,       // what the server said, once it has
+      _shown: false,       // whether the result screen has been shown
+
+      _style() {
+        const s = this.state && this.state.gameStyle;
+        return SPIN_STYLE_TEXT[s] ? s : 'wheel';
+      },
+      _text() { return SPIN_STYLE_TEXT[this._style()]; },
 
       _done() {
         try { return localStorage.getItem(this.DONE_KEY) === '1'; } catch (e) { return false; }
@@ -70,13 +105,10 @@
         if (this._page !== 'index' || this._done() || !s || !s.enabled) return;
         if (!Array.isArray(s.prizes) || s.prizes.length < 2) return;
         if (s.signedIn && !s.eligible) {
-          // Already spun or already a customer: this account never sees it.
           if (s.reason === 'spun' || s.reason === 'ordered') this._markDone();
           return;
         }
-        // The delay applies to the first appearance only; coming back to the
-        // homepage later shows the tab straight away rather than making the
-        // visitor wait for it again.
+        // The delay applies to the first appearance only.
         const delay = this._shownOnce ? 0 : Math.max(0, Number(s.delaySec) || 0) * 1000;
         clearTimeout(this._timer);
         this._timer = setTimeout(() => {
@@ -89,15 +121,17 @@
 
       _ensureLauncher() {
         let b = document.getElementById('spin-launcher');
-        if (b) return b;
-        b = document.createElement('button');
-        b.type = 'button';
-        b.id = 'spin-launcher';
-        b.className = 'spin-launcher';
-        b.setAttribute('aria-haspopup', 'dialog');
-        b.innerHTML = '<i class="fas fa-gift" aria-hidden="true"></i><span>Spin &amp; Win</span>';
-        b.addEventListener('click', () => this.open());
-        document.body.appendChild(b);
+        const t = this._text();
+        if (!b) {
+          b = document.createElement('button');
+          b.type = 'button';
+          b.id = 'spin-launcher';
+          b.className = 'spin-launcher';
+          b.setAttribute('aria-haspopup', 'dialog');
+          b.addEventListener('click', () => this.open());
+          document.body.appendChild(b);
+        }
+        b.innerHTML = '<i class="fas fa-gift" aria-hidden="true"></i><span>' + Utils.escape(t.tab) + '</span>';
         return b;
       },
       _hideLauncher() {
@@ -116,7 +150,8 @@
         if (!this.state || !this.state.enabled) return;
         let ov = document.getElementById('spin-overlay');
         if (!ov) ov = this._buildModal();
-        this._drawWheel();
+        this._applyText();
+        if (!this._playing) this._mountGame();
         this._showStep(typeof Auth !== 'undefined' && Auth.isLoggedIn() ? 'spin' : 'signup');
         ov.hidden = false;
         requestAnimationFrame(() => ov.classList.add('is-open'));
@@ -129,16 +164,27 @@
       close() {
         const ov = document.getElementById('spin-overlay');
         if (!ov || ov.hidden) return;
-        if (this._busy) return;   // never close mid-spin: the result would be lost from view
+        if (this._animating) return;   // never close mid-reveal: the result would be lost from view
         ov.classList.remove('is-open');
         ov.hidden = true;
         document.removeEventListener('keydown', this._onKey);
+        // Closed after the server answered but before the reveal finished (a
+        // half-scratched card). The prize is real and already emailed; say so.
+        if (this._result && !this._shown) {
+          this._shown = true;
+          const r = this._result;
+          if (typeof showToast === 'function') {
+            showToast(r.win ? ('You won ' + r.title + ' — code ' + r.code + ' is in your email') : 'Thanks for playing!', r.win ? 'success' : 'info');
+          }
+        }
         if (this._lastFocus && this._lastFocus.focus && document.body.contains(this._lastFocus)) this._lastFocus.focus();
       },
 
       _onKey(e) { if (e.key === 'Escape') SpinWheel.close(); },
 
       _buildModal() {
+        const agree = '<p class="spin-fine spin-agree">By playing you agree to the '
+          + '<a href="' + this.TERMS_URL + '" target="_blank" rel="noopener">Spin &amp; Win Terms</a>.</p>';
         const ov = document.createElement('div');
         ov.id = 'spin-overlay';
         ov.className = 'spin-overlay';
@@ -149,18 +195,14 @@
         ov.innerHTML = ''
           + '<div class="spin-modal">'
           +   '<button type="button" class="spin-close" aria-label="Close" onclick="SpinWheel.close()"><i class="fas fa-xmark"></i></button>'
-          +   '<div class="spin-wheel-wrap" aria-hidden="true">'
-          +     '<div class="spin-pointer"></div>'
-          +     '<svg class="spin-wheel" id="spin-wheel-svg" viewBox="-200 -200 400 400"></svg>'
-          +     '<div class="spin-hub"><img src="/src/img/logo-mark.svg" alt="" width="64" height="64"></div>'
-          +   '</div>'
+          +   '<div class="spin-stage" id="spin-stage"></div>'
           +   '<div class="spin-side">'
 
           // Step: create account
           +     '<form class="spin-step" data-step="signup" onsubmit="event.preventDefault();SpinWheel.signup();">'
-          +       '<div class="spin-eyebrow">Welcome gift · one spin</div>'
-          +       '<h2 id="spin-heading" class="spin-title">Create your account,<br><em>spin to win</em></h2>'
-          +       '<p class="spin-lead">New members get one free spin. Your prize is saved to your account and ready at checkout.</p>'
+          +       '<div class="spin-eyebrow" data-t="eyebrow"></div>'
+          +       '<h2 id="spin-heading" class="spin-title">Create your account,<br><em>play to win</em></h2>'
+          +       '<p class="spin-lead">New members get one free play. Your prize is saved to your account and ready at checkout.</p>'
           +       '<input class="spin-field" id="spin-first" type="text" placeholder="First name" autocomplete="given-name" required>'
           +       '<input class="spin-field" id="spin-email" type="email" placeholder="you@example.com" autocomplete="email" required>'
           +       '<input class="spin-field" id="spin-pass" type="password" placeholder="Password (8+ characters)" autocomplete="new-password" minlength="8" required>'
@@ -168,28 +210,31 @@
           +       '<div class="spin-error" data-err="signup" role="alert"></div>'
           +       '<button type="submit" class="btn btn-primary spin-btn"><i class="fas fa-user-plus"></i> Create account &amp; continue</button>'
           +       '<p class="spin-fine">Already a member? <a href="#" onclick="event.preventDefault();SpinWheel._showStep(\'login\')">Sign in</a></p>'
+          +       agree
           +     '</form>'
 
           // Step: sign in
           +     '<form class="spin-step" data-step="login" hidden onsubmit="event.preventDefault();SpinWheel.login();">'
-          +       '<div class="spin-eyebrow">Welcome gift · one spin</div>'
-          +       '<h2 class="spin-title">Sign in to<br><em>spin the wheel</em></h2>'
-          +       '<p class="spin-lead">The wheel is for members who have not placed an order yet.</p>'
+          +       '<div class="spin-eyebrow" data-t="eyebrow"></div>'
+          +       '<h2 class="spin-title">Sign in to<br><em>play</em></h2>'
+          +       '<p class="spin-lead">The game is for members who have not placed an order yet.</p>'
           +       '<input class="spin-field" id="spin-login-email" type="email" placeholder="you@example.com" autocomplete="email" required>'
           +       '<input class="spin-field" id="spin-login-pass" type="password" placeholder="Password" autocomplete="current-password" required>'
           +       '<div class="spin-error" data-err="login" role="alert"></div>'
           +       '<button type="submit" class="btn btn-primary spin-btn"><i class="fas fa-right-to-bracket"></i> Sign in &amp; continue</button>'
           +       '<p class="spin-fine">New here? <a href="#" onclick="event.preventDefault();SpinWheel._showStep(\'signup\')">Create an account</a></p>'
+          +       agree
           +     '</form>'
 
-          // Step: spin
+          // Step: play
           +     '<div class="spin-step" data-step="spin" hidden>'
           +       '<div class="spin-eyebrow"><i class="fas fa-circle-check"></i> <span id="spin-who"></span></div>'
-          +       '<h2 class="spin-title">Your spin is<br><em>ready</em></h2>'
-          +       '<p class="spin-lead">One spin per member. Most slices win a reward — good luck!</p>'
+          +       '<h2 class="spin-title" data-t="title"></h2>'
+          +       '<p class="spin-lead" data-t="lead"></p>'
           +       '<div class="spin-error" data-err="spin" role="alert"></div>'
-          +       '<button type="button" class="btn btn-primary spin-btn" id="spin-go" onclick="SpinWheel.spin()"><i class="fas fa-compact-disc"></i> Spin now</button>'
+          +       '<button type="button" class="btn btn-primary spin-btn" id="spin-go" onclick="SpinWheel.spin()"></button>'
           +       '<p class="spin-fine">Codes are single use, valid for a limited time and cannot be combined with other coupons.</p>'
+          +       agree
           +     '</div>'
 
           // Step: not eligible
@@ -222,10 +267,61 @@
         return ov;
       },
 
+      _applyText() {
+        const t = this._text();
+        document.querySelectorAll('#spin-overlay [data-t="eyebrow"]').forEach(function (el) { el.textContent = t.eyebrow; });
+        const title = document.querySelector('#spin-overlay [data-t="title"]');
+        const lead = document.querySelector('#spin-overlay [data-t="lead"]');
+        const go = document.getElementById('spin-go');
+        if (title) title.innerHTML = t.title;
+        if (lead) lead.textContent = t.lead;
+        if (go && !this._playing) { go.innerHTML = t.btn; go.disabled = false; }
+      },
+
+      _mountGame() {
+        const stage = document.getElementById('spin-stage');
+        if (!stage || typeof SpinGames === 'undefined') return;
+        const self = this;
+        let pending = null;
+        const ctx = {
+          prizes: (this.state && this.state.prizes) || [],
+          reduce: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
+          lock() {
+            // A visitor who plays before signing in (tapping a box on the
+            // sign-up screen) is sent to the form instead.
+            if (!(typeof Auth !== 'undefined' && Auth.isLoggedIn())) return;
+            self._playing = true;
+            const go = document.getElementById('spin-go');
+            if (go) { go.disabled = true; go.innerHTML = '<i class="fas fa-compact-disc fa-spin"></i> Good luck…'; }
+          },
+          request() {
+            if (!(typeof Auth !== 'undefined' && Auth.isLoggedIn())) {
+              self._err('signup', 'Create your account first — then play.');
+              self._mountGame();
+              return Promise.resolve(null);
+            }
+            if (!pending) pending = self._post().then(function (d) {
+              if (d) { self._animating = true; }
+              return d;
+            });
+            return pending;
+          },
+          done(d) {
+            self._animating = false;
+            self._showResult(d);
+          },
+        };
+        this._game = SpinGames.create(this._style(), ctx);
+        this._game.mount(stage);
+      },
+
       _showStep(name) {
         document.querySelectorAll('#spin-overlay .spin-step').forEach(function (el) {
           el.hidden = el.getAttribute('data-step') !== name;
         });
+        // The game can only be played from the play step.
+        const stage = document.getElementById('spin-stage');
+        if (stage) stage.classList.toggle('is-locked', name === 'signup' || name === 'login' || name === 'blocked');
         if (name === 'spin') {
           const u = typeof Auth !== 'undefined' ? Auth.getUser() : null;
           const who = document.getElementById('spin-who');
@@ -236,51 +332,6 @@
       _err(which, msg) {
         const el = document.querySelector('#spin-overlay [data-err="' + which + '"]');
         if (el) el.textContent = msg || '';
-      },
-
-      _polar(r, deg) {
-        const a = (deg - 90) * Math.PI / 180;
-        return [(r * Math.cos(a)).toFixed(2), (r * Math.sin(a)).toFixed(2)];
-      },
-
-      _drawWheel() {
-        const svg = document.getElementById('spin-wheel-svg');
-        const prizes = (this.state && this.state.prizes) || [];
-        if (!svg || !prizes.length) return;
-        const n = prizes.length, slice = 360 / n, esc = Utils.escape;
-        let html = '<circle r="198" fill="#0d0a14" stroke="#ffd700" stroke-width="4"/>';
-        prizes.forEach((p, i) => {
-          const a0 = i * slice, a1 = (i + 1) * slice;
-          const p0 = this._polar(186, a0), p1 = this._polar(186, a1);
-          const large = slice > 180 ? 1 : 0;
-          html += '<path d="M0 0 L' + p0[0] + ' ' + p0[1] + ' A186 186 0 ' + large + ' 1 ' + p1[0] + ' ' + p1[1] + ' Z"'
-            + ' fill="' + esc(p.color) + '" stroke="#0d0a14" stroke-width="2"/>';
-          const ink = this._isDark(p.color) ? '#ffd700' : '#ffffff';
-          const big = String(p.label).length > 8 ? 15 : 21;
-          html += '<g transform="rotate(' + (a0 + slice / 2) + ')">'
-            + '<text y="-128" text-anchor="middle" fill="' + ink + '" font-weight="800" font-size="' + big + '">' + esc(p.label) + '</text>'
-            + '<text y="-104" text-anchor="middle" fill="' + ink + '" opacity=".85" font-weight="600" font-size="13">' + esc(p.sub) + '</text>'
-            + '</g>';
-        });
-        // Grooves, so it reads as a record rather than a pie chart.
-        for (let r = 70; r < 186; r += 14) html += '<circle r="' + r + '" fill="none" stroke="rgba(0,0,0,.18)" stroke-width="1"/>';
-        for (let i = 0; i < 24; i++) {
-          const c = this._polar(193, i * 15);
-          html += '<circle cx="' + c[0] + '" cy="' + c[1] + '" r="3.2" fill="' + (i % 2 ? '#ffd700' : '#ffffff') + '"/>';
-        }
-        svg.innerHTML = html;
-      },
-
-      // Relative luminance, so the ink on a slice stays readable whatever
-      // colour the owner picks.
-      _isDark(hex) {
-        const m = /^#([0-9a-f]{6})$/i.exec(String(hex || ''));
-        if (!m) return true;
-        const n = parseInt(m[1], 16);
-        const c = [n >> 16, (n >> 8) & 255, n & 255].map(function (v) {
-          v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-        });
-        return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] < 0.12;
       },
 
       // ---------------------------------------------------------------------
@@ -299,7 +350,7 @@
           await Auth.signup({ firstName: first, email: email, password: pass });
           if (document.getElementById('spin-optin').checked) {
             // Opt-in is its own request with its own consent, exactly as the
-            // newsletter form does it. Never blocks the spin.
+            // newsletter form does it. Never blocks the game.
             fetch(API_BASE + '/subscribe.php', {
               method: 'POST',
               headers: Object.assign({ 'Content-Type': 'application/json' }, Auth.headers()),
@@ -334,21 +385,25 @@
       },
 
       async _afterAuth() {
-        // The navbar still says "Sign in" until it is re-rendered.
         if (typeof injectNavbar === 'function') { try { injectNavbar('home'); } catch (e) {} }
         if (typeof CouponLink !== 'undefined') CouponLink.resumePending();
         const s = await this.load(true);
-        if (s && s.enabled && s.eligible) { this._drawWheel(); this._showStep('spin'); return; }
+        if (s && s.enabled && s.eligible) {
+          this._applyText();
+          this._mountGame();
+          this._showStep('spin');
+          return;
+        }
         this._blocked(s ? s.reason : 'error');
       },
 
       _blocked(reason) {
         const msgs = {
-          spun:     ['You have had your spin', 'Each member gets one spin, and this account has used it. Check your email for any code you won.'],
-          ordered:  ['Thanks for shopping with us', 'The wheel is a welcome gift for members who have not ordered yet. Keep an eye on your inbox for member offers.'],
-          disabled: ['The wheel is resting', 'Spin & Win is not running right now. Please check back soon.'],
-          busy:     ['Please try again tomorrow', 'Too many spins have come from this connection today.'],
-          error:    ['Something went wrong', 'We could not start your spin. Please try again in a moment.'],
+          spun:     ['You have had your play', 'Each member gets one play, and this account has used it. Check your email for any code you won.'],
+          ordered:  ['Thanks for shopping with us', 'The game is a welcome gift for members who have not ordered yet. Keep an eye on your inbox for member offers.'],
+          disabled: ['The game is resting', 'Spin & Win is not running right now. Please check back soon.'],
+          busy:     ['Please try again tomorrow', 'Too many plays have come from this connection today.'],
+          error:    ['Something went wrong', 'We could not start your game. Please try again in a moment.'],
         };
         const m = msgs[reason] || msgs.error;
         document.getElementById('spin-blocked-title').textContent = m[0];
@@ -358,15 +413,18 @@
       },
 
       // ---------------------------------------------------------------------
-      // The spin
+      // The play
       // ---------------------------------------------------------------------
-      async spin() {
-        if (this._busy) return;
-        this._busy = true;
+      // The side button: every game has an "auto" play for it.
+      spin() {
+        if (this._playing || !this._game) return;
         this._err('spin', '');
-        const btn = document.getElementById('spin-go');
-        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-compact-disc fa-spin"></i> Spinning…'; }
+        this._game.auto();
+      },
 
+      // The ONE request. Resolves with the server's result, or null after
+      // reporting the problem and resetting the game so it can be retried.
+      async _post() {
         let data = null;
         try {
           const res = await fetch(API_BASE + '/spin-wheel.php', {
@@ -378,32 +436,22 @@
         } catch (e) { data = null; }
 
         if (!data || !data.ok) {
-          this._busy = false;
-          if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-compact-disc"></i> Spin now'; }
-          if (data && data.reason && data.reason !== 'error') return this._blocked(data.reason);
-          return this._err('spin', (data && data.error) || 'Could not start your spin. Please try again.');
+          this._playing = false;
+          this._animating = false;
+          if (data && data.reason && data.reason !== 'error') { this._blocked(data.reason); return null; }
+          this._err('spin', (data && data.error) || 'Could not start your game. Please try again.');
+          this._applyText();
+          this._mountGame();   // a fresh board; the play was not spent
+          return null;
         }
-
-        // Animate to the slice the SERVER chose. If the owner edited the
-        // wheel between load and spin and the slice is gone, the result is
-        // still shown — the prize is real, only the landing spot is not.
-        const prizes = this.state.prizes || [];
-        let idx = prizes.findIndex(function (p) { return p.id === data.prizeId; });
-        if (idx < 0) idx = 0;
-        const slice = 360 / Math.max(prizes.length, 1);
-        const jitter = (Math.random() - 0.5) * slice * 0.6;
-        const target = 360 - (idx * slice + slice / 2) + jitter;
-        this._rotation += 360 * 7 + (((target - this._rotation % 360) % 360) + 360) % 360;
-        const svg = document.getElementById('spin-wheel-svg');
-        const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        if (svg) svg.style.transform = 'rotate(' + this._rotation + 'deg)';
-
-        // The spin is spent the moment the server answered.
+        // The play is spent the moment the server answered.
+        this._result = data;
         this._markDone();
-        setTimeout(() => { this._busy = false; this._showResult(data); }, reduce ? 700 : 5300);
+        return data;
       },
 
       _showResult(d) {
+        this._shown = true;
         this._code = d.code || '';
         document.getElementById('spin-res-title').textContent = d.title || '';
         document.getElementById('spin-res-cond').textContent = d.cond || '';

@@ -16,11 +16,11 @@ require_once __DIR__ . '/_spin_helpers.php';
 require_once __DIR__ . '/_marketing_helpers.php';   // marketing_client_ip()
 
 $SPIN_MESSAGES = [
-    'disabled' => 'The wheel is resting right now.',
-    'spun'     => 'You have already had your spin.',
-    'ordered'  => 'The wheel is a welcome gift for members who have not ordered yet.',
-    'busy'     => 'Too many spins from this connection today. Please try again tomorrow.',
-    'error'    => 'Could not start your spin right now. Please try again.',
+    'disabled' => 'The game is resting right now.',
+    'spun'     => 'You have already had your play.',
+    'ordered'  => 'The game is a welcome gift for members who have not ordered yet.',
+    'busy'     => 'Too many plays from this connection today. Please try again tomorrow.',
+    'error'    => 'Could not start your game right now. Please try again.',
 ];
 
 try {
@@ -38,8 +38,9 @@ try {
         echo json_encode([
             'ok'       => true,
             'enabled'  => true,
-            'prizes'   => spin_public_prizes($cfg),
-            'delaySec' => (int)$cfg['delaySec'],
+            'prizes'    => spin_public_prizes($cfg),
+            'gameStyle' => (string)$cfg['gameStyle'],
+            'delaySec'  => (int)$cfg['delaySec'],
             'signedIn' => $userId !== null,
             // A signed-out visitor is "eligible" in the sense that the tab is
             // offered; the real check runs once they have an account.
@@ -132,5 +133,5 @@ try {
     if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
     error_log('[spin] ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['ok' => false, 'reason' => 'error', 'error' => 'Could not start your spin right now. Please try again.']);
+    echo json_encode(['ok' => false, 'reason' => 'error', 'error' => 'Could not start your game right now. Please try again.']);
 }

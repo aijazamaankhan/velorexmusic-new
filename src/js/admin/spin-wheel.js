@@ -23,6 +23,17 @@
       none:          'Better luck next time',
     };
 
+    // How the result is revealed. Mirrors SPIN_GAME_STYLES in
+    // api/_spin_helpers.php; the server rejects anything else.
+    const SPIN_STYLES = [
+      { id: 'wheel',    icon: 'fa-dharmachakra',       name: 'Spin the Wheel', blurb: 'Every prize visible on the wheel.' },
+      { id: 'jackpot',  icon: 'fa-bolt',               name: 'Jackpot',        blurb: '3-reel slot machine, about 8 seconds.' },
+      { id: 'scratch',  icon: 'fa-ticket',             name: 'Scratch Card',   blurb: 'Scratch the gold foil. Great on phones.' },
+      { id: 'box',      icon: 'fa-gift',               name: 'Mystery Box',    blurb: 'Pick one of three gift boxes.' },
+      { id: 'record',   icon: 'fa-record-vinyl',       name: 'Pick a Record',  blurb: 'Record onto a turntable, needle drops.' },
+      { id: 'envelope', icon: 'fa-envelope-open-text', name: 'Lucky Envelope', blurb: 'Break the seal. Nice for festivals.' },
+    ];
+
     function spinMoney(n) { return '₹' + (Number(n) || 0).toLocaleString('en-IN'); }
 
     function spinDescribe(p) {
@@ -156,7 +167,7 @@
                 + '<td>' + status + '</td></tr>';
             }).join('')
           + '</tbody></table></div>'
-        : '<p class="dash-empty">No spins yet.</p>';
+        : '<p class="dash-empty">No plays yet.</p>';
 
       const stat = function (label, value, sub) {
         return '<div class="dash-card"><div class="dash-card-label">' + escapeHTML(label) + '</div>'
@@ -165,7 +176,7 @@
 
       root.innerHTML = ''
         + '<div class="dash-grid">'
-        +   stat('Spins', st.spins || 0, (st.today || 0) + ' today')
+        +   stat('Plays', st.spins || 0, (st.today || 0) + ' today')
         +   stat('Prizes won', st.wins || 0, ((st.spins || 0) - (st.wins || 0)) + ' better luck next time')
         +   stat('Codes used', st.used || 0, st.wins ? Math.round((st.used || 0) / st.wins * 100) + '% of prizes won' : 'Once a winner orders')
         +   stat('Discount given', spinMoney(st.discount || 0), 'Free delivery not counted')
@@ -174,7 +185,7 @@
         + '<section class="admin-card dash-panel">'
         +   '<div class="spw-head">'
         +     '<div>'
-        +       '<h3 class="dash-panel-title" style="margin-bottom:0.35rem;">Wheel settings</h3>'
+        +       '<h3 class="dash-panel-title" style="margin-bottom:0.35rem;">Game settings</h3>'
         +       '<p class="cpn-sub" style="max-width:70ch;">Shown on the homepage only, to signed-up members who have never ordered. '
         +         'One spin per account. The server draws the prize and creates a single-use code reserved to the winner. '
         +         'Changes apply to future spins; codes already won keep their terms.</p>'
@@ -182,9 +193,18 @@
         +     '<button type="button" class="btn btn-primary" style="width:auto;" id="spw-save" onclick="saveSpinWheel()"'
         +       (SpinState.dirty ? '' : ' disabled') + '><i class="fas fa-floppy-disk"></i> Save changes</button>'
         +   '</div>'
+        +   '<div class="spw-label">Game style <span class="cpn-sub">— same prizes, odds and one-play rule; only the reveal changes</span></div>'
+        +   '<div class="spw-styles" role="radiogroup" aria-label="Game style">'
+        +     SPIN_STYLES.map(function (st) {
+                const on = (cfg.gameStyle || 'wheel') === st.id;
+                return '<button type="button" role="radio" aria-checked="' + on + '" class="spw-style' + (on ? ' is-on' : '') + '"'
+                  + ' onclick="spinSetStyle(\'' + st.id + '\')">'
+                  + '<i class="fas ' + st.icon + '"></i><b>' + st.name + '</b><small>' + st.blurb + '</small></button>';
+              }).join('')
+        +   '</div>'
         +   '<div class="spw-bar">'
         +     '<label class="set-toggle spw-live"><input type="checkbox" ' + (cfg.enabled ? 'checked' : '') + ' onchange="spinEditTop(\'enabled\',this)">'
-        +       '<span class="set-label">' + (cfg.enabled ? '<strong style="color:var(--success);">Wheel is live</strong>' : 'Wheel is off') + '</span></label>'
+        +       '<span class="set-label">' + (cfg.enabled ? '<strong style="color:var(--success);">Game is live</strong>' : 'Game is off') + '</span></label>'
         +     '<label>Codes valid for <input class="form-control spw-num" type="number" min="1" max="60" value="' + cfg.validDays + '" onchange="spinEditTop(\'validDays\',this)"> days</label>'
         +     '<label>Show tab after <input class="form-control spw-num" type="number" min="0" max="60" value="' + cfg.delaySec + '" onchange="spinEditTop(\'delaySec\',this)"> sec</label>'
         +     '<button type="button" class="btn btn-secondary btn-sm" style="width:auto;" onclick="spinAdd()"><i class="fas fa-plus"></i> Add slice</button>'
@@ -193,16 +213,19 @@
         +     '<div style="overflow-x:auto;"><table class="admin-table spw-table"><thead><tr>'
         +       '<th>On</th><th>Colour</th><th>Prize</th><th>Value</th><th>Min order ₹</th><th>Max off ₹</th><th>Min LPs</th><th>Weight</th><th>Odds</th><th>Customer reads</th><th></th>'
         +     '</tr></thead><tbody>' + rows + '</tbody></table></div>'
-        +     '<div class="spw-preview-wrap">' + spinPreviewSvg() + '<div class="cpn-sub" style="text-align:center;">Live preview</div></div>'
+        +     '<div class="spw-preview-wrap">' + spinPreviewSvg() + '<div class="cpn-sub" style="text-align:center;">Prize preview</div></div>'
         +   '</div>'
         +   '<p class="cpn-sub" style="margin-top:0.75rem;">4–8 slices. Weight is relative — the Odds column works out the chance. '
         +     'Value is the % for "% off" (max 90) or rupees for "₹ off". Min LPs counts vinyl records only. '
         +     'Keep "Better luck next time" rare: people create an account to spin.</p>'
+        +   '<p class="cpn-sub" style="margin-top:0.5rem;"><i class="fas fa-file-contract"></i> Customers see the rules and the live chances at '
+        +     '<a href="/offer-terms.html" target="_blank" rel="noopener">/offer-terms.html</a>. Edit the wording in Policies → Spin &amp; Win Terms; '
+        +     'the prizes table on that page is generated from these settings.</p>'
         +   '<div class="set-error" id="spw-error" hidden></div>'
         + '</section>'
 
         + '<section class="admin-card dash-panel" style="margin-top:1.5rem;">'
-        +   '<h3 class="dash-panel-title">Latest spins</h3>' + recent
+        +   '<h3 class="dash-panel-title">Latest plays</h3>' + recent
         + '</section>';
     }
 
@@ -226,6 +249,11 @@
 
     function spinEditTop(key, el) {
       SpinState.cfg[key] = el.type === 'checkbox' ? el.checked : Math.max(0, parseInt(el.value, 10) || 0);
+      spinMarkDirty();
+    }
+
+    function spinSetStyle(id) {
+      SpinState.cfg.gameStyle = id;
       spinMarkDirty();
     }
 
@@ -262,7 +290,7 @@
         SpinState.cfg = data.config;
         SpinState.dirty = false;
         renderSpinWheel();
-        showToast(data.config.enabled ? 'Saved — the wheel is live on the homepage' : 'Saved — the wheel is off', 'success');
+        showToast(data.config.enabled ? 'Saved — the game is live on the homepage' : 'Saved — the game is off', 'success');
       } catch (e) {
         if (err) { err.textContent = e.message; err.hidden = false; }
         if (btn) btn.disabled = false;

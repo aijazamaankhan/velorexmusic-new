@@ -166,6 +166,7 @@ ErrorDocument 404 /seo-render.php
   # and falls back to serving the file untouched on any failure. See
   # api/_policy_helpers.php for why it is built as a shim rather than a renderer.
   RewriteRule ^(shipping|returns|terms|privacy)\.html$ policy.php?page=$1 [L,QSA]
+  RewriteRule ^offer-terms\.html$ policy.php?page=offers [L,QSA]
 </IfModule>
 
 # -----------------------------------------------------------------------------

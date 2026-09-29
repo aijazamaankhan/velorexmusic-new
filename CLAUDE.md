@@ -94,8 +94,10 @@ velorexmusic-new/
 │       │                        # order-value free threshold — see §16. PHP mirror in
 │       │                        # api/_shipping_helpers.php — keep both files in sync.
 │       ├── storefront/newsletter.js # The homepage signup block. Was markup with no handler.
-│       ├── storefront/spin-wheel.js # Spin & Win welcome wheel. Homepage only; the SERVER
-│       │                        # draws the prize. See §48.
+│       ├── storefront/spin-wheel.js # Spin & Win controller: tab, modal, sign-up, the ONE
+│       │                        # POST, the result. Homepage only. See §48.
+│       ├── storefront/spin-games.js # The six game styles (wheel, jackpot, scratch, box,
+│       │                        # record, envelope). They REVEAL; the server decides.
        ├── storefront/search.js # Global search — ranked suggestions off the product
 │       │                        # cache, inline on desktop, full-screen sheet below
 │       │                        # 1100px. See §24.
@@ -3623,17 +3625,19 @@ width, not `height: 100%` (which grew sideways over the text). The hero dots'
 tap-area border needs `background-clip: padding-box` restated on every state
 that sets the `background` shorthand.
 
-## 48. Spin & Win welcome wheel
+## 48. Spin & Win welcome game
 
-A prize wheel for new members, on the homepage only. Admin → **Spin Wheel**
-edits the prizes and odds and shows who won what.
+A prize game for new members, on the homepage only. Admin → **Spin Wheel**
+chooses the game style, edits the prizes and odds, and shows who won what.
 
 | Piece | File |
 |---|---|
 | Config, eligibility, the draw, code minting | [api/_spin_helpers.php](api/_spin_helpers.php) |
 | Storefront endpoint (status + spin) | [api/spin-wheel.php](api/spin-wheel.php) |
 | Admin endpoint | [api/admin/spin-wheel.php](api/admin/spin-wheel.php) |
-| Storefront tab + modal | [src/js/storefront/spin-wheel.js](src/js/storefront/spin-wheel.js), [spin-wheel.css](src/styles/components/spin-wheel.css) |
+| Storefront tab + modal (controller) | [src/js/storefront/spin-wheel.js](src/js/storefront/spin-wheel.js), [spin-wheel.css](src/styles/components/spin-wheel.css) |
+| The six game styles | [src/js/storefront/spin-games.js](src/js/storefront/spin-games.js), [spin-games.css](src/styles/components/spin-games.css) |
+| Rules page | [offer-terms.html](offer-terms.html) via `policy.php?page=offers` |
 | Admin panel | [src/js/admin/spin-wheel.js](src/js/admin/spin-wheel.js), [spin-wheel.css](src/styles/admin/pages/spin-wheel.css) |
 | Guards | [tests/spin-wheel.php](tests/spin-wheel.php) |
 
@@ -3690,6 +3694,42 @@ The prize email reuses `personal_coupon_email()` (now aware of free delivery
 and min-vinyl), goes through `marketing_contact_token()` so an unsubscribe is
 honoured, and is sent after the commit — a failed email never undoes a prize
 that is already on screen.
+
+### Game styles
+
+`gameStyle` in the config picks how the result is REVEALED: `wheel`,
+`jackpot`, `scratch`, `box`, `record` or `envelope`. It is presentation only —
+every style runs the same draw, one-play rule and coupon. Each style in
+`spin-games.js` implements `mount(stage)` and `auto()` against a small `ctx`
+(`request()` makes the one POST, `done()` hands back to the controller), and
+none of them can choose an outcome. Adding a style means touching FOUR lists,
+which `tests/spin-wheel.php` checks agree: `SPIN_GAME_STYLES` (PHP),
+`SPIN_STYLE_TEXT` (storefront controller), `SPIN_STYLES` (admin) and the
+factory in `spin-games.js`.
+
+Two honesty rules live in the games and must survive any restyle:
+
+- **Pick-one games open only the chosen item.** The other boxes or sleeves
+  fade out unopened. Showing "you could have won X" in them would be a
+  made-up claim — the server only ever drew one prize.
+- **The jackpot never fakes a near-miss.** A loss lands three DIFFERENT
+  symbols, never two matching and one off: that is a gambling trick for making
+  a loss feel almost-won.
+
+The game is locked (`.spin-stage.is-locked`) until the visitor is signed in,
+so nobody starts a play the server will refuse. If the modal is closed after
+the server answered but before the reveal finished (a half-scratched card),
+the controller toasts the prize — it is already recorded and emailed.
+
+### The rules page
+
+`/offer-terms.html` is an editable policy page (Admin → Policies → Spin & Win
+Terms, slug `offers` because `policy.php` keeps `[a-z]` only). The **Current
+prizes and chances** table is NOT in the editable region: `policy.php`
+replaces `<!-- velorex:spin-odds -->` with `spin_terms_table_html()` from the
+live config, so the published odds cannot disagree with the draw and cannot be
+edited away. It is `noindex` and not in the sitemap. The game links to it
+("By playing you agree to the Spin & Win Terms").
 
 Tables `spin_config` (one JSON row) and `spin_entries` are created on first
 use, and the `coupons.source` column and the `free_shipping` enum value are

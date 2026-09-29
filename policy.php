@@ -63,6 +63,20 @@ if ($body !== null) {
 
 // Short cache: a policy edit should be visible quickly, and these pages change
 // perhaps twice a year, so there is nothing to gain from a longer one.
+// Spin & Win terms: the prizes-and-chances table sits OUTSIDE the editable
+// region and is generated from the live game config, so the published odds
+// cannot drift from the real draw, and cannot be edited away in the admin.
+if ($slug === 'offers' && strpos($html, '<!-- velorex:spin-odds -->') !== false) {
+    $table = '<p>The current prizes are shown in the game itself.</p>';
+    try {
+        require_once __DIR__ . '/api/_spin_helpers.php';
+        $table = spin_terms_table_html(spin_get_config(db()));
+    } catch (Throwable $e) {
+        error_log('[policy] spin odds unavailable: ' . $e->getMessage());
+    }
+    $html = str_replace('<!-- velorex:spin-odds -->', $table, $html);
+}
+
 header('Content-Type: text/html; charset=utf-8');
 header('Cache-Control: public, max-age=120');
 echo $html;

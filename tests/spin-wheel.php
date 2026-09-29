@@ -58,6 +58,35 @@ $ids = array_column($c['prizes'], 'id');
 ok('slice ids are sanitised and unique', count(array_unique($ids)) === count($ids)
     && !array_filter($ids, fn($i) => !preg_match('/^[a-z0-9]{1,16}$/', $i)));
 
+$t = $base; $t['gameStyle'] = 'roulette<script>';
+[$c] = spin_validate_config($t);
+ok('unknown game style falls back to wheel', $c['gameStyle'] === 'wheel');
+foreach (['wheel', 'jackpot', 'scratch', 'box', 'record', 'envelope'] as $st) {
+    $t = $base; $t['gameStyle'] = $st;
+    [$c] = spin_validate_config($t);
+    if ($c['gameStyle'] !== $st) { ok("game style $st kept", false); }
+}
+ok('all six game styles accepted', true);
+
+$t = $base; $t['enabled'] = true;
+[$c] = spin_validate_config($t);
+$html = spin_terms_table_html($c);
+ok('terms table lists every live prize with its chance',
+    substr_count($html, '<tr>') === count(spin_live_prizes($c)) + 1 && strpos($html, '1 in') !== false);
+ok('terms table says the game is off when disabled', strpos(spin_terms_table_html($base), 'not running') !== false);
+
+// The storefront and admin style lists must match the server's.
+$sfJs = file_get_contents(__DIR__ . '/../src/js/storefront/spin-wheel.js');
+$adJs = file_get_contents(__DIR__ . '/../src/js/admin/spin-wheel.js');
+$gmJs = file_get_contents(__DIR__ . '/../src/js/storefront/spin-games.js');
+foreach (SPIN_GAME_STYLES as $st) {
+    if (!preg_match('/\b' . $st . ':\s*\{/', $sfJs) || strpos($adJs, "id: '" . $st . "'") === false
+        || !preg_match('/\b' . $st . '\(ctx\)/', $gmJs)) {
+        ok("style $st present in storefront text, admin picker and games", false);
+    }
+}
+ok('style lists agree across server, storefront, admin and games', true);
+
 $t = $base; $t['validDays'] = 999; $t['delaySec'] = -5;
 [$c] = spin_validate_config($t);
 ok('validDays and delaySec clamped', $c['validDays'] === 60 && $c['delaySec'] === 0);

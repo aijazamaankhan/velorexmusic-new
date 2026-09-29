@@ -47,6 +47,10 @@ function policy_pages(): array {
                        'url'  => '/terms.html'],
         'privacy'  => ['file' => 'privacy.html',  'label' => 'Privacy Policy',
                        'url'  => '/privacy.html'],
+        // Spin & Win rules. The slug has no hyphen because policy.php keeps
+        // [a-z] only; the URL keeps the readable name via .htaccess.
+        'offers'   => ['file' => 'offer-terms.html', 'label' => 'Spin & Win Terms',
+                       'url'  => '/offer-terms.html'],
     ];
 }
 

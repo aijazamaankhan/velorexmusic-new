@@ -44,6 +44,12 @@ const SPIN_MIN_SLICES     = 4;
 const SPIN_MAX_SLICES     = 8;
 const SPIN_MAX_PERCENT    = 90;   // same cap as the Coupons panel (§34)
 
+// How the result is REVEALED. Presentation only: every style runs the same
+// server-side draw, the same one-play rule and the same coupon. Mirrored by
+// SPIN_STYLE_TEXT in src/js/storefront/spin-wheel.js and SPIN_STYLES in
+// src/js/admin/spin-wheel.js.
+const SPIN_GAME_STYLES = ['wheel', 'jackpot', 'scratch', 'box', 'record', 'envelope'];
+
 function spin_ensure_tables(PDO $pdo): void {
     static $done = false;
     if ($done) return;
@@ -81,6 +87,7 @@ function spin_ensure_tables(PDO $pdo): void {
 function spin_default_config(): array {
     return [
         'enabled'   => false,
+        'gameStyle' => 'wheel',
         'validDays' => 7,
         'delaySec'  => 3,
         'prizes'    => [
@@ -122,6 +129,7 @@ function spin_validate_config(array $in): array {
     $errors = [];
     $out = [
         'enabled'   => !empty($in['enabled']),
+        'gameStyle' => in_array($in['gameStyle'] ?? '', SPIN_GAME_STYLES, true) ? $in['gameStyle'] : 'wheel',
         'validDays' => max(1, min(60, (int)($in['validDays'] ?? 7))),
         'delaySec'  => max(0, min(60, (int)($in['delaySec'] ?? 3))),
         'prizes'    => [],
@@ -224,13 +232,47 @@ function spin_describe(array $p): array {
     return ['label' => $label, 'sub' => $sub, 'title' => $title, 'cond' => implode(' ', $parts)];
 }
 
-// What the storefront needs to draw the wheel. No weights: the odds are the
-// server's business, and the browser does not pick.
+// Font Awesome icon for a prize — the jackpot reels print it above the text.
+function spin_icon(array $p): string {
+    if ($p['type'] === 'none')          return 'fa-face-smile';
+    if ($p['type'] === 'free_shipping') return 'fa-truck-fast';
+    if ((int)$p['minLps'] > 0)          return 'fa-record-vinyl';
+    if ($p['type'] === 'fixed')         return 'fa-indian-rupee-sign';
+    return (int)$p['value'] >= 15 ? 'fa-crown' : 'fa-percent';
+}
+
+// What the storefront needs to draw the game. No weights: the odds are the
+// server's business, and the browser does not pick. (They ARE published, in
+// words, on /offer-terms.html — see spin_terms_table_html().)
 function spin_public_prizes(array $cfg): array {
     return array_map(function ($p) {
         $d = spin_describe($p);
-        return ['id' => $p['id'], 'color' => $p['color'], 'label' => $d['label'], 'sub' => $d['sub']];
+        return ['id' => $p['id'], 'color' => $p['color'], 'label' => $d['label'], 'sub' => $d['sub'],
+                'icon' => spin_icon($p), 'none' => $p['type'] === 'none'];
     }, spin_live_prizes($cfg));
+}
+
+// The "Current prizes and chances" table on /offer-terms.html, generated from
+// the live config so the published odds can never disagree with the draw.
+function spin_terms_table_html(array $cfg): string {
+    $e = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $live = spin_live_prizes($cfg);
+    if (empty($cfg['enabled']) || !$live) {
+        return '<p>The game is not running at the moment, so no prizes are on offer.</p>';
+    }
+    $total = array_sum(array_map(fn($p) => (int)$p['weight'], $live));
+    $rows = '';
+    foreach ($live as $p) {
+        $d = spin_describe($p);
+        $pct = round((int)$p['weight'] / $total * 100, 1);
+        $oneIn = max(1, (int)round($total / (int)$p['weight']));
+        $rows .= '<tr><td><strong>' . $e($d['title']) . '</strong></td><td>' . $e($d['cond']) . '</td>'
+               . '<td>' . $e($pct) . '%<br><small>about 1 in ' . $oneIn . '</small></td></tr>';
+    }
+    return '<div class="offer-odds-wrap"><table class="offer-odds"><thead><tr><th>Prize</th><th>Conditions</th><th>Chance</th></tr></thead>'
+         . '<tbody>' . $rows . '</tbody></table></div>'
+         . '<p>Winning codes are valid for <strong>' . (int)$cfg['validDays'] . ' days</strong> from the day they are won. '
+         . 'This table is generated from the live game settings, so it always shows the current chances.</p>';
 }
 
 // '' = may spin; otherwise a reason code the storefront maps to a message.

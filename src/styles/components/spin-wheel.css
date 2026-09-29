@@ -86,37 +86,19 @@
 }
 .spin-close:hover { color: #fff; }
 
-/* ---- The wheel ---- */
-.spin-wheel-wrap { position: relative; display: grid; place-items: center; padding: 10px; }
-.spin-wheel {
-  width: 100%;
-  max-width: 380px;
-  font-family: var(--font-body, 'Poppins', sans-serif);
-  transition: transform 5.2s cubic-bezier(0.12, 0.72, 0.08, 1);
-  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.55));
-}
-.spin-pointer {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  z-index: 2;
-  transform: translateX(-50%);
-  border-left: 16px solid transparent;
-  border-right: 16px solid transparent;
-  border-top: 30px solid #ffd700;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
-}
-.spin-hub {
-  position: absolute;
-  width: 22%;
-  aspect-ratio: 1;
+/* ---- The game stage (built by src/js/storefront/spin-games.js) ---- */
+.spin-stage {
+  position: relative;
   display: grid;
   place-items: center;
-  border-radius: 50%;
-  border: 3px solid #ffd700;
-  background: radial-gradient(circle at 35% 30%, #3a2c4d, #0d0a14 70%);
+  min-height: 340px;
+  padding: 10px;
+  transition: filter 0.3s, opacity 0.3s;
 }
-.spin-hub img { width: 86%; height: 86%; display: block; }
+/* Until the visitor is signed in, the game is a preview: it cannot be
+   played, so nobody starts a play the server will refuse. */
+.spin-stage.is-locked > * { pointer-events: none; }
+.spin-stage.is-locked { filter: saturate(0.75); opacity: 0.85; }
 
 /* ---- Side column ---- */
 .spin-side { display: flex; flex-direction: column; justify-content: center; padding: 8px 8px 8px 4px; }
@@ -143,6 +125,7 @@
 .spin-btn { width: 100%; justify-content: center; }
 .spin-fine { margin: 0; font-size: 0.74rem; color: #a79fb4; line-height: 1.5; }
 .spin-fine a { color: #f4f1f8; }
+.spin-agree { text-align: center; }
 
 /* ---- Result ---- */
 .spin-prize { font-size: 1.9rem; font-weight: 800; line-height: 1.15; }
@@ -187,7 +170,7 @@
 /* ---- Phones: wheel on top, form below ---- */
 @media (max-width: 760px) {
   .spin-modal { grid-template-columns: 1fr; padding: 22px 16px 18px; gap: 4px; }
-  .spin-wheel { max-width: 250px; }
+  .spin-stage { min-height: 0; padding: 26px 0 6px; }
   .spin-side { padding: 0; }
   .spin-title { font-size: 1.35rem; }
   .spin-prize { font-size: 1.55rem; }
@@ -195,11 +178,10 @@
 }
 /* A short phone in landscape: the wheel would push the form off screen. */
 @media (max-height: 520px) and (max-width: 1024px) {
-  .spin-wheel { max-width: 170px; }
+  .spin-stage { transform: scale(0.8); transform-origin: top center; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .spin-wheel { transition-duration: 0.6s; }
   .spin-launcher, .spin-overlay { transition: none; }
   .spin-confetti { display: none; }
 }
