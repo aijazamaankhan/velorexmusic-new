@@ -101,6 +101,12 @@ ErrorDocument 404 /seo-render.php
   RewriteCond %{THE_REQUEST} ^[A-Z]+\s/index\.html[\s?]
   RewriteRule ^index\.html$ / [R=301,L]
 
+  # Spin & Win rules. offer-terms.html EXISTS on disk, so this must sit ABOVE
+  # the "never rewrite a real file" rule below or the file is served raw and
+  # its prizes-and-chances table (filled in by policy.php from the live game
+  # settings) never appears. See CLAUDE.md §48.
+  RewriteRule ^offer-terms\.html$ policy.php?page=offers [L,QSA]
+
   # Never rewrite something that physically exists (index.html, /src/*, the
   # /uploads symlink, the /api directory). This MUST come before the catalogue
   # rules below, otherwise a real asset whose name happens to match a pattern
@@ -166,7 +172,6 @@ ErrorDocument 404 /seo-render.php
   # and falls back to serving the file untouched on any failure. See
   # api/_policy_helpers.php for why it is built as a shim rather than a renderer.
   RewriteRule ^(shipping|returns|terms|privacy)\.html$ policy.php?page=$1 [L,QSA]
-  RewriteRule ^offer-terms\.html$ policy.php?page=offers [L,QSA]
 </IfModule>
 
 # -----------------------------------------------------------------------------
