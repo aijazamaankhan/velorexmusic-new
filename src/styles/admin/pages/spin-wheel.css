@@ -80,20 +80,46 @@
 .spw-off td { opacity: 0.45; }
 .spw-off td:first-child { opacity: 1; }
 
-.spw-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 220px;
-  gap: 1.25rem;
-  align-items: start;
-}
 .spw-layout > * { min-width: 0; }
-.spw-preview-wrap { display: grid; gap: 0.5rem; justify-items: center; }
-.spw-preview { width: 100%; max-width: 220px; font-family: inherit; }
 
-@media (max-width: 1700px) {
-  .spw-layout { grid-template-columns: minmax(0, 1fr); }
-  .spw-preview-wrap { order: -1; }
-  .spw-preview { max-width: 200px; }
+/* Live demo of the chosen style. Dark in both admin themes, because the
+   storefront game it runs (src/styles/components/spin-games.css) is built
+   for the dark Spin & Win modal. */
+.spw-demo {
+  display: grid;
+  grid-template-columns: minmax(0, 460px) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  padding: 1.25rem;
+  border-radius: 16px;
+  background: #17121f;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f4f1f8;
+}
+.spw-demo > * { min-width: 0; }
+.spw-demo-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 360px;
+  font-family: 'Poppins', var(--font-body, sans-serif);
+}
+.spw-demo-side { display: flex; flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+.spw-demo-side .cpn-sub { color: #a79fb4; max-width: 46ch; }
+.spw-demo-side .spw-label { color: #f4f1f8; }
+.spw-demo-res {
+  display: flex; flex-direction: column; gap: 0.2rem;
+  padding: 0.75rem 0.9rem; border-radius: 10px;
+  border: 1px dashed #ffd700; background: rgba(255, 215, 0, 0.05);
+}
+.spw-demo-res span { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #ffd700; }
+.spw-demo-res b { font-size: 1.15rem; }
+.spw-demo-res small { color: #a79fb4; }
+
+@media (max-width: 900px) {
+  .spw-demo { grid-template-columns: minmax(0, 1fr); }
+  .spw-demo-stage { min-height: 300px; }
 }
 
 /* iOS zooms any focused field under 16px. */

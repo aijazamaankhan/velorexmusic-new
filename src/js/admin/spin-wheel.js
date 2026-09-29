@@ -83,30 +83,81 @@
       }
     }
 
-    function spinPolar(r, deg) {
-      const a = (deg - 90) * Math.PI / 180;
-      return [(r * Math.cos(a)).toFixed(2), (r * Math.sin(a)).toFixed(2)];
+    // Mirrors spin_icon() in api/_spin_helpers.php (the jackpot prints it).
+    function spinIcon(p) {
+      if (p.type === 'none') return 'fa-face-smile';
+      if (p.type === 'free_shipping') return 'fa-truck-fast';
+      if (Number(p.minLps) > 0) return 'fa-record-vinyl';
+      if (p.type === 'fixed') return 'fa-indian-rupee-sign';
+      return Number(p.value) >= 15 ? 'fa-crown' : 'fa-percent';
     }
 
-    function spinPreviewSvg() {
-      const live = spinLive();
-      if (!live.length) return '<p class="dash-empty">No live slices.</p>';
-      const slice = 360 / live.length;
-      let s = '<svg class="spw-preview" viewBox="-200 -200 400 400" aria-label="Wheel preview">'
-        + '<circle r="198" fill="#0d0a14" stroke="#ffd700" stroke-width="4"/>';
-      live.forEach(function (p, i) {
-        const a0 = i * slice, a1 = (i + 1) * slice;
-        const p0 = spinPolar(186, a0), p1 = spinPolar(186, a1);
+    // ---------------------------------------------------------------------
+    // Live demo of the selected game style.
+    //
+    // Runs the SAME game code as the storefront (src/js/storefront/
+    // spin-games.js), fed with the prizes as currently edited — saved or not.
+    // Its ctx.request() never touches the server: it draws locally from the
+    // weights on screen and returns a DEMO result, so trying it creates no
+    // coupon, uses no one's play, and does not count in the stats.
+    // ---------------------------------------------------------------------
+    let SpinDemo = null;
+
+    function spinDemoPrizes() {
+      return spinLive().map(function (p, i) {
         const d = spinDescribe(p);
-        s += '<path d="M0 0 L' + p0[0] + ' ' + p0[1] + ' A186 186 0 ' + (slice > 180 ? 1 : 0) + ' 1 ' + p1[0] + ' ' + p1[1] + ' Z"'
-          + ' fill="' + escapeHTML(p.color) + '" stroke="#0d0a14" stroke-width="2"/>'
-          + '<g transform="rotate(' + (a0 + slice / 2) + ')">'
-          + '<text y="-128" text-anchor="middle" fill="#fff" font-weight="800" font-size="' + (d.label.length > 8 ? 15 : 21) + '">' + escapeHTML(d.label) + '</text>'
-          + '<text y="-104" text-anchor="middle" fill="#fff" opacity=".85" font-weight="600" font-size="13">' + escapeHTML(d.sub) + '</text>'
-          + '</g>';
+        return { id: p.id || ('d' + i), color: p.color, label: d.label, sub: d.sub, icon: spinIcon(p), none: p.type === 'none' };
       });
-      s += '<circle r="42" fill="#0d0a14" stroke="#ffd700" stroke-width="3"/></svg>';
-      return s;
+    }
+
+    function spinMountDemo() {
+      const stage = document.getElementById('spw-demo-stage');
+      const out = document.getElementById('spw-demo-out');
+      if (!stage) return;
+      if (typeof SpinGames === 'undefined') {
+        stage.innerHTML = '<p class="dash-empty">Preview unavailable — the game script did not load.</p>';
+        return;
+      }
+      const live = spinLive();
+      const prizes = spinDemoPrizes();
+      if (prizes.length < 2) {
+        stage.innerHTML = '<p class="dash-empty">Switch on at least 2 slices to preview the game.</p>';
+        return;
+      }
+      if (out) out.innerHTML = '';
+      const btn = document.getElementById('spw-demo-play');
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-play"></i> Try it'; }
+      const ctx = {
+        prizes: prizes,
+        reduce: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
+        lock: function () {
+          if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-compact-disc fa-spin"></i> Playing…'; }
+        },
+        request: function () {
+          const total = live.reduce(function (a, p) { return a + Number(p.weight); }, 0);
+          let r = Math.random() * total, i = 0;
+          for (; i < live.length - 1; i++) { r -= Number(live[i].weight); if (r < 0) break; }
+          const p = live[i], d = spinDescribe(p);
+          return Promise.resolve({ prizeId: prizes[i].id, win: p.type !== 'none', title: d.title, cond: d.cond,
+                                   code: p.type === 'none' ? null : 'DEMO-CODE' });
+        },
+        done: function (d) {
+          if (out) {
+            out.innerHTML = '<div class="spw-demo-res"><span>' + (d.win ? '<i class="fas fa-trophy"></i> Customer would win' : '<i class="fas fa-record-vinyl"></i> Customer would see') + '</span>'
+              + '<b>' + escapeHTML(d.title) + '</b><small>' + escapeHTML(d.cond) + '</small></div>';
+          }
+          if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-rotate"></i> Play again'; }
+        },
+      };
+      SpinDemo = SpinGames.create(SpinState.cfg.gameStyle || 'wheel', ctx);
+      SpinDemo.mount(stage);
+    }
+
+    function spinDemoPlay() {
+      const btn = document.getElementById('spw-demo-play');
+      // A finished demo is remounted fresh before playing again.
+      if (btn && btn.textContent.indexOf('Play again') !== -1) { spinMountDemo(); }
+      if (SpinDemo) SpinDemo.auto();
     }
 
     function renderSpinWheel() {
@@ -202,6 +253,16 @@
                   + '<i class="fas ' + st.icon + '"></i><b>' + st.name + '</b><small>' + st.blurb + '</small></button>';
               }).join('')
         +   '</div>'
+        +   '<div class="spw-demo">'
+        +     '<div class="spw-demo-stage" id="spw-demo-stage"></div>'
+        +     '<div class="spw-demo-side">'
+        +       '<div class="spw-label" style="margin:0;">Preview: ' + escapeHTML((SPIN_STYLES.find(function (x) { return x.id === (cfg.gameStyle || 'wheel'); }) || SPIN_STYLES[0]).name) + '</div>'
+        +       '<p class="cpn-sub">Plays exactly as customers see it, with the prizes and odds above — including changes you have not saved yet. '
+        +         'A demo play creates no code and does not count.</p>'
+        +       '<button type="button" class="btn btn-primary" style="width:auto;" id="spw-demo-play" onclick="spinDemoPlay()"><i class="fas fa-play"></i> Try it</button>'
+        +       '<div id="spw-demo-out"></div>'
+        +     '</div>'
+        +   '</div>'
         +   '<div class="spw-bar">'
         +     '<label class="set-toggle spw-live"><input type="checkbox" ' + (cfg.enabled ? 'checked' : '') + ' onchange="spinEditTop(\'enabled\',this)">'
         +       '<span class="set-label">' + (cfg.enabled ? '<strong style="color:var(--success);">Game is live</strong>' : 'Game is off') + '</span></label>'
@@ -213,7 +274,6 @@
         +     '<div style="overflow-x:auto;"><table class="admin-table spw-table"><thead><tr>'
         +       '<th>On</th><th>Colour</th><th>Prize</th><th>Value</th><th>Min order ₹</th><th>Max off ₹</th><th>Min LPs</th><th>Weight</th><th>Odds</th><th>Customer reads</th><th></th>'
         +     '</tr></thead><tbody>' + rows + '</tbody></table></div>'
-        +     '<div class="spw-preview-wrap">' + spinPreviewSvg() + '<div class="cpn-sub" style="text-align:center;">Prize preview</div></div>'
         +   '</div>'
         +   '<p class="cpn-sub" style="margin-top:0.75rem;">4–8 slices. Weight is relative — the Odds column works out the chance. '
         +     'Value is the % for "% off" (max 90) or rupees for "₹ off". Min LPs counts vinyl records only. '
@@ -227,6 +287,7 @@
         + '<section class="admin-card dash-panel" style="margin-top:1.5rem;">'
         +   '<h3 class="dash-panel-title">Latest plays</h3>' + recent
         + '</section>';
+      spinMountDemo();
     }
 
     function spinMarkDirty() {

@@ -35,7 +35,8 @@
   <link rel="stylesheet" href="src/styles/admin/pages/dashboard.css?v=ef59ea1f">
   <link rel="stylesheet" href="src/styles/admin/pages/settings.css?v=1424a29b">
   <link rel="stylesheet" href="src/styles/admin/pages/coupons.css?v=5d57fc72">
-  <link rel="stylesheet" href="src/styles/admin/pages/spin-wheel.css?v=41faa37f">
+  <link rel="stylesheet" href="src/styles/components/spin-games.css?v=e22b39e6">
+  <link rel="stylesheet" href="src/styles/admin/pages/spin-wheel.css?v=61233c4d">
   <link rel="stylesheet" href="src/styles/admin/pages/policies.css?v=95601739">
   <!-- Phone/tablet bottom tab bar; see src/js/admin/tabbar.js. -->
   <link rel="stylesheet" href="src/styles/admin/components/tabbar.css?v=401340f7">
@@ -65,7 +66,11 @@
   <script src="src/js/admin/dashboard.js?v=1e0ccbd7"></script>
   <script src="src/js/admin/settings.js?v=da6da734"></script>
   <script src="src/js/admin/coupons.js?v=002f5d5b"></script>
-  <script src="src/js/admin/spin-wheel.js?v=30cb39b2"></script>
+  <!-- The storefront's game styles, so the Spin Wheel panel can preview the
+       chosen game exactly as customers see it. Demo plays never reach the
+       server; see spinMountDemo() in src/js/admin/spin-wheel.js. -->
+  <script src="src/js/storefront/spin-games.js?v=c678a9ee"></script>
+  <script src="src/js/admin/spin-wheel.js?v=845063c5"></script>
   <script src="src/js/admin/seo.js?v=016a02b4"></script>
   <script src="src/js/admin/policies.js?v=e5841fa0"></script>
   <script src="src/js/admin/toast.js?v=9a4bf3e8"></script>

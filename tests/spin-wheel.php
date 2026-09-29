@@ -127,6 +127,8 @@ foreach (['free_shipping', 'percent', 'fixed', 'none'] as $type) {
 $js = file_get_contents(__DIR__ . '/../src/js/admin/spin-wheel.js');
 $a = strpos($js, 'function spinMoney');
 $b = strpos($js, 'function spinLive');
+$ic = strpos($js, 'function spinIcon');
+$ie = strpos($js, '// ---', $ic);
 $node = trim((string)@shell_exec(PHP_OS_FAMILY === 'Windows' ? 'where node 2>NUL' : 'command -v node 2>/dev/null'));
 if ($a === false || $b === false) {
     ok('admin spinDescribe found', false);
@@ -134,12 +136,13 @@ if ($a === false || $b === false) {
     echo "node not on PATH — parity check skipped\n";
 } else {
     $tmp = tempnam(sys_get_temp_dir(), 'spw') . '.js';
-    file_put_contents($tmp, substr($js, $a, $b - $a)
-        . "\nprocess.stdout.write(JSON.stringify(" . json_encode($cases) . ".map(spinDescribe)));");
+    file_put_contents($tmp, substr($js, $a, $b - $a) . "\n" . substr($js, $ic, $ie - $ic)
+        . "\nconst C = " . json_encode($cases) . ";"
+        . "\nprocess.stdout.write(JSON.stringify({ d: C.map(spinDescribe), i: C.map(spinIcon) }));");
     $out = json_decode((string)shell_exec('node ' . escapeshellarg($tmp)), true);
     @unlink($tmp);
-    $php = array_map('spin_describe', $cases);
-    ok('admin preview wording === server wording (' . count($cases) . ' cases)', $out === $php);
+    ok('admin preview wording === server wording (' . count($cases) . ' cases)', ($out['d'] ?? null) === array_map('spin_describe', $cases));
+    ok('admin preview icons === server icons', ($out['i'] ?? null) === array_map('spin_icon', $cases));
 }
 
 echo $fails ? "\n$fails FAILED\n" : "\nall passed\n";
